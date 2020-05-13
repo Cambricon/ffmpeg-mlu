@@ -1,22 +1,22 @@
-From 4ceb16582407e5841a99a4a54170f8ea8633952f Mon Sep 17 00:00:00 2001
-From: zhuxiaoqiang <zhuxiaoqiang@cambricon.com>
+From 2a1f5cf012b86216793dd3e10dde7a5d483ed9cd Mon Sep 17 00:00:00 2001
+From: solution-sdk <solution-sdk@cambricon.com>
 Date: Thu, 16 Jan 2020 19:48:00 +0800
-Subject: [PATCH] release 1.0.0 for cambricon MLU ffmpeg dec/enc plugins
+Subject: [PATCH] release 1.0.2 for cambricon MLU ffmpeg dec/enc
 
 ---
- configure                       |   15 +-
+ configure                       |   16 +
  doc/examples/Makefile           |    1 +
- doc/examples/mlumpp_transcode.c |  387 +++++++++++++
+ doc/examples/mlumpp_transcode.c |  377 ++++++++++++
  libavcodec/Makefile             |    7 +
  libavcodec/allcodecs.c          |    7 +
- libavcodec/mlumpp_dec.c         | 1205 +++++++++++++++++++++++++++++++++++++++
- libavcodec/mlumpp_enc_h264.c    |  142 +++++
- libavcodec/mlumpp_enc_hevc.c    |  136 +++++
+ libavcodec/mlumpp_dec.c         | 1262 +++++++++++++++++++++++++++++++++++++++
+ libavcodec/mlumpp_enc_h264.c    |  155 +++++
+ libavcodec/mlumpp_enc_hevc.c    |  149 +++++
  libavcodec/mlumpp_mluop.c       |  144 +++++
- libavcodec/mlumpp_mluop.h       |   33 ++
- libavcodec/mlumpp_vid_enc.c     |  792 +++++++++++++++++++++++++
+ libavcodec/mlumpp_mluop.h       |   33 +
+ libavcodec/mlumpp_vid_enc.c     |  811 +++++++++++++++++++++++++
  libavcodec/mlumpp_vid_enc.h     |   87 +++
- 12 files changed, 2955 insertions(+), 1 deletion(-)
+ 12 files changed, 3049 insertions(+)
  create mode 100755 doc/examples/mlumpp_transcode.c
  mode change 100644 => 100755 libavcodec/Makefile
  mode change 100644 => 100755 libavcodec/allcodecs.c
@@ -29,7 +29,7 @@ Subject: [PATCH] release 1.0.0 for cambricon MLU ffmpeg dec/enc plugins
  create mode 100755 libavcodec/mlumpp_vid_enc.h
 
 diff --git a/configure b/configure
-index 34c2adb..8f79539 100755
+index 34c2adb..6721e53 100755
 --- a/configure
 +++ b/configure
 @@ -340,6 +340,7 @@ External library support:
@@ -108,13 +108,14 @@ index 34c2adb..8f79539 100755
  vp9_mediacodec_decoder_deps="mediacodec"
  vp9_rkmpp_decoder_deps="rkmpp"
  vp9_vaapi_encoder_deps="VAEncPictureParameterBufferVP9"
-@@ -6366,7 +6378,8 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
-                                  die "ERROR: rkmpp requires --enable-libdrm"; }
+@@ -6367,6 +6379,10 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
                               }
  enabled vapoursynth       && require_pkg_config vapoursynth "vapoursynth-script >= 42" VSScript.h vsscript_init
--
-+enabled mlumpp             && { require_headers  /usr/local/neuware/include/cn_video_dec.h ||
-+                              die "ERROR: mlumpp requires proper neuware environment";}
+ 
++if enabled mlumpp; then
++    require_headers  cn_video_dec.h && require_headers  cn_video_enc.h || die "ERROR: mlumpp requires proper neuware environment";
++    check_lib cncodec cn_video_dec.h cnvideoDecQueryAvailInputBuf -lcncodec -lcnrt -lcndrv || add_cflags -DQUERY_BUFFER_BY_FFMPEG ;
++fi
  
  if enabled gcrypt; then
      GCRYPT_CONFIG="${cross_prefix}libgcrypt-config"
@@ -132,10 +133,10 @@ index 2935424..d3369f8 100644
  EXAMPLES_G     := $(EXAMPLES-yes:%=doc/examples/%$(PROGSSUF)_g$(EXESUF))
 diff --git a/doc/examples/mlumpp_transcode.c b/doc/examples/mlumpp_transcode.c
 new file mode 100755
-index 0000000..1b63bbd
+index 0000000..f9f43ac
 --- /dev/null
 +++ b/doc/examples/mlumpp_transcode.c
-@@ -0,0 +1,387 @@
+@@ -0,0 +1,377 @@
 +/*
 + * MLU MPP Video Acceleration API (video transcoding) transcode sample
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -251,7 +252,6 @@ index 0000000..1b63bbd
 +{
 +    int ret = 0;
 +    AVPacket enc_pkt;
-+
 +    av_init_packet(&enc_pkt);
 +    enc_pkt.data = NULL;
 +    enc_pkt.size = 0;
@@ -286,19 +286,19 @@ index 0000000..1b63bbd
 +#define DEFAULT_QMIN 26
 +#define DEFAULT_QMAX 51
 +#define DEFAULT_B_NUM 1
-+static int dec_enc(AVPacket *pkt, AVCodec *dec_codec,AVCodec *enc_codec,mlu_transcode_context_t *ctx, int *last)
++static int dec_enc(AVPacket *pkt, AVCodec *dec_codec,AVCodec *enc_codec,mlu_transcode_context_t *ctx)
 +{
 +    AVFrame *frame;
 +    int ret = 0;
 +    AVDictionary *encoder_opts = NULL;
-+    *last = 0;
++
 +    ret = avcodec_send_packet(ctx->decoder_ctx, pkt);
 +    if (ret < 0) {
 +        if (ret != AVERROR_EOF)
 +            fprintf(stderr, "Error during decoding. Error code: %s\n", av_err2str(ret));
 +        return ret;
 +    }
-+    while (ret >= 0 && !(*last)) {
++    while (ret >= 0) {
 +        if (!(frame = av_frame_alloc()))
 +            return AVERROR(ENOMEM);
 +
@@ -370,20 +370,14 @@ index 0000000..1b63bbd
 +
 +        if ((ret = encode_write(frame,ctx)) < 0)
 +            fprintf(stderr, "Error during encoding and writing.\n");
-+
-+        if( frame->flags & 0x80000000 ) {
-+            *last = 1;
-+        }
-+        av_frame_free(&frame);
-+        continue;
 +fail:
-+        *last = 1;
 +        av_frame_free(&frame);
 +        if (ret < 0)
 +            return ret;
 +    }
 +    return 0;
 +}
++
 +int transcode_cmd(int argc, char **argv);
 +#define FILE_NAME_MAX 1024
 +int transcode_cmd(int argc, char **argv)
@@ -395,7 +389,6 @@ index 0000000..1b63bbd
 +    char output_file[FILE_NAME_MAX];
 +    pthread_t tid;
 +    mlu_transcode_context_t ctx;
-+    int last;
 +    memset((void*)&ctx,0,sizeof(mlu_transcode_context_t));
 +    ctx.video_stream = -1;
 +    ctx.initialized = 0;
@@ -437,23 +430,21 @@ index 0000000..1b63bbd
 +    }
 +
 +    /* read all packets and only transcoding video */
-+    last = 0;
-+    while (ret >= 0 && !last) {
++    while (ret >= 0) {
 +        if ((ret = av_read_frame(ctx.ifmt_ctx, &dec_pkt)) < 0)
 +            break;
 +
 +        if (ctx.video_stream == dec_pkt.stream_index){
-+            ret = dec_enc(&dec_pkt, dec_codec,enc_codec,&ctx, &last);
++            ret = dec_enc(&dec_pkt, dec_codec,enc_codec,&ctx);
 +        }
 +        av_packet_unref(&dec_pkt);
 +    }
 +
 +    /* flush decoder */
-+    ret = 0;
-+    while(!last && ret >= 0){
++    {
 +        dec_pkt.data = NULL;
 +        dec_pkt.size = 0;
-+        ret = dec_enc(&dec_pkt, dec_codec,enc_codec,&ctx, &last);
++        ret = dec_enc(&dec_pkt, dec_codec,enc_codec,&ctx);
 +        av_packet_unref(&dec_pkt);
 +    }
 +
@@ -523,7 +514,6 @@ index 0000000..1b63bbd
 +    }
 +    return 0;
 +}
-\ No newline at end of file
 diff --git a/libavcodec/Makefile b/libavcodec/Makefile
 old mode 100644
 new mode 100755
@@ -625,10 +615,10 @@ index d2f9a39..c5eb5f4
  
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000..12390b3
+index 0000000..5513e26
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1205 @@
+@@ -0,0 +1,1262 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -682,7 +672,6 @@ index 0000000..12390b3
 +    if (ret != CNCODEC_SUCCESS) {                                                           \
 +        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__); \
 +    }
-+
 +typedef struct MLUMPPContext
 +{
 +    AVClass *avclass;
@@ -718,13 +707,13 @@ index 0000000..12390b3
 +    AVFifoBuffer *frame_queue;
 +    AVMutex queue_mutex;
 +    cncodecType codec_type;
-+    int decoder_flushing;
++    volatile int decoder_flushing;
 +    volatile int eos_received;
 +    int64_t last_send_pkt_time;
 +    int stride_align;
 +    int first_packet;
 +    volatile int codec_abort_flag;
-+    // volatile int decoder_start;
++    volatile int decoder_start;
 +    HANDLE mluop_handle;
 +    //the below only for debug
 +    AVMutex count_mutex;
@@ -788,6 +777,7 @@ index 0000000..12390b3
 +    for (i = 0; i< frameinfo->frame.planeNum; i++) {
 +        av_log(avctx, AV_LOG_INFO, "cnvideoDecOutput frameinfo->frame.plane.addr: %lu\n", frameinfo->frame.plane[i].addr);
 +        av_log(avctx, AV_LOG_INFO, "cnvideoDecOutput frameinfo->frame.plane.size: %u\n", frameinfo->frame.plane[i].size);
++        av_log(avctx, AV_LOG_INFO, "cnvideoDecOutput frameinfo->frame.stride: %u\n", frameinfo->frame.stride[i]);
 +    }
 +    av_log(avctx, AV_LOG_INFO, "cnvideoDecOutput frameinfo->pts: (%3" PRId64 ")\n", frameinfo->pts);
 +    av_log(avctx, AV_LOG_INFO, "cnvideoDecOutput frameinfo->flags: %u\n", frameinfo->flags);
@@ -796,6 +786,26 @@ index 0000000..12390b3
 +    av_log(avctx, AV_LOG_INFO, "cnvideoDecOutput frameinfo->mbErrorCount: %u\n", frameinfo->mbErrorCount);
 +    av_log(avctx, AV_LOG_INFO, "thread id: %lu\n", (long unsigned)pthread_self());
 +    av_log(avctx, AV_LOG_INFO, "***********************decoder cnvideoDecOutput end************************\n");
++}
++static void mlumpp_dump_jdec_frame(AVCodecContext* avctx, cnjpegDecOutput* frameinfo)
++{
++    int i = 0;
++    av_log(avctx, AV_LOG_INFO, "***********************decoder cnjpegDecOutput before*********************\n");
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->frame.pixelFmt: %d\n", frameinfo->frame.pixelFmt);
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->frame.width: %d\n", frameinfo->frame.width);
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->frame.height: %d\n", frameinfo->frame.height);
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->frame.planeNum: %d\n", frameinfo->frame.planeNum);
++    for (i = 0; i< frameinfo->frame.planeNum; i++) {
++        av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->frame.plane.addr: %lu\n", frameinfo->frame.plane[i].addr);
++        av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->frame.plane.size: %u\n", frameinfo->frame.plane[i].size);
++        av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->frame.stride: %u\n", frameinfo->frame.stride[i]);
++    }
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->pts: (%3" PRId64 ")\n", frameinfo->pts);
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->flags: %u\n", frameinfo->flags);
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->reserved: %lu\n", frameinfo->reserved);
++    av_log(avctx, AV_LOG_INFO, "cnjpegDecOutput frameinfo->privData: %lu\n", frameinfo->privData);
++    av_log(avctx, AV_LOG_INFO, "thread id: %lu\n", (long unsigned)pthread_self());
++    av_log(avctx, AV_LOG_INFO, "***********************decoder cnjpegDecOutput end************************\n");
 +}
 +static void mlumpp_dump_dec_seq_info(AVCodecContext* avctx, cnvideoDecSequenceInfo* pFormat)
 +{
@@ -924,36 +934,47 @@ index 0000000..12390b3
 +    if (ctx->codec_type == CNCODEC_JPEG) {
 +        return 1;
 +    }
-+    // FIXME, cncodec will provide waitInputBuffer...
-+    // if (!ctx->decoder_start) {
-+    //     return 1;
-+    // }
++    if (ctx->trace_flag) {
++#ifdef QUERY_BUFFER_BY_FFMPEG
++        av_log(avctx, AV_LOG_INFO,"Check input buffer available by ffmpeg!!!\n");
++#endif
++    }
 +    if (nonblock_flag) {
 +        int ret = 0;
++#ifndef QUERY_BUFFER_BY_FFMPEG
++        ret = cnvideoDecQueryAvailInputBuf(ctx->handle);
++#else
 +        ff_mutex_lock(&ctx->count_mutex);
 +        ret = ctx->vdec_params.inputBufNum - (ctx->total_packet_count - ctx->total_frame_count) >= 1;
 +        ff_mutex_unlock(&ctx->count_mutex);
++#endif
 +        return ret;
 +    } else {
 +        int ret = 0;
 +        while (!ctx->codec_abort_flag) {
++#ifndef QUERY_BUFFER_BY_FFMPEG
++            ret = cnvideoDecQueryAvailInputBuf(ctx->handle);
++#else
 +            ff_mutex_lock(&ctx->count_mutex);
 +            ret = ctx->vdec_params.inputBufNum - (ctx->total_packet_count - ctx->total_frame_count) >= 1;
 +            ff_mutex_unlock(&ctx->count_mutex);
++#endif
 +            if (ret)
 +                return 1;
-+            av_usleep(1000);
++            usleep(1000);
 +        }
 +    }
 +    return 0;
 +}
 +
-+static int mlumpp_is_ouput_empty(AVCodecContext *avctx)
++static int mlumpp_is_output_empty(AVCodecContext *avctx)
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t*)avctx->priv_data;
-+    int ret;
++    int ret = 1;
 +    ff_mutex_lock(&ctx->queue_mutex);
-+    ret = av_fifo_size(ctx->frame_queue) == 0;
++    if(ctx->frame_queue) {
++        ret = av_fifo_size(ctx->frame_queue) == 0;
++    }
 +    ff_mutex_unlock(&ctx->queue_mutex);
 +    return ret;
 +}
@@ -1088,12 +1109,10 @@ index 0000000..12390b3
 +    avctx->width = ctx->vdec_params.width;
 +    avctx->height = ctx->vdec_params.height;
 +    avctx->coded_width = FFALIGN(avctx->width, ctx->stride_align);
-+    avctx->coded_height = FFALIGN(avctx->height, ctx->stride_align);
-+    if (info->minInputBufNum > ctx->vdec_params.inputBufNum) {
-+        ctx->vdec_params.inputBufNum = info->minInputBufNum;
-+    }
-+    if (info->minOutputBufNum > ctx->vdec_params.outputBufNum) {
-+        ctx->vdec_params.outputBufNum = info->minOutputBufNum;
++    avctx->coded_height = avctx->height;
++
++    if (info->minOutputBufNum + ctx->vdec_params.inputBufNum > ctx->vdec_params.outputBufNum) {
++       ctx->vdec_params.outputBufNum = info->minOutputBufNum + ctx->vdec_params.inputBufNum;
 +    }
 +    ret = cnvideoDecStart(ctx->handle, &ctx->vdec_params);
 +    CNCODEC_ERROR_CHECK(avctx,ret);
@@ -1110,7 +1129,7 @@ index 0000000..12390b3
 +    ff_mutex_lock(&ctx->count_mutex);
 +    ctx->total_frame_count = 0;
 +    ff_mutex_unlock(&ctx->count_mutex);
-+    // ctx->decoder_start = 1;
++    ctx->decoder_start = 1;
 +    return 0;
 +}
 +static int mlumpp_ffcopy_helper(AVCodecContext *avctx, AVFrame *avframe, cncodecFrame *cnframe);
@@ -1133,7 +1152,7 @@ index 0000000..12390b3
 +            ff_mutex_unlock(&ctx->queue_mutex);
 +        }while(0);
 +        if (ctx->trace_flag) {
-+            av_log(avctx, AV_LOG_INFO, "[%lu]Got a new frame, pts = (%3" PRId64 ")\n", (long unsigned)pthread_self(), jPic->pts);
++            mlumpp_dump_jdec_frame(avctx, jPic);
 +        }
 +    } else {
 +        cnvideoDecOutput *pPic = (cnvideoDecOutput*)pData1;
@@ -1163,6 +1182,7 @@ index 0000000..12390b3
 +    ctx->eos_received = 1;
 +    return 0;
 +}
++
 +static int mlumpp_event_cb(cncodecCbEventType EventType, void *pData, void *pdata1)
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t *)pData;
@@ -1194,6 +1214,14 @@ index 0000000..12390b3
 +            sem_post(&ctx->eos_sema);
 +            ctx->decoder_flushing = 1;
 +            break;
++        case 6/*CNCODEC_CB_EVENT_ABORT_ERROR*/:
++            if (!ctx->decoder_start && ctx->decoder_flushing) {
++                //workaround for 1.3.0, it is EOS...
++                mlumpp_dec_eos_cb(pData, pdata1);
++                ctx->codec_abort_flag = 1;
++                return 0;
++            }
++            //fall through...
 +        default:
 +            av_log(ctx->avctx, AV_LOG_INFO, "invalid Event: %d \n", EventType);
 +            break;
@@ -1246,7 +1274,23 @@ index 0000000..12390b3
 +        ctx->decoder_flushing = 1;
 +    }
 +    av_packet_unref(&filtered_packet);
-+
++    if (ctx->codec_type != CNCODEC_JPEG) { // workaround for feeding speed control and low delay mode
++        int64_t current = av_gettime_relative();
++        int guess_fps = 250;
++        if (avctx->flags & AV_CODEC_FLAG_LOW_DELAY) { // workaround flow, prefer to call this until get decoded frame.
++            guess_fps = 30;
++        }
++        if (ctx->last_send_pkt_time > 0 && (current - ctx->last_send_pkt_time)/1000 < 1000/guess_fps) {
++            int diff = 1000/(guess_fps) - (current - ctx->last_send_pkt_time)/1000;
++            while (diff-- > 0) {
++                if (ctx->frame_queue && (av_fifo_size(ctx->frame_queue) > 0)) {
++                    break;
++                }
++                av_usleep(1000);
++            }
++        }
++        ctx->last_send_pkt_time = av_gettime_relative();
++    }
 +    if (ctx->decoder_flushing) {
 +        return 0;//return AVERROR_EOF;
 +    } else {
@@ -1302,7 +1346,7 @@ index 0000000..12390b3
 +                avctx->width = ctx->resize.width;
 +                avctx->height = ctx->resize.height;
 +                avctx->coded_width = FFALIGN(avctx->width, ctx->stride_align);
-+                avctx->coded_height = FFALIGN(avctx->height, ctx->stride_align);
++                avctx->coded_height = avctx->height;
 +            } else {
 +                factor = (i == 0) ? 1 : 2;
 +                avframe->linesize[i] = cnframe->stride[i];
@@ -1420,31 +1464,31 @@ index 0000000..12390b3
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t*)avctx->priv_data;
 +    int ret = 0;
-+    if (ctx->eos_received && mlumpp_is_ouput_empty(avctx)) {
++    if (ctx->eos_received && mlumpp_is_output_empty(avctx)) {
 +        if (ctx->trace_flag)
 +            av_log(avctx, AV_LOG_INFO, "MLU decoder return AVERROR_EOF\n");
 +        return AVERROR_EOF;
 +    }
-+
-+    if (!ctx->decoder_flushing && mlumpp_is_input_available(avctx, 0)) {
-+        AVPacket pkt = {0};
-+        ret = ff_decode_get_packet(avctx, &pkt);
-+        if (ret < 0 && ret != AVERROR_EOF)
-+            return ret;
-+        ret = mlumpp_decode_packet(avctx, &pkt);
-+        av_packet_unref(&pkt);
-+
-+        // mlumpp_is_input_available() should avoid this.
-+        if (ret == AVERROR(EAGAIN))
-+            ret = AVERROR_EXTERNAL;
-+        if (ret < 0 && ret != AVERROR_EOF)
-+            return ret;
-+    }
 +    if (!ctx->decoder_flushing) {
++        if (mlumpp_is_input_available(avctx, 0)) {
++            AVPacket pkt = {0};
++            ret = ff_decode_get_packet(avctx, &pkt);
++            if (ret < 0 && ret != AVERROR_EOF)
++                return ret;
++            ret = mlumpp_decode_packet(avctx, &pkt);
++            av_packet_unref(&pkt);
++
++            // mlumpp_is_input_available() should avoid this.
++            if (ret == AVERROR(EAGAIN))
++                ret = AVERROR_EXTERNAL;
++            if (ret < 0 && ret != AVERROR_EOF)
++                return ret;
++        }
 +        if (ctx->codec_type == CNCODEC_JPEG) {
 +            while (!ctx->codec_abort_flag) {
 +                ret = mlumpp_output_frame(avctx, frame);
 +                if(ret == AVERROR(EAGAIN)) {
++                    usleep(1000);
 +                    continue;
 +                }
 +                return ret;
@@ -1452,19 +1496,18 @@ index 0000000..12390b3
 +            av_log(avctx, AV_LOG_ERROR, "[%lu] Receive frame ABORT->EOF\n", (long unsigned)pthread_self());
 +            return AVERROR_EOF;
 +        }
-+        ret = mlumpp_output_frame(avctx, frame);
-+        return ret;
++        return mlumpp_output_frame(avctx, frame);
 +    } else {
 +        int count = 5000;
 +        while (!ctx->codec_abort_flag) {
 +            ret = mlumpp_output_frame(avctx, frame);
 +            if( ret == AVERROR(EAGAIN)) {
-+                if (ctx->eos_received) {
++                if (ctx->eos_received && mlumpp_is_output_empty(avctx)) {
 +                    if (ctx->trace_flag)
 +                        av_log(avctx, AV_LOG_INFO, "eos_received AVERROR_EOF\n");
 +                    return AVERROR_EOF;
 +                }
-+                av_usleep(1000);
++                usleep(1000);
 +                --count;
 +                if(count <= 0) {
 +                    av_log(avctx, AV_LOG_ERROR, "[%lu] Receive frame TIMEOUT->EOF\n", (long unsigned)pthread_self());
@@ -1544,7 +1587,9 @@ index 0000000..12390b3
 +    sem_wait(&ctx->eos_sema);
 +    empty_frame_fifo(avctx);
 +    if (ctx->codec_type != CNCODEC_JPEG) {
-+        cnvideoDecStop(ctx->handle);
++        if(ctx->decoder_start) {
++            cnvideoDecStop(ctx->handle);
++        }
 +    }
 +abort_exit:
 +    if (ctx->codec_type != CNCODEC_JPEG) {
@@ -1725,7 +1770,7 @@ index 0000000..12390b3
 +            ret = AVERROR(EINVAL);
 +            goto error;
 +        }
-+        // ctx->decoder_start = 0;
++        ctx->decoder_start = 0;
 +    } else {
 +        cnjpegDecCreateInfo jdec_params;
 +        jdec_params.deviceId = ctx->device_id;
@@ -1738,9 +1783,11 @@ index 0000000..12390b3
 +        jdec_params.outputBufNum = ctx->output_buf_num;
 +        jdec_params.colorSpace = CNCODEC_COLOR_SPACE_BT_709; // maybe need modify...
 +        jdec_params.allocType = CNCODEC_BUF_ALLOC_LIB;
-+        jdec_params.suggestedLibAllocBitStrmBufSize = (4U << 20);
++        jdec_params.suggestedLibAllocBitStrmBufSize = probed_width * probed_height * 3/4;
 +        jdec_params.userContext = (void *)ctx;
 +        ctx->async_queue_depth = ctx->output_buf_num;
++        avctx->coded_width = FFALIGN(avctx->width, 64); //hard code for MLU200
++        avctx->coded_height = avctx->height;
 +        ctx->frame_queue = av_fifo_alloc(ctx->async_queue_depth * sizeof(MLUJpegFrameInfo_t));
 +        if (!ctx->frame_queue) {
 +            goto error;
@@ -1781,8 +1828,8 @@ index 0000000..12390b3
 +    { "device_id",     "use to choose the accelerator card",     OFFSET(device_id),       AV_OPT_TYPE_INT, { .i64 = 0 },0, INT_MAX, VD },\
 +    { "instance_id",   "use to choose which vpu instance",       OFFSET(instance_id),     AV_OPT_TYPE_INT, { .i64 = 6 },0, 6, VD },\
 +    { "cnrt_init_flag", "init/destory cnrt device in ffmpeg",    OFFSET(cnrt_init_flag),  AV_OPT_TYPE_INT, { .i64 = 1 },0, 1, VD },\
-+    { "input_buf_num",  "Number of input buffers for decoder",   OFFSET(input_buf_num),   AV_OPT_TYPE_INT, { .i64 = 5 },1, 18, VD },\
-+    { "output_buf_num","Number of output buffers for decoder",   OFFSET(output_buf_num),  AV_OPT_TYPE_INT, { .i64 = 6 },1, 18, VD },\
++    { "input_buf_num",  "Number of input buffers for decoder",   OFFSET(input_buf_num),   AV_OPT_TYPE_INT, { .i64 = 4 },2, 18, VD },\
++    { "output_buf_num","Number of output buffers for decoder",   OFFSET(output_buf_num),  AV_OPT_TYPE_INT, { .i64 = 4 },1, 18, VD },\
 +    { "stride_align","stride align of output buffers for decoder",OFFSET(stride_align),   AV_OPT_TYPE_INT, { .i64 = 1 },0, 128, VD },\
 +    { "output_pixfmt",  "output pix fmt",                        OFFSET(output_pixfmt),   AV_OPT_TYPE_INT, { .i64 = 0 },0, 8, VD }, /*0 -- NV12, 1 -- NV21,2 -- I420,8 ---P010*/
 +
@@ -1834,13 +1881,12 @@ index 0000000..12390b3
 +#if CONFIG_VP9_MLUMPP_DECODER
 +MLUMPP_DEC_CODEC(vp9, VP9)
 +#endif
-\ No newline at end of file
 diff --git a/libavcodec/mlumpp_enc_h264.c b/libavcodec/mlumpp_enc_h264.c
 new file mode 100755
-index 0000000..490f523
+index 0000000..9527868
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_h264.c
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,155 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1892,6 +1938,19 @@ index 0000000..490f523
 +    CNVIDH264EncContext *cnctx = (CNVIDH264EncContext*)avctx->priv_data;
 +    return ff_mlumpp_vid_enc_close(avctx, &cnctx->cnvid);
 +}
++
++static const AVCodecDefault h264_defaults[] = {
++    { "b",                "0" },
++    { "bf",               "0" },
++    { "g",                "200" },
++    { "qmin",             "-1" },
++    { "qmax",             "-1" },
++    { "refs",             "-1" },
++#if FF_API_CODER_TYPE
++    { "coder",            "-1" },
++#endif
++    { NULL },
++};
 +#define OFFSET(x) offsetof(CNVIDH264EncContext, x)
 +#ifndef VE
 +#define VE AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_ENCODING_PARAM
@@ -1968,7 +2027,7 @@ index 0000000..490f523
 +    .close = mlumpp_enc_close,
 +    .priv_data_size = sizeof(CNVIDH264EncContext),
 +    .priv_class = &class,
-+    .defaults = NULL,
++    .defaults = h264_defaults,
 +    .capabilities = AV_CODEC_CAP_DELAY,
 +    .caps_internal = FF_CODEC_CAP_INIT_CLEANUP,
 +    .pix_fmts = (const enum AVPixelFormat[]){AV_PIX_FMT_NV12,
@@ -1986,10 +2045,10 @@ index 0000000..490f523
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_enc_hevc.c b/libavcodec/mlumpp_enc_hevc.c
 new file mode 100755
-index 0000000..d6c6c83
+index 0000000..5dc1ddb
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_hevc.c
-@@ -0,0 +1,136 @@
+@@ -0,0 +1,149 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2041,6 +2100,19 @@ index 0000000..d6c6c83
 +    CNVIDHEVCEncContext *cnctx = (CNVIDHEVCEncContext*)avctx->priv_data;
 +    return ff_mlumpp_vid_enc_close(avctx, &cnctx->cnvid);
 +}
++
++static const AVCodecDefault hevc_defaults[] = {
++    { "b",                "0" },
++    { "bf",               "0" },
++    { "g",                "200" },
++    { "qmin",             "-1" },
++    { "qmax",             "-1" },
++    { "refs",             "0" },
++#if FF_API_CODER_TYPE
++    { "coder",            "-1" },
++#endif
++    { NULL },
++};
 +#define OFFSET(x) offsetof(CNVIDHEVCEncContext, x)
 +#ifndef VE
 +#define VE AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_ENCODING_PARAM
@@ -2111,7 +2183,7 @@ index 0000000..d6c6c83
 +    .close = mlumpp_enc_close,
 +    .priv_data_size = sizeof(CNVIDHEVCEncContext),
 +    .priv_class = &class,
-+    .defaults = NULL,
++    .defaults = hevc_defaults,
 +    .capabilities = AV_CODEC_CAP_DELAY,
 +    .caps_internal = FF_CODEC_CAP_INIT_CLEANUP,
 +    .pix_fmts = (const enum AVPixelFormat[]){AV_PIX_FMT_NV12,
@@ -2318,10 +2390,10 @@ index 0000000..830e715
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000..531f710
+index 0000000..789eab0
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,792 @@
+@@ -0,0 +1,811 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2397,7 +2469,7 @@ index 0000000..531f710
 +}
 +static int _fill_avpacket_extradata(AVCodecContext *avctx, MLUMPPEncContext_t *cnctx)
 +{
-+    if (cnctx->insert_spspps_to_extradata && avctx->extradata == NULL) {
++    if (avctx->extradata == NULL) {
 +        avctx->extradata_size = cnctx->pkt_sps_pps_len;
 +        avctx->extradata = av_mallocz(avctx->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
 +        memcpy(avctx->extradata, cnctx->pkt_sps_pps, avctx->extradata_size);
@@ -2453,23 +2525,26 @@ index 0000000..531f710
 +            if (cnctx->trace_flag)
 +                av_log(cnctx->avctx, AV_LOG_INFO, "Get eos flag,waiting for event signal,skip this packet\n");
 +        }
-+        if(!cnctx->insert_spspps_idr && CNCODEC_SLICE_NALU_IDR == pStream->sliceType && !cnctx->is_spspps_packet_flag) {
-+           /*Only insert once before first HDR,when IDR frame comes, insert extradata first */
-+           if (pStream->streamLength > 0 && !(pStream->flags & CNVIDEOENC_FLAG_EOS)) {
-+               pStream->streamLength += cnctx->avctx->extradata_size;
-+               memcpy((void *)&encoded_frame.info, pStream, sizeof(MLUVideoFrameInfo_t));
-+               encoded_frame.buf = av_malloc(pStream->streamLength);
-+               if (NULL == encoded_frame.buf) {
++        if (CNCODEC_SLICE_NALU_IDR == pStream->sliceType && !cnctx->is_spspps_packet_flag) {
++            /*Only insert once before first HDR,when IDR frame comes, insert extradata first */
++            if (pStream->streamLength > 0 && !(pStream->flags & CNVIDEOENC_FLAG_EOS)) {
++                pStream->streamLength += cnctx->avctx->extradata_size;
++                memcpy((void *)&encoded_frame.info, pStream, sizeof(MLUVideoFrameInfo_t));
++                encoded_frame.buf = av_malloc(pStream->streamLength);
++                if (NULL == encoded_frame.buf) {
 +                   av_log(cnctx->avctx, AV_LOG_ERROR, "Failed to allocate cpu buffer for cnvideoEncOutput\n");
 +                   return -1;
-+               }
-+               memcpy((void *)encoded_frame.buf, cnctx->avctx->extradata, cnctx->avctx->extradata_size);
-+               cnrt_ret = cnrtMemcpy((void *)&encoded_frame.buf[cnctx->avctx->extradata_size],
++                }
++                memcpy((void *)encoded_frame.buf, cnctx->avctx->extradata, cnctx->avctx->extradata_size);
++                cnrt_ret = cnrtMemcpy((void *)&encoded_frame.buf[cnctx->avctx->extradata_size],
 +                                     (void *)(pStream->streamBuffer.addr + pStream->dataOffset),
 +                                     pStream->streamLength - cnctx->avctx->extradata_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
-+               CNRT_ERROR_CHECK(cnctx->avctx, cnrt_ret);
-+               cnctx->is_spspps_packet_flag = 1;
-+               cnctx->total_packet_count ++;
++                CNRT_ERROR_CHECK(cnctx->avctx, cnrt_ret);
++
++                if (!cnctx->insert_spspps_idr) {
++                    cnctx->is_spspps_packet_flag = 1;
++                }
++                cnctx->total_packet_count ++;
 +           } else {
 +               memcpy((void *)&encoded_frame.info, pStream, sizeof(MLUVideoFrameInfo_t));
 +           }
@@ -2595,7 +2670,7 @@ index 0000000..531f710
 +{
 +    int ret = -1;
 +    cnrtRet_t cnrt_ret;
-+    unsigned int dev_num;
++    unsigned int dev_num = 0;
 +    cnvideoEncCreateInfo enc_params;
 +    int bitstream_buf_size = 0;
 +    /***************************Set device start*****************************/
@@ -2603,8 +2678,8 @@ index 0000000..531f710
 +        cnrt_ret = cnrtInit(0);
 +        CNRT_ERROR_CHECK(avctx, cnrt_ret);
 +    }
-+    cnrtGetDeviceCount(&dev_num);
-+    if (dev_num == 0) {
++    cnrt_ret = cnrtGetDeviceCount(&dev_num);
++    if (cnrt_ret != CNRT_RET_SUCCESS && dev_num == 0) {
 +        av_log(avctx, AV_LOG_INFO, "Can't find MLU card,device count return 0 \n");
 +        return -1;
 +    }
@@ -2713,7 +2788,9 @@ index 0000000..531f710
 +    enc_params.deviceId = cnctx->device_id;
 +    enc_params.instance = cnctx->instance_id;
 +    enc_params.rateCtrl.targetBitrate = cnctx->bitrate;
-+    enc_params.rateCtrl.peakBitrate = avctx->rc_max_rate; //invalid
++    if (avctx->rc_max_rate > 0) {
++        enc_params.rateCtrl.peakBitrate = avctx->rc_max_rate; //invalid
++    }
 +    enc_params.colorSpace = cnctx->color_space;
 +    if (cnctx->init_qp_i > 0) {
 +        enc_params.rateCtrl.constIQP = cnctx->init_qp_i;
@@ -2754,12 +2831,14 @@ index 0000000..531f710
 +    case CNCODEC_H264:
 +        enc_params.uCfg.h264.profile = cnctx->profile;
 +        enc_params.uCfg.h264.level = cnctx->level;
-+        enc_params.uCfg.h264.BFramesNum = cnctx->max_b_frames;
++        if (cnctx->max_b_frames > 0) {
++            enc_params.uCfg.h264.BFramesNum = cnctx->max_b_frames;
++        }
 +        enc_params.uCfg.h264.gopType = CNVIDEOENC_GOP_TYPE_LOW_DELAY;
 +        if (avctx->refs > 0) {
 +            enc_params.uCfg.h264.maxRefFramesNum = avctx->refs;
 +        }
-+        enc_params.uCfg.h264.insertSpsPpsWhenIDR = cnctx->insert_spspps_idr;
++        // enc_params.uCfg.h264.insertSpsPpsWhenIDR = cnctx->insert_spspps_idr;
 +        if (cnctx->pixelFmt == CNCODEC_PIX_FMT_P010) { // 10bit
 +            enc_params.uCfg.h264.bitDepth = 2;
 +        }
@@ -2776,12 +2855,14 @@ index 0000000..531f710
 +    case CNCODEC_HEVC:
 +        enc_params.uCfg.h265.profile = cnctx->profile;
 +        enc_params.uCfg.h265.level = cnctx->level;
-+        enc_params.uCfg.h265.BFramesNum = cnctx->max_b_frames;
++        if (cnctx->max_b_frames > 0) {
++            enc_params.uCfg.h265.BFramesNum = cnctx->max_b_frames;
++        }
 +        enc_params.uCfg.h265.gopType = CNVIDEOENC_GOP_TYPE_LOW_DELAY;
 +        if (avctx->refs > 0) {
 +            enc_params.uCfg.h265.maxRefFramesNum = avctx->refs;
 +        }
-+        enc_params.uCfg.h265.insertSpsPpsWhenIDR = cnctx->insert_spspps_idr;
++        // enc_params.uCfg.h265.insertSpsPpsWhenIDR = cnctx->insert_spspps_idr;
 +        if (cnctx->pixelFmt == CNCODEC_PIX_FMT_P010) { // 10bit
 +            enc_params.uCfg.h265.bitDepth = 2;
 +        }
@@ -2812,6 +2893,10 @@ index 0000000..531f710
 +        //for H264/H265, fill extradata
 +        if (enc_params.codec == CNCODEC_H264 || enc_params.codec == CNCODEC_HEVC) {
 +            cnvideoEncInput input_eos;
++            if (cnctx->instance_id == 6) {
++                //use instance_1 to get encode-header for M270 when auto-mode used
++                enc_params.instance = 1;
++            }
 +            ret = cnvideoEncCreate(&cnctx->handle, mlumpp_enc_event_cb, &enc_params);
 +            CNCODEC_ERROR_CHECK(avctx, ret);
 +            memset(&input_eos, 0, sizeof(cnvideoEncInput));
@@ -2823,6 +2908,7 @@ index 0000000..531f710
 +            sem_wait(&(cnctx->eos_sema));
 +            ret = cnvideoEncDestroy(cnctx->handle);
 +            CNCODEC_ERROR_CHECK(avctx, ret);
++            enc_params.instance = cnctx->instance_id;
 +        }
 +    }
 +    cnctx->encode_state = 1;
@@ -2893,17 +2979,22 @@ index 0000000..531f710
 +    av_log(cnctx->avctx, AV_LOG_INFO, "cnvideoEncOutput->streamBuffer.size:%u\n", outpkt->streamBuffer.size);
 +    av_log(cnctx->avctx, AV_LOG_INFO, "***********Encoder output packet dump end******************\n");
 +}
++static int is_cnvid_fifo_empty(MLUMPPEncContext_t *cnctx) {
++    int is_fifo_empty = 0;
++    ff_mutex_lock(&cnctx->queue_mutex);
++    is_fifo_empty = (_cnvid_fifo_size(cnctx->frame_queue) == 0);
++    ff_mutex_unlock(&cnctx->queue_mutex);
++    return is_fifo_empty;
++}
 +static int _cnvid_output_packet(MLUMPPEncContext_t *cnctx, AVPacket *pkt, int *got_packet)
 +{
 +    int ret = 0;
-+    int is_fifo_empty = 0;
++    int is_fifo_empty;
 +    // cnrtRet_t cnrt_ret;
 +    MLUVideoFrameInfo_t encodedframe;
 +    enum AVPictureType pict_type = AV_PICTURE_TYPE_NONE;
 +    //mlumpp_enc_set_cnrt_ctx(cnctx->handle,cnctx->device_id,CNRT_CHANNEL_TYPE_NONE);
-+    ff_mutex_lock(&cnctx->queue_mutex);
-+    is_fifo_empty = (_cnvid_fifo_size(cnctx->frame_queue) == 0);
-+    ff_mutex_unlock(&cnctx->queue_mutex);
++    is_fifo_empty = is_cnvid_fifo_empty(cnctx);
 +    if (!is_fifo_empty) {
 +        ff_mutex_lock(&cnctx->queue_mutex);
 +        av_fifo_generic_read(cnctx->frame_queue, &encodedframe, sizeof(MLUVideoFrameInfo_t), NULL);
@@ -3048,7 +3139,7 @@ index 0000000..531f710
 +            if (ret == AVERROR(EAGAIN)) {
 +                av_usleep(1000);
 +                --count;
-+                if (count <= 0 || cnctx->eos_post_flag) {
++                if (count <= 0 || (cnctx->eos_post_flag && is_cnvid_fifo_empty(cnctx))) {
 +                    if (!cnctx->eos_post_flag)
 +                        av_log(cnctx->avctx, AV_LOG_ERROR, "[%lu] Receive packet TIMEOUT->EOF\n", (long unsigned)pthread_self());
 +                    return AVERROR_EOF;

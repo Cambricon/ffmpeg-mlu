@@ -28,7 +28,7 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
 2. If you are using CentOS, you need to set ``LD_LIBRARY_PATH`` to the proper directory by running the following commands:
 
    ```sh
-   export LD_LIBRARY_PATH=/usr/local/neuware/lib64
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/neuware/lib64
    ```
 
 3. Run the following commands to configure and build FFmpeg-MLU:
@@ -39,10 +39,10 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
                --enable-mlumpp \
                --extra-cflags="-I/usr/local/neuware/include" \
                --extra-ldflags="-L/usr/local/neuware/lib64" \
-               --extra-libs="-lcncodec -lcnrt -ldl"
+               --extra-libs="-lcncodec -lcnrt -ldl -lcndrv"
    make -j
    ```
-4. If you need a MLU transcode demo with multi-threads, run the following commands:
+4. (Notice) If you need a MLU transcode demo with multi-threads, run the following commands:
 
    ```sh
    make -j examples
@@ -50,6 +50,7 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
 
 5. (Optional) If you need support downscaling with MLU operators, build ``mluop_plugin`` and copy ``libeasyOP.so``  to the ``/usr/local/neuware/lib64`` folder.
 
+6. If you use ``neuware-mlu270-1.2.5-1``, need remove ``-lcndrv`` before running ``configure``.
 
 ## Decoding and Encoding with FFmpeg-MLU ## 
 
@@ -71,7 +72,6 @@ Supported video decoding formats are as follows:
 **Example**
 
 ```sh
-export LD_LIBRARY_PATH=/usr/local/neuware/lib64
 ./ffmpeg -c:v h264_mludec -i input_file -f null -
 ```
 ### Encoding ###
@@ -86,7 +86,6 @@ Supported video encoding formats are as follows:
 **Example**  
 
 ```sh
-export LD_LIBRARY_PATH=/usr/local/neuware/lib64
 ./ffmpeg -i input_file -c:v h264_mluenc <output.h264>
 ```
 ## Basic Testing ##
@@ -160,6 +159,8 @@ This section introduces how to improve the performance.
 |qp|int|Constant QP rate control method, same as FFmpeg cqp. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |vbr_minqp|int|Variable bitrate mode with MinQP, same as FFmepg qmin. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |vbr_maxqp|int|Variable bitrate mode with MaxQP, same as FFmpeg qmax. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
+
+(Notice) Also supports regular ffmpeg settings,such as ``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, please refers to ffmpeg official documents。
 
 #### H264 ###
 

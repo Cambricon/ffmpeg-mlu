@@ -28,7 +28,7 @@
 2. 如果使用CentOS操作系统，运行下面命令，通过 ``LD_LIBRARY_PATH`` 设置指定路径：
 
    ```sh
-   export LD_LIBRARY_PATH=/usr/local/neuware/lib64
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/neuware/lib64
    ```
 
 3. 运行下面命令配置并创建 FFmpeg-MLU:
@@ -39,7 +39,7 @@
                --enable-mlumpp \
                --extra-cflags="-I/usr/local/neuware/include" \
                --extra-ldflags="-L/usr/local/neuware/lib64" \
-               --extra-libs="-lcncodec -lcnrt -ldl"
+               --extra-libs="-lcncodec -lcnrt -ldl -lcndrv"
    make -j
    ```
 4. 如果想要运行MLU支持多线程的转码示例，运行下面命令：
@@ -50,6 +50,7 @@
 
 5. (可选) 如果想要通过MLU算子实现视频缩放等功能，编译 ``mluop_plugin`` 并拷贝 ``libeasyOP.so`` 到 ``/usr/local/neuware/lib64`` 目录下。
 
+6. (提醒) 如果使用neuware-mlu270-1.2.5-1版本，需要在运行 ``configure`` 前去掉 ``-lcndrv``。
 
 ## FFmpeg-MLU视频编解码 ## 
 
@@ -71,7 +72,6 @@ FFmpeg-MLU支持的视频解码格式如下：
 **运行示例**
 
 ```sh
-export LD_LIBRARY_PATH=/usr/local/neuware/lib64
 ./ffmpeg -c:v h264_mludec -i input_file -f null -
 ```
 ### 视频编码 ###
@@ -86,7 +86,6 @@ FFmpeg-MLU支持的视频编码格式如下：
 **运行示例**  
 
 ```sh
-export LD_LIBRARY_PATH=/usr/local/neuware/lib64
 ./ffmpeg -i input_file -c:v h264_mluenc <output.h264>
 ```
 ## 基本测试 ##
@@ -151,15 +150,17 @@ export LD_LIBRARY_PATH=/usr/local/neuware/lib64
 |device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。<br>默认值为 **0**。|
 |instance_id|int|选择使用的VPU实例。<br>支持设置的值为： <br>- 值为 **0** - **1** 范围：表示VPU实例编号。 <br>- **6**：表示自动选择。 <br>默认值为 **6**。|
 |cnrt_init_flag|int|是否在ffmpeg初始化/销毁cnrt。 <br>支持设置的值为： <br>- **0**：表示外部初始化/销毁。 <br>- **1**：表示由ffmpeg初始化/销毁。 <br>默认值为 **1**。|
-|input_buf_num|int|用于编码器输入缓冲器的数量。  <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **3**。|
-|output_buf_num|int|用于编码器输出缓冲器的数量。 <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **5**。|
+|input_buf_num|int|用于编码器输入缓冲的数量。  <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **3**。|
+|output_buf_num|int|用于编码器输出缓冲的数量。 <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **5**。|
 |trace|int|FFmpeg-MLU调试信息开关。<br>支持的设置的值为： <br>- **0** 表示关闭调试打印信息。<br>- **1**：表示打开调试打印信息。<br>默认值为 **0**。|
 |init_qpP|int|设置P帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |init_qpI|int|设置I帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |init_qpB|int|设置B帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
-|qp|int|常量QP控制方法，同FFmpeg cqp。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
-|vbr_minqp|int|常数比特率模式，并提供MinQP，同FFmepg qmin。 <br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
-|vbr_maxqp|int|常数比特率模式，并提供MaxQP，同FFmpeg qmax。 <br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|qp|int|恒定QP控制方法，同FFmpeg cqp。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|vbr_minqp|int|可变比特率模式，并提供MinQP，同FFmepg qmin。 <br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|vbr_maxqp|int|可变比特率模式，并提供MaxQP，同FFmpeg qmax。 <br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+
+(通用) 支持常规ffmpeg的设置：``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, 具体意义及值范围请参考ffmpeg官方文档。
 
 #### H264 ###
 
