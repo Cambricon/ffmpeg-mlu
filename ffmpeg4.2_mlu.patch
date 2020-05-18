@@ -1,5 +1,5 @@
 From 3c0d3eeb16c1d35737f2878140b4c3069c7a716c Mon Sep 17 00:00:00 2001
-From: zhuxiaoqiang <zhuxiaoqiang@cambricon.com>
+From: solution-sdk <solution-sdk@cambricon.com>
 Date: Thu, 16 Jan 2020 19:48:00 +0800
 Subject: [PATCH] release 1.0.3 for cambricon MLU ffmpeg dec/enc
 
