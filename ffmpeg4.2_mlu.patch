@@ -1,7 +1,7 @@
-From 2a1f5cf012b86216793dd3e10dde7a5d483ed9cd Mon Sep 17 00:00:00 2001
-From: solution-sdk <solution-sdk@cambricon.com>
+From 3c0d3eeb16c1d35737f2878140b4c3069c7a716c Mon Sep 17 00:00:00 2001
+From: zhuxiaoqiang <zhuxiaoqiang@cambricon.com>
 Date: Thu, 16 Jan 2020 19:48:00 +0800
-Subject: [PATCH] release 1.0.2 for cambricon MLU ffmpeg dec/enc
+Subject: [PATCH] release 1.0.3 for cambricon MLU ffmpeg dec/enc
 
 ---
  configure                       |   16 +
@@ -9,14 +9,14 @@ Subject: [PATCH] release 1.0.2 for cambricon MLU ffmpeg dec/enc
  doc/examples/mlumpp_transcode.c |  377 ++++++++++++
  libavcodec/Makefile             |    7 +
  libavcodec/allcodecs.c          |    7 +
- libavcodec/mlumpp_dec.c         | 1262 +++++++++++++++++++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c         | 1270 +++++++++++++++++++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c    |  155 +++++
  libavcodec/mlumpp_enc_hevc.c    |  149 +++++
  libavcodec/mlumpp_mluop.c       |  144 +++++
  libavcodec/mlumpp_mluop.h       |   33 +
- libavcodec/mlumpp_vid_enc.c     |  811 +++++++++++++++++++++++++
+ libavcodec/mlumpp_vid_enc.c     |  822 +++++++++++++++++++++++++
  libavcodec/mlumpp_vid_enc.h     |   87 +++
- 12 files changed, 3049 insertions(+)
+ 12 files changed, 3068 insertions(+)
  create mode 100755 doc/examples/mlumpp_transcode.c
  mode change 100644 => 100755 libavcodec/Makefile
  mode change 100644 => 100755 libavcodec/allcodecs.c
@@ -615,10 +615,10 @@ index d2f9a39..c5eb5f4
  
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000..5513e26
+index 0000000..d9d40f0
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1262 @@
+@@ -0,0 +1,1270 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -663,14 +663,15 @@ index 0000000..5513e26
 +#include "cnrt.h"
 +#include "mlumpp_mluop.h"
 +// common defines
-+#define CNRT_ERROR_CHECK(avctx, ret)                                                        \
++#define CNRT_ERROR_CHECK(avctx, ret)                                                       \
 +    if (ret != CNRT_RET_SUCCESS) {                                                         \
 +        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__);\
 +        return -1;                                                                         \
 +    }
-+#define CNCODEC_ERROR_CHECK(avctx, ret)                                                      \
++#define CNCODEC_ERROR_CHECK(avctx, ret)                                                     \
 +    if (ret != CNCODEC_SUCCESS) {                                                           \
 +        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__); \
++        return -1;                                                                          \
 +    }
 +typedef struct MLUMPPContext
 +{
@@ -1464,6 +1465,10 @@ index 0000000..5513e26
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t*)avctx->priv_data;
 +    int ret = 0;
++    if (ctx->codec_abort_flag) {
++        av_log(avctx, AV_LOG_ERROR, "decoder got abort flag, return AVERROR_UNKNOWN\n");
++        return AVERROR_UNKNOWN;
++    }
 +    if (ctx->eos_received && mlumpp_is_output_empty(avctx)) {
 +        if (ctx->trace_flag)
 +            av_log(avctx, AV_LOG_INFO, "MLU decoder return AVERROR_EOF\n");
@@ -1477,7 +1482,6 @@ index 0000000..5513e26
 +                return ret;
 +            ret = mlumpp_decode_packet(avctx, &pkt);
 +            av_packet_unref(&pkt);
-+
 +            // mlumpp_is_input_available() should avoid this.
 +            if (ret == AVERROR(EAGAIN))
 +                ret = AVERROR_EXTERNAL;
@@ -1599,7 +1603,9 @@ index 0000000..5513e26
 +            mlumpp_mluop_unload(ctx->mluop_handle);
 +        }
 +    } else {
-+        cnjpegDecDestroy(ctx->handle);
++        if (ctx->handle) {
++            cnjpegDecDestroy(ctx->handle);
++        }
 +    }
 +    sem_destroy(&ctx->eos_sema);
 +    if (ctx->frame_queue) {
@@ -1635,11 +1641,11 @@ index 0000000..5513e26
 +    static const char * const mluop_libname = "/usr/local/neuware/lib64/libeasyOP.so";
 +    /***************************Set device start*****************************/
 +    if (ctx->cnrt_init_flag) {
-+      cnrt_ret = cnrtInit(0);
-+      CNRT_ERROR_CHECK(avctx, cnrt_ret);
++        cnrt_ret = cnrtInit(0);
++        CNRT_ERROR_CHECK(avctx, cnrt_ret);
 +    }
-+    cnrtGetDeviceCount(&dev_num);
-+    if (dev_num == 0) {
++    cnrt_ret = cnrtGetDeviceCount(&dev_num);
++    if (cnrt_ret != CNRT_RET_SUCCESS || dev_num == 0) {
 +        av_log(avctx,AV_LOG_INFO,"Can't find MLU card,device count return 0 \n");
 +        return -1;
 +    }
@@ -1790,6 +1796,7 @@ index 0000000..5513e26
 +        avctx->coded_height = avctx->height;
 +        ctx->frame_queue = av_fifo_alloc(ctx->async_queue_depth * sizeof(MLUJpegFrameInfo_t));
 +        if (!ctx->frame_queue) {
++            ret = AVERROR(EINVAL);
 +            goto error;
 +        }
 +        if (ctx->trace_flag) {
@@ -1819,6 +1826,7 @@ index 0000000..5513e26
 +    }
 +    return 0;
 +error:
++    sem_post(&ctx->eos_sema);
 +    mlumpp_decode_end(avctx);
 +    return ret;
 +}
@@ -2390,10 +2398,10 @@ index 0000000..830e715
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000..789eab0
+index 0000000..cf5c283
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,811 @@
+@@ -0,0 +1,822 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2428,14 +2436,15 @@ index 0000000..789eab0
 +#include "internal.h"
 +#include"mlumpp_vid_enc.h"
 +
-+#define CNRT_ERROR_CHECK(avctx, ret)                                                        \
++#define CNRT_ERROR_CHECK(avctx, ret)                                                       \
 +    if (ret != CNRT_RET_SUCCESS) {                                                         \
 +        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__);\
 +        return -1;                                                                         \
 +    }
-+#define CNCODEC_ERROR_CHECK(avctx, ret)                                                      \
++#define CNCODEC_ERROR_CHECK(avctx, ret)                                                     \
 +    if (ret != CNCODEC_SUCCESS) {                                                           \
 +        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__); \
++        return -1;                                                                          \
 +    }
 +#define OUTPUT_BUFFER_SIZE_FOR_ENCODE (1024 * 4096) //must be 4k align
 +typedef struct MLUVideoFrameInfo {
@@ -2879,6 +2888,7 @@ index 0000000..789eab0
 +    cnctx->async_queue_depth = cnctx->output_buf_num * 2;
 +    cnctx->frame_queue = av_fifo_alloc(cnctx->async_queue_depth * _cnvid_fifo_item_size());
 +    if (!cnctx->frame_queue) {
++        sem_post(&(cnctx->eos_sema));
 +        av_log(avctx, AV_LOG_FATAL, "Failed to alloc memory for async fifo\n");
 +        return -1;
 +    }
@@ -2924,6 +2934,7 @@ index 0000000..789eab0
 +    ret = cnvideoEncCreate(&cnctx->handle, mlumpp_enc_event_cb, &enc_params);
 +    if (ret<0) {
 +        av_log(avctx, AV_LOG_ERROR, "Failed to create encoder\n");
++        sem_post(&(cnctx->eos_sema));
 +        return -1;
 +    }
 +    return 0;
@@ -3080,6 +3091,10 @@ index 0000000..789eab0
 +    int timeout = -1;
 +    cnvideoEncInput enc_params;
 +    int ret = -1;
++    if (cnctx->codec_abort_flag) {
++        av_log(avctx, AV_LOG_ERROR, "encoder got abort flag before sending frame, return AVERROR_UNKNOWN\n");
++        return AVERROR_UNKNOWN;
++    }
 +    if (frame&&!cnctx->encoder_flushing) {
 +        if (cnctx->trace_flag) {
 +            av_log(avctx, AV_LOG_INFO, "Send frame: %ux%u (%" PRId64 "),frame tpe:%d\n", frame->width, frame->height, frame->pts, frame->pict_type);
@@ -3127,6 +3142,10 @@ index 0000000..789eab0
 +{
 +    int ret = -1;
 +    int got_packet = 0;
++    if (cnctx->codec_abort_flag) {
++        av_log(avctx, AV_LOG_ERROR, "encoder got abort flag before receiving packet, return AVERROR_UNKNOWN\n");
++        return AVERROR_UNKNOWN;
++    }
 +    if (!cnctx->encoder_flushing) {
 +       ret = _cnvid_output_packet(cnctx, pkt, &got_packet);
 +       return ret;
