@@ -1,7 +1,7 @@
-From 3c0d3eeb16c1d35737f2878140b4c3069c7a716c Mon Sep 17 00:00:00 2001
+From 7f2c1a583fd6f53a7b19280c94539e7ea79a374b Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
 Date: Thu, 16 Jan 2020 19:48:00 +0800
-Subject: [PATCH] release 1.0.3 for cambricon MLU ffmpeg dec/enc
+Subject: [PATCH] release 1.0.4 for cambricon MLU ffmpeg dec/enc
 
 ---
  configure                       |   16 +
@@ -9,14 +9,14 @@ Subject: [PATCH] release 1.0.3 for cambricon MLU ffmpeg dec/enc
  doc/examples/mlumpp_transcode.c |  377 ++++++++++++
  libavcodec/Makefile             |    7 +
  libavcodec/allcodecs.c          |    7 +
- libavcodec/mlumpp_dec.c         | 1270 +++++++++++++++++++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c         | 1274 +++++++++++++++++++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c    |  155 +++++
  libavcodec/mlumpp_enc_hevc.c    |  149 +++++
  libavcodec/mlumpp_mluop.c       |  144 +++++
  libavcodec/mlumpp_mluop.h       |   33 +
- libavcodec/mlumpp_vid_enc.c     |  822 +++++++++++++++++++++++++
+ libavcodec/mlumpp_vid_enc.c     |  844 ++++++++++++++++++++++++++
  libavcodec/mlumpp_vid_enc.h     |   87 +++
- 12 files changed, 3068 insertions(+)
+ 12 files changed, 3094 insertions(+)
  create mode 100755 doc/examples/mlumpp_transcode.c
  mode change 100644 => 100755 libavcodec/Makefile
  mode change 100644 => 100755 libavcodec/allcodecs.c
@@ -615,10 +615,10 @@ index d2f9a39..c5eb5f4
  
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000..d9d40f0
+index 0000000..b47639d
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1270 @@
+@@ -0,0 +1,1274 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1188,7 +1188,7 @@ index 0000000..d9d40f0
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t *)pData;
 +    if (ctx->trace_flag) {
-+        av_log(ctx->avctx,AV_LOG_INFO,"Callback event type: %d \n", EventType);
++        av_log(ctx->avctx,AV_LOG_INFO,"Decoder callback event type: %d \n", EventType);
 +    }
 +    switch (EventType)
 +    {
@@ -1203,28 +1203,32 @@ index 0000000..d9d40f0
 +            break;
 +        case CNCODEC_CB_EVENT_SW_RESET:
 +        case CNCODEC_CB_EVENT_HW_RESET:
-+            av_log(ctx->avctx, AV_LOG_FATAL, "Decode Firmware crash Event: %d \n", EventType);
++            av_log(ctx->avctx, AV_LOG_FATAL, "Decoder FATAL Error <Firmware crash Event>: %d \n", EventType);
 +            if (!ctx->codec_abort_flag) {
-+                if (ctx->codec_type == CNCODEC_JPEG) {
-+                    cnjpegDecAbort(ctx->handle);
-+                } else {
-+                    cnvideoDecAbort(ctx->handle);
-+                }
++                sem_post(&ctx->eos_sema);
 +                ctx->codec_abort_flag = 1;
 +            }
-+            sem_post(&ctx->eos_sema);
-+            ctx->decoder_flushing = 1;
 +            break;
-+        case 6/*CNCODEC_CB_EVENT_ABORT_ERROR*/:
-+            if (!ctx->decoder_start && ctx->decoder_flushing) {
-+                //workaround for 1.3.0, it is EOS...
-+                mlumpp_dec_eos_cb(pData, pdata1);
++        case CNCODEC_CB_EVENT_OUT_OF_MEMORY:
++            av_log(ctx->avctx, AV_LOG_FATAL, "Decoder FATAL Error <Out of memory Event>: %d \n", EventType);
++            if (!ctx->codec_abort_flag) {
++                sem_post(&ctx->eos_sema);
 +                ctx->codec_abort_flag = 1;
-+                return 0;
 +            }
-+            //fall through...
++            break;
++        case CNCODEC_CB_EVENT_ABORT_ERROR:
++            av_log(ctx->avctx, AV_LOG_FATAL, "Decoder FATAL Error <Abort Event>: %d \n", EventType);
++            if (!ctx->codec_abort_flag) {
++                sem_post(&ctx->eos_sema);
++                ctx->codec_abort_flag = 1;
++            }
++            break;
 +        default:
-+            av_log(ctx->avctx, AV_LOG_INFO, "invalid Event: %d \n", EventType);
++            av_log(ctx->avctx, AV_LOG_FATAL, "Decoder FATAL Error <Unknow Event>: %d \n", EventType);
++            if (!ctx->codec_abort_flag) {
++                sem_post(&ctx->eos_sema);
++                ctx->codec_abort_flag = 1;
++            }
 +            break;
 +    }
 +    return 0;
@@ -1466,8 +1470,8 @@ index 0000000..d9d40f0
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t*)avctx->priv_data;
 +    int ret = 0;
 +    if (ctx->codec_abort_flag) {
-+        av_log(avctx, AV_LOG_ERROR, "decoder got abort flag, return AVERROR_UNKNOWN\n");
-+        return AVERROR_UNKNOWN;
++        av_log(avctx, AV_LOG_ERROR, "Decoder got abort flag, return AVERROR_EXTERNAL\n");
++        return AVERROR_EXTERNAL;
 +    }
 +    if (ctx->eos_received && mlumpp_is_output_empty(avctx)) {
 +        if (ctx->trace_flag)
@@ -2398,10 +2402,10 @@ index 0000000..830e715
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000..cf5c283
+index 0000000..6709eb3
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,822 @@
+@@ -0,0 +1,844 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2584,36 +2588,54 @@ index 0000000..cf5c283
 +static int mlumpp_enc_event_cb(cncodecCbEventType eventType, void *pUserData, void *cbInfo)
 +{
 +    MLUMPPEncContext_t *cnctx = (MLUMPPEncContext_t *)pUserData;
-+    if (eventType == CNCODEC_CB_EVENT_NEW_FRAME) {
-+        _newframe_callback(pUserData, (cnvideoEncOutput *)cbInfo);
-+    } else if (eventType == CNCODEC_CB_EVENT_EOS) {
-+        if (!cnctx->eos_post_flag) {
-+            sem_post(&(cnctx->eos_sema));
-+            cnctx->eos_post_flag = 1;
-+        }
-+        if (cnctx->trace_flag > 0) {
-+            av_log(cnctx->avctx, AV_LOG_ERROR, "[%lu]Get eos callback,post a signal\n", (long unsigned)pthread_self());
-+        }
-+        cnctx->eos_reached = 1;
-+        return 0;
-+    } else if (eventType == CNCODEC_CB_EVENT_SW_RESET || eventType == CNCODEC_CB_EVENT_HW_RESET) {
-+        av_log(cnctx->avctx, AV_LOG_FATAL, "System crash, eventType(%d)\n", eventType);
-+        if (!cnctx->codec_abort_flag) {
-+            cnvideoEncAbort(cnctx->handle);
-+            cnctx->codec_abort_flag = 1;
-+        }
-+        if (!cnctx->eos_post_flag) {
-+            sem_post(&(cnctx->eos_sema));
-+            cnctx->eos_post_flag = 1;
-+        }
-+        return -1;
-+    } else {
-+        av_log(cnctx->avctx, AV_LOG_FATAL, "unknown event(%d)\n", eventType);
-+        if (!cnctx->eos_post_flag) {
-+            sem_post(&(cnctx->eos_sema));
-+            cnctx->eos_post_flag = 1;
-+        }
-+        return -1;
++
++    if (cnctx->trace_flag) {
++        av_log(cnctx->avctx,AV_LOG_INFO,"Encoder callback event type: %d \n", eventType);
++    }
++    switch (eventType)
++    {
++        case CNCODEC_CB_EVENT_NEW_FRAME:
++            _newframe_callback(pUserData, (cnvideoEncOutput *)cbInfo);
++            break;
++        case CNCODEC_CB_EVENT_EOS:
++            if (!cnctx->eos_post_flag) {
++                sem_post(&(cnctx->eos_sema));
++                cnctx->eos_post_flag = 1;
++            }
++            if (cnctx->trace_flag > 0) {
++                av_log(cnctx->avctx, AV_LOG_ERROR, "[%lu]Get eos callback,post a signal\n", (long unsigned)pthread_self());
++            }
++            cnctx->eos_reached = 1;
++            break;
++        case CNCODEC_CB_EVENT_SW_RESET:
++        case CNCODEC_CB_EVENT_HW_RESET:
++            av_log(cnctx->avctx, AV_LOG_FATAL, "Encoder FATAL Error <Firmware crash Event>: %d \n", eventType);
++            if (!cnctx->codec_abort_flag) {
++                sem_post(&cnctx->eos_sema);
++                cnctx->codec_abort_flag = 1;
++            }
++            break;
++        case CNCODEC_CB_EVENT_OUT_OF_MEMORY:
++            av_log(cnctx->avctx, AV_LOG_FATAL, "Encoder FATAL Error <Out of memory Event>: %d \n", eventType);
++            if (!cnctx->codec_abort_flag) {
++                sem_post(&cnctx->eos_sema);
++                cnctx->codec_abort_flag = 1;
++            }
++            break;
++        case CNCODEC_CB_EVENT_ABORT_ERROR:
++            av_log(cnctx->avctx, AV_LOG_FATAL, "Encoder FATAL Error <Abort Event>: %d \n", eventType);
++            if (!cnctx->codec_abort_flag) {
++                sem_post(&cnctx->eos_sema);
++                cnctx->codec_abort_flag = 1;
++            }
++            break;
++        default:
++            av_log(cnctx->avctx, AV_LOG_FATAL, "Encoder FATAL Error <Unknow Event>: %d \n", eventType);
++            if (!cnctx->codec_abort_flag) {
++                sem_post(&cnctx->eos_sema);
++                cnctx->codec_abort_flag = 1;
++            }
++            break;
 +    }
 +    return 0;
 +}
@@ -2908,7 +2930,11 @@ index 0000000..cf5c283
 +                enc_params.instance = 1;
 +            }
 +            ret = cnvideoEncCreate(&cnctx->handle, mlumpp_enc_event_cb, &enc_params);
-+            CNCODEC_ERROR_CHECK(avctx, ret);
++            if (ret != CNCODEC_SUCCESS) {
++                 av_log(avctx, AV_LOG_ERROR, "Failed to create encoder for sps\n");
++                sem_post(&(cnctx->eos_sema));
++                return AVERROR_EXTERNAL;
++            }
 +            memset(&input_eos, 0, sizeof(cnvideoEncInput));
 +            ret = cnvideoEncWaitAvailInputBuf(cnctx->handle, &input_eos.frame, -1);
 +            CNCODEC_ERROR_CHECK(avctx, ret);
@@ -2932,10 +2958,10 @@ index 0000000..cf5c283
 +    cnctx->total_outframe_count = 0;
 +    cnctx->eos_post_flag = 0;
 +    ret = cnvideoEncCreate(&cnctx->handle, mlumpp_enc_event_cb, &enc_params);
-+    if (ret<0) {
++    if (ret != CNCODEC_SUCCESS) {
 +        av_log(avctx, AV_LOG_ERROR, "Failed to create encoder\n");
 +        sem_post(&(cnctx->eos_sema));
-+        return -1;
++        return AVERROR_EXTERNAL;
 +    }
 +    return 0;
 +}
@@ -3092,8 +3118,8 @@ index 0000000..cf5c283
 +    cnvideoEncInput enc_params;
 +    int ret = -1;
 +    if (cnctx->codec_abort_flag) {
-+        av_log(avctx, AV_LOG_ERROR, "encoder got abort flag before sending frame, return AVERROR_UNKNOWN\n");
-+        return AVERROR_UNKNOWN;
++        av_log(avctx, AV_LOG_ERROR, "Encoder got abort flag before sending frame, return AVERROR_EXTERNAL\n");
++        return AVERROR_EXTERNAL;
 +    }
 +    if (frame&&!cnctx->encoder_flushing) {
 +        if (cnctx->trace_flag) {
@@ -3143,8 +3169,8 @@ index 0000000..cf5c283
 +    int ret = -1;
 +    int got_packet = 0;
 +    if (cnctx->codec_abort_flag) {
-+        av_log(avctx, AV_LOG_ERROR, "encoder got abort flag before receiving packet, return AVERROR_UNKNOWN\n");
-+        return AVERROR_UNKNOWN;
++        av_log(avctx, AV_LOG_ERROR, "encoder got abort flag before receiving packet, return AVERROR_EXTERNAL \n");
++        return AVERROR_EXTERNAL;
 +    }
 +    if (!cnctx->encoder_flushing) {
 +       ret = _cnvid_output_packet(cnctx, pkt, &got_packet);
