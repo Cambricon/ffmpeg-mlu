@@ -14,7 +14,7 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
 - Cambricon MLU Driver: 
     - neuware-mlu270-driver-4.0.3 or later.
 - Cambricon MLU SDK: 
-    - neuware-mlu270-1.2.5-1 or later.
+    - neuware-mlu270-1.3.0-1 or later.
 	
 ## Patch and Build FFmpeg-MLU ## 
 
@@ -49,8 +49,6 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
    ```
 
 5. (Optional) If you need support downscaling with MLU operators, build ``mluop_plugin`` and copy ``libeasyOP.so``  to the ``/usr/local/neuware/lib64`` folder.
-
-6. If you use ``neuware-mlu270-1.2.5-1``, need remove ``-lcndrv`` before running ``configure``.
 
 ## Decoding and Encoding with FFmpeg-MLU ## 
 
@@ -132,7 +130,7 @@ This section introduces how to improve the performance.
 |Option name|Type|Description|
 |-|-|-|
 |device_id|int|Select the accelerator card. <br>Supported values range from **0** to *INT_MAX*. *INT_MAX* is the total number of accelerator cards minus 1. <br>The default value is **0**.|
-|instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - **5**: Represents VPU instance. <br>- **6**: The VPU instance is auto-selected. <br>The default value is **6**.|
+|instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - **INT_MAX**: Represents VPU instance. <br>- **0**: The VPU instance is auto-selected. <br>The default value is **0**.|
 |cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
 |input_buf_num|int|Number of input buffers for decoder. <br>Supported values range from **1** to **32**. <br>The default value is **5**.|
 |output_buf_num|int|Number of output buffers for decoder. <br>Supported values range from **1** to **32**. <br>The default value is **6**.|
@@ -148,7 +146,7 @@ This section introduces how to improve the performance.
 |Option name|Type|Description|
 |-|-|-|
 |device_id|int|Select the accelerator card. <br>Supported values range from **0** to *INT_MAX*. *INT_MAX* is the total number of accelerator cards minus 1. <br>The default value is **0**.|
-|instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - **1**: Represents VPU instance. <br>- **6**: The VPU instance is auto-selected. <br>The default value is **6**.|
+|instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - *INT_MAX*: Represents VPU instance. <br>- **0**: The VPU instance is auto-selected. <br>The default value is **0**.|
 |cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
 |input_buf_num|int|Number of input buffers for encoder. <br>Supported values range from **1** to **32**. <br>The default value is **3**.|
 |output_buf_num|int|Number of output buffers for encoder. <br>Supported values range from **1** to **32**. <br>The default value is **5**.|

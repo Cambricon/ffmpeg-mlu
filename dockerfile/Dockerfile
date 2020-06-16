@@ -19,7 +19,7 @@
 # *************************************************************************/
 
 # 1. copy your neuware package into the directory of ffmpeg-mlu-rel 
-# 2. docker build -f dockerfile/Dockerfile --build-arg mlu_platform=MLU270 --build-arg neuware_package=neuware-mlu270-1.2.5-1_Ubuntu16.04_amd64.deb -t ubuntu_ffmpeg-mlu:v1 .
+# 2. docker build -f dockerfile/Dockerfile --build-arg mlu_platform=MLU270 --build-arg neuware_package=neuware-mlu270-1.3.0-1_Ubuntu16.04_amd64.deb -t ubuntu_ffmpeg-mlu:v1 .
 # 3. docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --privileged -v /dev:/dev --net=host --pid=host --ipc=host -v $HOME/.Xauthority -it --name ubuntu_ffmpeg-mlu  -v $PWD:/workspace ubuntu_ffmpeg-mlu:v1
 # 4. if docker is ready, can execute it by docker start ubuntu_ffmpeg-mlu / docker exec -it  ubuntu_ffmpeg-mlu /bin/bash
 
@@ -64,7 +64,7 @@ RUN dpkg -i /root/ffmpeg-mlu/$neuware_package && \
     cd ffmpeg && \
     git apply ../ffmpeg4.2_mlu.patch && \
     mkdir build && cd build && \
-    ../configure --enable-gpl --enable-version3 --enable-mlumpp --extra-cflags="-I/usr/local/neuware/include" --extra-ldflags="-L/usr/local/neuware/lib64" --extra-libs="-lcncodec -lcnrt -ldl" && \
+    ../configure --enable-gpl --enable-version3 --enable-mlumpp --extra-cflags="-I/usr/local/neuware/include" --extra-ldflags="-L/usr/local/neuware/lib64" --extra-libs="-lcncodec -lcnrt -cndrv -ldl" && \
     make -j && \
     rm -rf /root/ffmpeg-mlu/$neuware_package
 
