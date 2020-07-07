@@ -12,10 +12,10 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
 	- Centos
 	- Debian
 - Cambricon MLU Driver: 
-    - neuware-mlu270-driver-4.0.3 or later.
+    - neuware-mlu270-driver-4.2.0 or later.
 - Cambricon MLU SDK: 
-    - neuware-mlu270-1.3.0-1 or later.
-	
+    - neuware-mlu270-1.4.0-1 or later.
+
 ## Patch and Build FFmpeg-MLU ## 
 
 1. Get FFmpeg sources and patch with the following Git* command:
@@ -48,7 +48,7 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
    make -j examples
    ```
 
-5. (Optional) If you need support downscaling with MLU operators, build ``mluop_plugin`` and copy ``libeasyOP.so``  to the ``/usr/local/neuware/lib64`` folder.
+5. (Optional) If you need support downscaling with MLU operators, build ``mluop`` and copy ``libeasyOP.so``  to the ``/usr/local/neuware/lib64`` folder.
 
 ## Decoding and Encoding with FFmpeg-MLU ## 
 
@@ -132,8 +132,8 @@ This section introduces how to improve the performance.
 |device_id|int|Select the accelerator card. <br>Supported values range from **0** to *INT_MAX*. *INT_MAX* is the total number of accelerator cards minus 1. <br>The default value is **0**.|
 |instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - **INT_MAX**: Represents VPU instance. <br>- **0**: The VPU instance is auto-selected. <br>The default value is **0**.|
 |cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
-|input_buf_num|int|Number of input buffers for decoder. <br>Supported values range from **1** to **32**. <br>The default value is **5**.|
-|output_buf_num|int|Number of output buffers for decoder. <br>Supported values range from **1** to **32**. <br>The default value is **6**.|
+|input_buf_num|int|Number of input buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **5**.|
+|output_buf_num|int|Number of output buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **6**.|
 |stride_align|int|Stride align of output buffers for decoder. <br>Supported values range from **1** to **128**, can be **2^(0 - 7)**. <br>The default value is **1**.|
 |output_pixfmt|int|The output pixel format. <br>Supported values are: <br>- **0**: Represents NV12. <br>- **1**: Represents NV21. <br>- **2**: Represents I420. <br>The default value is **0**.|
 |resize|string|Resize (width)x(height). <br>Only supports **1/2** and **1/4** for down scaling. <br>The default is null.|
@@ -148,15 +148,15 @@ This section introduces how to improve the performance.
 |device_id|int|Select the accelerator card. <br>Supported values range from **0** to *INT_MAX*. *INT_MAX* is the total number of accelerator cards minus 1. <br>The default value is **0**.|
 |instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - *INT_MAX*: Represents VPU instance. <br>- **0**: The VPU instance is auto-selected. <br>The default value is **0**.|
 |cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
-|input_buf_num|int|Number of input buffers for encoder. <br>Supported values range from **1** to **32**. <br>The default value is **3**.|
-|output_buf_num|int|Number of output buffers for encoder. <br>Supported values range from **1** to **32**. <br>The default value is **5**.|
+|input_buf_num|int|Number of input buffers for encoder. <br>Supported values range from **1** to **18**. <br>The default value is **3**.|
+|output_buf_num|int|Number of output buffers for encoder. <br>Supported values range from **1** to **18**. <br>The default value is **5**.|
 |trace|int|MLU FFmpeg debug switch. <br>Supported values are: <br>- **0** Represents disabled.<br>- **1**: Represents enabled. <br>The default value is **0**.|
 |init_qpP|int|Initial QP value for P frame, set P frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |init_qpI|int|Initial QP value for I frame, set I frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |init_qpB|int|Initial QP value for B frame, set B frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |qp|int|Constant QP rate control method, same as FFmpeg cqp. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
-|vbr_minqp|int|Variable bitrate mode with MinQP, same as FFmepg qmin. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
-|vbr_maxqp|int|Variable bitrate mode with MaxQP, same as FFmpeg qmax. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
+|vbr_minqp|int|Variable bitrate mode with MinQP, same as FFmepg qmin. <br>Supported values range from **0** to **51**. <br>The default value is **0**.|
+|vbr_maxqp|int|Variable bitrate mode with MaxQP, same as FFmpeg qmax. <br>Supported values range from **0** to **51**. <br>The default value is **51**.|
 
 (Notice) Also supports regular ffmpeg settings,such as ``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, please refers to ffmpeg official documents。
 

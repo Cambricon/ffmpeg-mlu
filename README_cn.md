@@ -12,9 +12,9 @@
 	- Centos
 	- Debian
 - 寒武纪MLU驱动: 
-    - neuware-mlu270-driver-4.0.3或更高版本。
+    - neuware-mlu270-driver-4.2.0或更高版本。
 - 寒武纪MLU SDK: 
-    - neuware-mlu270-1.3.0-1或更高版本。
+    - neuware-mlu270-1.4.0-1或更高版本。
 	
 ## 补丁、编译FFmpeg-MLU ## 
 
@@ -48,7 +48,7 @@
    make -j examples
    ```
 
-5. (可选) 如果想要通过MLU算子实现视频缩放等功能，编译 ``mluop_plugin`` 并拷贝 ``libeasyOP.so`` 到 ``/usr/local/neuware/lib64`` 目录下。
+5. (可选) 如果想要通过MLU算子实现视频缩放等功能，编译 ``mluop`` 并拷贝 ``libeasyOP.so`` 到 ``/usr/local/neuware/lib64`` 目录下。
 
 ## FFmpeg-MLU视频编解码 ## 
 
@@ -132,8 +132,8 @@ FFmpeg-MLU支持的视频编码格式如下：
 |device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。 <br>默认值为 **0**。|
 |instance_id|int|选择使用的VPU实例。 <br>支持设置的值为： <br>- 取为 **0** - **INT_MAX** 范围: 表示VPU/JPU实例编号。 <br>- **0**: 表示自动选择。 <br>默认值为 **0**。|
 |cnrt_init_flag|int|初始化或销毁FFmpeg的IPU设备。 <br>支持设置的值为：<br>- **0**: 表示销毁设备。 <br>- **1**: 表示初始化设备。 <br>默认值为 **1**。|
-|input_buf_num|int|用于解码器输入缓冲器的数量。 <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **5**。|
-|output_buf_num|int|用于解码器输出缓冲器的数量。 <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **6**。|
+|input_buf_num|int|用于解码器输入缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **5**。|
+|output_buf_num|int|用于解码器输出缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **6**。|
 |stride_align|int|解码器输出对齐的步长。 <br>支持设置的值的范围为：**1** - **128**，可以是 **2^(0 - 7)**。 <br>默认值为 **1**。|
 |output_pixfmt|int|输出像素的格式。 <br>支持设置的值为： <br>- **0**：表示NV12。 <br>- **1**：表示NV21。 <br>- **2**：表示I420。 <br>默认值为 **0**。|
 |resize|string|调整视频大小 （宽）x（高）。 <br>可以设置为 **1/2** 或 **1/4** 缩放视频。 <br>默认为 null。|
@@ -148,15 +148,15 @@ FFmpeg-MLU支持的视频编码格式如下：
 |device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。<br>默认值为 **0**。|
 |instance_id|int|选择使用的VPU实例。<br>支持设置的值为： <br>- 值为 **0** - *INT_MAX* 范围：表示VPU实例编号。 <br>- **0**：表示自动选择。 <br>默认值为 **0**。|
 |cnrt_init_flag|int|是否在ffmpeg初始化/销毁cnrt。 <br>支持设置的值为： <br>- **0**：表示外部初始化/销毁。 <br>- **1**：表示由ffmpeg初始化/销毁。 <br>默认值为 **1**。|
-|input_buf_num|int|用于编码器输入缓冲的数量。  <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **3**。|
-|output_buf_num|int|用于编码器输出缓冲的数量。 <br>支持设置的值的范围为：**1** - **32**。 <br>默认值为 **5**。|
+|input_buf_num|int|用于编码器输入缓冲的数量。  <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **3**。|
+|output_buf_num|int|用于编码器输出缓冲的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **5**。|
 |trace|int|FFmpeg-MLU调试信息开关。<br>支持的设置的值为： <br>- **0** 表示关闭调试打印信息。<br>- **1**：表示打开调试打印信息。<br>默认值为 **0**。|
 |init_qpP|int|设置P帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |init_qpI|int|设置I帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |init_qpB|int|设置B帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |qp|int|恒定QP控制方法，同FFmpeg cqp。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
-|vbr_minqp|int|可变比特率模式，并提供MinQP，同FFmepg qmin。 <br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
-|vbr_maxqp|int|可变比特率模式，并提供MaxQP，同FFmpeg qmax。 <br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|vbr_minqp|int|可变比特率模式，并提供MinQP，同FFmepg qmin。 <br>支持设置的值的范围为：**0** - **51**。 <br>默认值为 **0**。|
+|vbr_maxqp|int|可变比特率模式，并提供MaxQP，同FFmpeg qmax。 <br>支持设置的值的范围为：**0** - **51**。 <br>默认值为 **51**。|
 
 (通用) 支持常规ffmpeg的设置：``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, 具体意义及值范围请参考ffmpeg官方文档。
 

@@ -1,3 +1,9 @@
+# Cambricon® ffmpeg-mlu open source release v1.0.8!
+**Whats new**
+ - Modified timeout mechanism.
+ - Adapted to the ffmpeg screenshot mechanism.
+ - Modified mlumpp_dec log info.
+
 # Cambricon® ffmpeg-mlu open source release v1.0.7!
 **Whats new**
  - Added invalid address protection mechanism.

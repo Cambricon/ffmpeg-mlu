@@ -29,7 +29,7 @@ MAINTAINER <Cambricon, Inc.>
 
 WORKDIR /root/ffmpeg-mlu/
 
-ARG neuware_version=neuware-mlu270-1.2.5
+ARG neuware_version=neuware-mlu270-1.4.0
 ARG neuware_package=${neuware_version}-1_Ubuntu16.04_amd64.deb
 ARG mlu_platform=MLU270
 
