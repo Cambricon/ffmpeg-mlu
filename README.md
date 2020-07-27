@@ -132,10 +132,10 @@ This section introduces how to improve the performance.
 |device_id|int|Select the accelerator card. <br>Supported values range from **0** to *INT_MAX*. *INT_MAX* is the total number of accelerator cards minus 1. <br>The default value is **0**.|
 |instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - **INT_MAX**: Represents VPU instance. <br>- **0**: The VPU instance is auto-selected. <br>The default value is **0**.|
 |cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
-|input_buf_num|int|Number of input buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **5**.|
-|output_buf_num|int|Number of output buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **6**.|
+|input_buf_num|int|Number of input buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **4**.|
+|output_buf_num|int|Number of output buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **3**.|
 |stride_align|int|Stride align of output buffers for decoder. <br>Supported values range from **1** to **128**, can be **2^(0 - 7)**. <br>The default value is **1**.|
-|output_pixfmt|int|The output pixel format. <br>Supported values are: <br>- **0**: Represents NV12. <br>- **1**: Represents NV21. <br>- **2**: Represents I420. <br>The default value is **0**.|
+|output_pixfmt|int|The output pixel format. <br>Supported values are: <br>- **nv12/nv21/p010/i420**. <br>The default value is **nv12**.|
 |resize|string|Resize (width)x(height). <br>Only supports **1/2** and **1/4** for down scaling. <br>The default is null.|
 |trace|int|MLU FFmpeg MLU trace switch. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **0**.|
 
