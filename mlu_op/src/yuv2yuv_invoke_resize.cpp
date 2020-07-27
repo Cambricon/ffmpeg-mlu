@@ -185,8 +185,16 @@ int mluop_resize_yuv_invoke_init(HANDLE *h, int input_w, int input_h, int input_
   d_ptr_->kparam_->d_row = output_h;
   d_ptr_->kparam_->d_col = output_w;
   d_ptr_->kparam_->batch = d_ptr_->batch_size;
-  cnrtCreateKernelInitParam(&d_ptr_->kparam_->init_param);
-  cnrtInitKernelMemory(reinterpret_cast<void*>(&resizeYuvKernel), d_ptr_->kparam_->init_param);
+  cnret = cnrtCreateKernelInitParam(&d_ptr_->kparam_->init_param);
+  if (cnret != CNRT_RET_SUCCESS) {
+    std::cout << "cnrtCreateKernelInitParam failed. Error code:" << std::endl;
+    return -1;
+  }
+  cnret = cnrtInitKernelMemory(reinterpret_cast<void*>(&resizeYuvKernel), d_ptr_->kparam_->init_param);
+  if (cnret != CNRT_RET_SUCCESS) {
+    std::cout << "cnrtInitKernelMemory failed. Error code:" << std::endl;
+    return -1;
+  }
   *h = static_cast<void *>(d_ptr_);
   return 0;
 }
@@ -214,30 +222,32 @@ int mluop_resize_yuv_invoke_exec(HANDLE h, void *input_y, void *input_uv,
       sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
   if (cnret != CNRT_RET_SUCCESS) {
     std::cout << "Memcpy host to device failed. Error code: " << std::endl;
-    return false;
+    return -1;
   }
   cnret = cnrtMemcpy(d_ptr_->src_uv_ptrs_mlu_, reinterpret_cast<void**>(d_ptr_->src_uv_ptrs_cpu_),
       sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
   if (cnret != CNRT_RET_SUCCESS) {
     std::cout << "Memcpy host to device failed. Error code: " << std::endl;
-    return false;
+    return -1;
   }
   cnret = cnrtMemcpy(d_ptr_->dst_y_ptrs_mlu_, reinterpret_cast<void**>(d_ptr_->dst_y_ptrs_cpu_),
       sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
   if (cnret != CNRT_RET_SUCCESS) {
     std::cout << "Memcpy host to device failed. Error code: " << std::endl;
-    return false;
+    return -1;
   }
   cnret = cnrtMemcpy(d_ptr_->dst_uv_ptrs_mlu_, reinterpret_cast<void**>(d_ptr_->dst_uv_ptrs_cpu_),
       sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
   if (cnret != CNRT_RET_SUCCESS) {
     std::cout << "Memcpy host to device failed. Error code: " << std::endl;
-    return false;
+    return -1;
   }
-  return -1 != invokeResizeYuvKernel(
+  float r_ret = invokeResizeYuvKernel(
                 reinterpret_cast<char**>(d_ptr_->dst_y_ptrs_mlu_), reinterpret_cast<char**>(d_ptr_->dst_uv_ptrs_mlu_),
                 reinterpret_cast<char**>(d_ptr_->src_y_ptrs_mlu_), reinterpret_cast<char**>(d_ptr_->src_uv_ptrs_mlu_),
                 d_ptr_->kparam_, d_ptr_->ftype_, d_ptr_->dim_, d_ptr_->queue_, &d_ptr_->estr_);
+
+  return r_ret;
 }
 
 int mluop_resize_yuv_invoke_destroy(HANDLE h) {
@@ -245,7 +255,11 @@ int mluop_resize_yuv_invoke_destroy(HANDLE h) {
   if (d_ptr_) {
     if (d_ptr_->kparam_) {
       if (d_ptr_->kparam_->init_param) {
-        cnrtDestroyKernelInitParamAndMemory(d_ptr_->kparam_->init_param);
+        cnrtRet_t cnret = cnrtDestroyKernelInitParamAndMemory(d_ptr_->kparam_->init_param);
+        if (cnret != CNRT_RET_SUCCESS) {
+          std::cout << "cnrtDestroyKernelInitParamAndMemory failed. Error code: %u" << std::endl;
+          return -1;
+        }
       }
       delete d_ptr_->kparam_;
       d_ptr_->kparam_ = nullptr;
@@ -286,6 +300,14 @@ int mluop_resize_yuv_invoke_destroy(HANDLE h) {
     }
     d_ptr_->dst_yuv_ptrs_cache_.clear();
 
+    if (d_ptr_->queue_) {
+      auto ret = cnrtDestroyQueue(d_ptr_->queue_);
+      if (ret != CNRT_RET_SUCCESS) {
+        std::cout << "Destroy queue failed. Error code: %u" << std::endl;
+        return -1;
+      }
+      d_ptr_->queue_ = nullptr;
+    }
     delete d_ptr_;
     d_ptr_ = nullptr;
   }

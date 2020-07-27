@@ -1,3 +1,10 @@
+# Cambricon® ffmpeg-mlu open source release v1.0.9!
+**Whats new**
+ - Added mlu mjpeg encoder.
+ - Added p010 pix fmt.
+ - Supported 8bit to 10bit transcode.
+ - Remove supports for ``neuware-mlu270-1.3.0``
+
 # Cambricon® ffmpeg-mlu open source release v1.0.8!
 **Whats new**
  - Modified timeout mechanism.

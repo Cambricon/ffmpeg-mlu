@@ -356,16 +356,16 @@ int mluop_resize_yuv_plugin_init(HANDLE *h, int input_w, int input_h,
   cnrtRet_t cnret =
       cnrtMalloc(&ctx->src_y_ptrs_mlu_, sizeof(void *) * ctx->batch_size_);
   if (!cnrtCheck(cnret, &ctx->estr_, "Malloc src y mlu buffer failed."))
-    return false;
+    return -1;
   cnret = cnrtMalloc(&ctx->src_uv_ptrs_mlu_, sizeof(void *) * ctx->batch_size_);
   if (!cnrtCheck(cnret, &ctx->estr_, "Malloc src uv mlu buffer failed."))
-    return false;
+    return -1;
   cnret = cnrtMalloc(&ctx->dst_y_ptrs_mlu_, sizeof(void *) * ctx->batch_size_);
   if (!cnrtCheck(cnret, &ctx->estr_, "Malloc dst y mlu buffer failed."))
-    return false;
+    return -1;
   cnret = cnrtMalloc(&ctx->dst_uv_ptrs_mlu_, sizeof(void *) * ctx->batch_size_);
   if (!cnrtCheck(cnret, &ctx->estr_, "Malloc dst uv mlu buffer failed."))
-    return false;
+    return -1;
 
   cnrtDeviceInfo_t info;
   bool success = false;
@@ -398,7 +398,8 @@ int mluop_resize_yuv_plugin_init(HANDLE *h, int input_w, int input_h,
     }
   }
   *h = static_cast<void *>(ctx);
-  return success;
+  if (!success) return -1;
+  return 0;
 }
 
 int mluop_resize_yuv_plugin_exec(HANDLE h, void *input_y, void *input_uv,
@@ -417,7 +418,7 @@ int mluop_resize_yuv_plugin_exec(HANDLE h, void *input_y, void *input_uv,
     logging::ERROR("Batchsize is " + std::to_string(ctx->batch_size_) +
                     ", but only has input: " + std::to_string(ctx->src_yuv_ptrs_cache_.size()) +
                     ", output: " + std::to_string(ctx->dst_yuv_ptrs_cache_.size()));
-    return false;
+    return -1;
   }
   for (int bi = 0; bi < ctx->batch_size_; ++bi) {
     reinterpret_cast<void **>(ctx->src_y_ptrs_cpu_)[bi] =
@@ -456,16 +457,21 @@ int mluop_resize_yuv_plugin_exec(HANDLE h, void *input_y, void *input_uv,
   if (!cnrtCheck(cnret, &ctx->estr_,
                  "Memcpy dst uv from host to device failed."))
     return -1;
-  return ::computeResizeYuv2Yuv(
+  bool ret = false;
+  ret = ::computeResizeYuv2Yuv(
       ctx->yuv2yuv_, ctx->dst_y_ptrs_mlu_, ctx->dst_uv_ptrs_mlu_,
       ctx->src_y_ptrs_mlu_, ctx->src_uv_ptrs_mlu_, ctx->queue_, &ctx->estr_);
+  if (!ret) return -1;
+  return 0;
 }
+
 int mluop_resize_yuv_plugin_destroy(HANDLE h) {
   Yuv2YuvResizeContext_t *ctx = static_cast<Yuv2YuvResizeContext_t *>(h);
   if (ctx) {
     if (ctx->yuv2yuv_) {
       if (!::destroyResizeYuv2Yuv(ctx->yuv2yuv_, &ctx->estr_)) {
         logging::ERROR("DestroyResizeYuv2Yuv Error: " + ctx->estr_);
+        return -1;
       }
       ctx->yuv2yuv_ = nullptr;
     }
@@ -504,9 +510,13 @@ int mluop_resize_yuv_plugin_destroy(HANDLE h) {
     ctx->src_yuv_ptrs_cache_.clear();
     ctx->dst_yuv_ptrs_cache_.clear();
     if (ctx->queue_) {
-      cnrtDestroyQueue(ctx->queue_);
+      auto ret = cnrtDestroyQueue(ctx->queue_);
+      if (ret != CNRT_RET_SUCCESS) {
+        logging::ERROR("Destroy queue failed. Error !");
+        return -1;
+      }
+      ctx->queue_ = nullptr;
     }
-
     delete ctx;
     ctx = nullptr;
   }
