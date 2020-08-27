@@ -80,6 +80,8 @@ FFmpeg-MLU支持的视频编码格式如下：
     - Codec名称：``h264_mluenc``
 - HEVC
     - Codec名称：``hevc_mluenc``
+- JPEG
+    - Codec名称：``mjpeg_mluenc``
 
 **运行示例**  
 

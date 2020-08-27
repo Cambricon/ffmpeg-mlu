@@ -1,3 +1,11 @@
+# Cambricon® ffmpeg-mlu open source release v1.1.0!
+**Whats new**
+ - Supported mlu h264/hevc/vp8/vp9/mjpeg decoder.
+ - Supported mlu h264/hevc/mjpeg encoder.
+ - Supported mlu hardware transcode.
+ - Supported mlu decoder hardware scale postproc.
+ - Supports for ``neuware-mlu270-1.4.0 or later``.
+
 # Cambricon® ffmpeg-mlu open source release v1.0.9!
 **Whats new**
  - Added mlu mjpeg encoder.

@@ -80,6 +80,8 @@ Supported video encoding formats are as follows:
     - Codec Name: ``h264_mluenc``
 - HEVC
     - Codec Name: ``hevc_mluenc``
+- JPEG
+    - Codec Name: ``mjpeg_mluenc``
 
 **Example**  
 

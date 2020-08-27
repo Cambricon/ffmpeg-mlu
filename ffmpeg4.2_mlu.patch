@@ -1,6 +1,6 @@
-From 98aab0aec0f9af6352a2cacac1b43e912f89bf2e Mon Sep 17 00:00:00 2001
+From 5462a490ac7ac4b7ae8c875a1e1b707f38c8a74d Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Mon, 27 Jul 2020 20:31:36 +0800
+Date: Thu, 27 Aug 2020 14:57:01 +0800
 Subject: [PATCH] gen new patch
 
 ---
@@ -9,15 +9,15 @@ Subject: [PATCH] gen new patch
  doc/examples/mlumpp_transcode.c |  396 +++++++++++
  libavcodec/Makefile             |    8 +
  libavcodec/allcodecs.c          |    8 +
- libavcodec/mlumpp_dec.c         | 1473 +++++++++++++++++++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c         | 1460 +++++++++++++++++++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c    |  153 ++++
  libavcodec/mlumpp_enc_hevc.c    |  150 ++++
  libavcodec/mlumpp_enc_jpeg.c    |  832 ++++++++++++++++++++++
  libavcodec/mlumpp_mluop.c       |  122 ++++
  libavcodec/mlumpp_mluop.h       |   33 +
- libavcodec/mlumpp_vid_enc.c     | 1041 +++++++++++++++++++++++++++
+ libavcodec/mlumpp_vid_enc.c     | 1041 ++++++++++++++++++++++++++++
  libavcodec/mlumpp_vid_enc.h     |  107 +++
- 13 files changed, 4341 insertions(+)
+ 13 files changed, 4328 insertions(+)
  create mode 100755 doc/examples/mlumpp_transcode.c
  mode change 100644 => 100755 libavcodec/Makefile
  mode change 100644 => 100755 libavcodec/allcodecs.c
@@ -639,10 +639,10 @@ index d2f9a39..311ca7a
  
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000..b96cf1f
+index 0000000..5388f31
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1473 @@
+@@ -0,0 +1,1460 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -692,12 +692,12 @@ index 0000000..b96cf1f
 +#define CNRT_ERROR_CHECK(avctx, ret)                                                       \
 +    if (ret != CNRT_RET_SUCCESS) {                                                         \
 +        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__);\
-+        return -1;                                                                         \
++        return ret;                                                                         \
 +    }
 +#define CNCODEC_ERROR_CHECK(avctx, ret)                                                     \
 +    if (ret != CNCODEC_SUCCESS) {                                                           \
 +        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__); \
-+        return -1;                                                                          \
++        return ret;                                                                          \
 +    }
 +
 +#ifdef CNCODEC_MAJOR_VERSION
@@ -943,7 +943,6 @@ index 0000000..b96cf1f
 +}
 +static inline cncodecPixelFormat mlumpp_dec_map_cn_pixfmt(char *pixfmt)
 +{
-+    cncodecPixelFormat ret;
 +    if (!strcmp("nv12", pixfmt) || !strcmp("NV12", pixfmt)) {
 +        return CNCODEC_PIX_FMT_NV12;
 +    } else if (!strcmp("nv21", pixfmt) || !strcmp("NV21", pixfmt)) {
@@ -1036,7 +1035,7 @@ index 0000000..b96cf1f
 +static int mlumpp_send_video_data(AVCodecContext *avctx,const AVPacket *avpkt, int eos)
 +{
 +    cnvideoDecInput input;
-+    int ret = -1;
++    int ret = 0;
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t*)avctx->priv_data;
 +    const int feed_timeout = (1000 / 30) * ctx->num_input_buffers * 50; // 50 is max channel number
 +    if (avpkt && avpkt->size) {
@@ -1186,7 +1185,8 @@ index 0000000..b96cf1f
 +    // if (info->minOutputBufNum + ctx->vdec_params.inputBufNum > ctx->vdec_params.outputBufNum) {
 +    //     ctx->vdec_params.outputBufNum = info->minOutputBufNum + ctx->vdec_params.inputBufNum;
 +    // }
-+    ctx->vdec_params.outputBufNum = info->minOutputBufNum + ctx->vdec_params.outputBufNum;
++    // ctx->vdec_params.outputBufNum = info->minOutputBufNum + ctx->vdec_params.outputBufNum;
++    ctx->vdec_params.outputBufNum = info->minOutputBufNum + 3;
 +    if (ctx->trace_flag) {
 +        av_log(avctx, AV_LOG_INFO, "Set input buffers: %u, output buffers : %u\n", ctx->vdec_params.inputBufNum, ctx->vdec_params.outputBufNum);
 +    }
@@ -1357,6 +1357,7 @@ index 0000000..b96cf1f
 +        }
 +        avpkt = &filtered_packet;
 +    }
++    av_packet_unref(&filter_packet);
 +    mlumpp_dec_set_cnrt_ctx(avctx,ctx->device_id,CNRT_CHANNEL_TYPE_NONE);
 +    if (avpkt && avpkt->size) {
 +        if (ctx->codec_type == CNCODEC_JPEG) {
@@ -1523,7 +1524,7 @@ index 0000000..b96cf1f
 +{
 +    MLUMPPContext_t *ctx = NULL;
 +    int ret = 0;
-+    int fifo_empty;
++    int fifo_empty = 1;
 +    if (NULL == avctx || NULL == avctx->priv_data) { //Sanity checks... these are all serious usage bugs.
 +        av_log(avctx, AV_LOG_ERROR, "Early error in \"mlumpp_output_frame\" \n");
 +        return -1;
@@ -1542,7 +1543,7 @@ index 0000000..b96cf1f
 +            av_log(avctx, AV_LOG_ERROR, "ff_get_buffer failed\n");
 +            return AVERROR(ENOMEM);
 +        }
-+        mlumpp_dec_set_cnrt_ctx(avctx,ctx->device_id,CNRT_CHANNEL_TYPE_NONE);
++        // mlumpp_dec_set_cnrt_ctx(avctx,ctx->device_id,CNRT_CHANNEL_TYPE_NONE);
 +        if (ctx->codec_type == CNCODEC_JPEG) {
 +            MLUJpegFrameInfo_t out_jframe;
 +            ff_mutex_lock(&ctx->queue_mutex);
@@ -1611,7 +1612,7 @@ index 0000000..b96cf1f
 +    }
 +    ctx = (MLUMPPContext_t*)avctx->priv_data;
 +    if (ctx->codec_abort_flag || !ctx->decoder_init_flag) {
-+        av_log(avctx, AV_LOG_ERROR, "Decoder got abort flag, return AVERROR_EXTERNAL\n");
++        av_log(avctx, AV_LOG_ERROR, "Decoder got abort flag or not init, return AVERROR_EXTERNAL\n");
 +        return AVERROR_EXTERNAL;
 +    }
 +    if (ctx->eos_received && mlumpp_is_output_empty(avctx)) {
@@ -1629,7 +1630,7 @@ index 0000000..b96cf1f
 +            ret = mlumpp_decode_packet(avctx, &pkt);
 +            av_packet_unref(&pkt);
 +            // mlumpp_is_input_available() should avoid this.
-+            if (ret == AVERROR(EAGAIN))
++            if (ret == AVERROR(EAGAIN))  //
 +                ret = AVERROR_EXTERNAL;
 +            if (ret < 0 && ret != AVERROR_EOF)
 +                return ret;
@@ -1654,7 +1655,7 @@ index 0000000..b96cf1f
 +        int count = 5000;
 +        while (!ctx->codec_abort_flag) {
 +            ret = mlumpp_output_frame(avctx, frame);
-+            if( ret == AVERROR(EAGAIN)) {
++            if( ret == AVERROR(EAGAIN)) { // output frame need wait
 +                if (ctx->eos_received && mlumpp_is_output_empty(avctx)) {
 +                    if (ctx->trace_flag)
 +                        av_log(avctx, AV_LOG_INFO, "eos_received AVERROR_EOF\n");
@@ -1663,7 +1664,8 @@ index 0000000..b96cf1f
 +                av_usleep(1000);
 +                --count;
 +                if(count <= 0) {
-+                    av_log(avctx, AV_LOG_ERROR, "[%lu] Receive frame TIMEOUT->EOF\n", (long unsigned)pthread_self());
++                    av_log(avctx, AV_LOG_ERROR, "[%lu] Receive frame TIMEOUT->EOF\n",
++                          (long unsigned)pthread_self());
 +                    return AVERROR_EOF;
 +                }
 +                continue;
@@ -1711,7 +1713,7 @@ index 0000000..b96cf1f
 +    MLUMPPContext_t *ctx = NULL;
 +    int ret = -1;
 +    cnrtRet_t cnrt_ret;
-+    if (NULL == avctx || NULL == avctx->priv_data) { //Sanity checks... these are all serious usage bugs.
++    if (NULL == avctx || NULL == avctx->priv_data) { // Sanity checks... these are all serious usage bugs.
 +        av_log(avctx, AV_LOG_ERROR, "Early error in \"mlumpp_decode_end\" \n");
 +        return -1;
 +    }
@@ -1722,45 +1724,30 @@ index 0000000..b96cf1f
 +    }
 +    // flush cached decoded frames to release output buffers
 +    empty_frame_fifo(avctx);
-+    mlumpp_dec_set_cnrt_ctx(avctx,ctx->device_id,CNRT_CHANNEL_TYPE_NONE);
-+    if (!ctx->decoder_flushing && ctx->handle != NULL) {
-+        if (mlumpp_is_input_available(avctx, 0) && !ctx->codec_abort_flag) {
-+            int timeout = (1000 / 30) * ctx->num_input_buffers * 50; // 50 is max channel number
-+            if (ctx->codec_type == CNCODEC_JPEG) {
-+                cnjpegDecInput jpeg_in;
-+                memset(&jpeg_in, 0, sizeof(cnjpegDecInput));
-+                jpeg_in.flags = CNJPEGDEC_FLAG_EOS;
-+                if (ctx->handle) {
-+                    ret = cnjpegDecFeedData(ctx->handle, &jpeg_in, timeout);
-+                    if (ret != 0) {
-+                        av_log(avctx, AV_LOG_ERROR, "Failed to feed EOS data for jpeg dec\n");
-+                    }
-+                }
-+            } else {
-+                cnvideoDecInput data_in;
-+                memset(&data_in, 0, sizeof(cnvideoDecInput));
-+                data_in.flags = CNVIDEODEC_FLAG_EOS;
-+                if (ctx->handle) {
-+                    ret = cnvideoDecFeedData(ctx->handle, &data_in, timeout);
-+                    if (ret != 0) {
-+                        av_log(avctx, AV_LOG_ERROR, "Failed to feed EOS data for vdec\n");
-+                    }
-+                }
-+                sem_post(&ctx->eos_sema);
-+            }
-+            ctx->decoder_flushing = 1;
-+        } else {
-+            if (ctx->codec_type == CNCODEC_JPEG) {
-+                if (ctx->handle)
-+                    cnjpegDecAbort(ctx->handle);
-+                    ctx->handle = NULL;
-+            } else {
-+                if (ctx->handle)
-+                    cnvideoDecAbort(ctx->handle);
-+                    ctx->handle = NULL;
-+            }
-+            goto abort_exit;
++    int time_cnt = 1000;
++    // wait eos cb: 1s
++    while (!ctx->eos_received && time_cnt >=0) {
++        av_usleep(1000);
++        time_cnt--;
++    }
++    if (!ctx->eos_received) {
++        empty_frame_fifo(avctx);
++        if (ctx->handle) {
++            cnvideoDecStop(ctx->handle);
 +        }
++        goto abort_exit;
++    }
++    if (!ctx->decoder_flushing && ctx->handle != NULL) {
++        if (ctx->codec_type == CNCODEC_JPEG) {
++            if (ctx->handle)
++                cnjpegDecAbort(ctx->handle);
++                ctx->handle = NULL;
++        } else {
++            if (ctx->handle)
++                cnvideoDecAbort(ctx->handle);
++                ctx->handle = NULL;
++        }
++        goto abort_exit;
 +    }
 +    sem_wait(&ctx->eos_sema);
 +    // flush cached decoded frames again
