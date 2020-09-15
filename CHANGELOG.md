@@ -1,3 +1,13 @@
+# Cambricon® ffmpeg-mlu open source release v1.1.1!
+**Whats new**
+ - Fix decoder eos event doesn't come back, sometimes.
+ - Fix encode warnig: deinitEncoder wait app release output buffer timeout.
+ - Supported decoder&encoder open-close test.
+ - Supported ffmpeg-mlu version info print.
+ - Supported mlu decoder hardware scale postproc.
+ - Supported mlu encoder hardware scale preproc.
+ - Supports for ``neuware-mlu270-1.4.0 or later``.
+
 # Cambricon® ffmpeg-mlu open source release v1.1.0!
 **Whats new**
  - Supported mlu h264/hevc/vp8/vp9/mjpeg decoder.
