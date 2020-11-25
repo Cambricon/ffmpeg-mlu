@@ -11,10 +11,10 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
     - Ubuntu
 	- Centos
 	- Debian
-- Cambricon MLU Driver: 
-    - neuware-mlu270-driver-4.2.0 or later.
+- Cambricon MLU Driver:
+    - neuware-mlu270-driver-4.7.0 or later.
 - Cambricon MLU SDK: 
-    - neuware-mlu270-1.4.0-1 or later.
+    - cntookit-mlu270-1.5.0-1 or later.
 
 ## Patch and Build FFmpeg-MLU ## 
 
@@ -159,6 +159,8 @@ This section introduces how to improve the performance.
 |qp|int|Constant QP rate control method, same as FFmpeg cqp. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |vbr_minqp|int|Variable bitrate mode with MinQP, same as FFmepg qmin. <br>Supported values range from **0** to **51**. <br>The default value is **0**.|
 |vbr_maxqp|int|Variable bitrate mode with MaxQP, same as FFmpeg qmax. <br>Supported values range from **0** to **51**. <br>The default value is **51**.|
+|sar|string|Variable vui sar (width):(height)。 <br>Supported values are **16:11** or getting from stream. <br>Thes default value is **0:0**。|
+|rc|string|Encoder bitrate mode param. <br>Supported values are **vbr/cbr/cqp**。 <br>The default value is **vbr**。|
 
 (Notice) Also supports regular ffmpeg settings,such as ``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, please refers to ffmpeg official documents。
 

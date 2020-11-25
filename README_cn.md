@@ -12,9 +12,9 @@
 	- Centos
 	- Debian
 - 寒武纪MLU驱动: 
-    - neuware-mlu270-driver-4.2.0或更高版本。
+    - neuware-mlu270-driver-4.7.0或更高版本(推荐)。
 - 寒武纪MLU SDK: 
-    - neuware-mlu270-1.4.0-1或更高版本。
+    - cntookit-mlu270-1.5.0-1或更高版本。
 	
 ## 补丁、编译FFmpeg-MLU ## 
 
@@ -159,6 +159,8 @@ FFmpeg-MLU支持的视频编码格式如下：
 |qp|int|恒定QP控制方法，同FFmpeg cqp。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |vbr_minqp|int|可变比特率模式，并提供MinQP，同FFmepg qmin。 <br>支持设置的值的范围为：**0** - **51**。 <br>默认值为 **0**。|
 |vbr_maxqp|int|可变比特率模式，并提供MaxQP，同FFmpeg qmax。 <br>支持设置的值的范围为：**0** - **51**。 <br>默认值为 **51**。|
+|sar|string|设置编码器sar (宽):(高)。 <br>可以设置为: **16:11** 或直接读取视频流的值。 <br>默认为 **0:0**。|
+|rc|string|编码码率控制模式参数。 <br>可以设置为: **vbr/cbr/cqp**。 <br>默认为 **vbr**。|
 
 (通用) 支持常规ffmpeg的设置：``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, 具体意义及值范围请参考ffmpeg官方文档。
 

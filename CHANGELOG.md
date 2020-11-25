@@ -1,3 +1,12 @@
+# Cambricon® ffmpeg-mlu open source release v1.1.2!
+**Whats new**
+ - Supported encoder rate control mode(vbr/cbr/cqp).
+ - Supported setting encoder vui sar attribute.
+ - Modified encoder&decoder log level.
+ - Modified getting encoder header info in init function.
+ - Fixed decoder timing logic bug with decoder emptying frame queue.
+ - Supports for ``cntookit-mlu270-1.5.0 or later``.
+
 # Cambricon® ffmpeg-mlu open source release v1.1.1!
 **Whats new**
  - Fix decoder eos event doesn't come back, sometimes.
