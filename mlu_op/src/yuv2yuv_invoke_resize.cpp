@@ -28,7 +28,7 @@
 
 #include "cnrt.h"
 #include "mluop.h"
-#include "mlu_loging.hpp"
+// #include "mlu_loging.hpp"
 
 using std::string;
 using std::to_string;

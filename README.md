@@ -14,7 +14,7 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
 - Cambricon MLU Driver:
     - neuware-mlu270-driver-4.7.0 or later.
 - Cambricon MLU SDK: 
-    - cntookit-mlu270-1.5.0-1 or later.
+    - cntookit-mlu270-1.5.0-1 or later, but must be less than 1.7.0 .
 
 ## Patch and Build FFmpeg-MLU ## 
 
@@ -152,15 +152,16 @@ This section introduces how to improve the performance.
 |cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
 |input_buf_num|int|Number of input buffers for encoder. <br>Supported values range from **1** to **18**. <br>The default value is **3**.|
 |output_buf_num|int|Number of output buffers for encoder. <br>Supported values range from **1** to **18**. <br>The default value is **5**.|
-|trace|int|MLU FFmpeg debug switch. <br>Supported values are: <br>- **0** Represents disabled.<br>- **1**: Represents enabled. <br>The default value is **0**.|
+|trace|int|MLU FFmpeg debug switch. <br>Supported values are: <br>- **0** Represents disabled.<br>- **2**: Represents enabled. <br>The default value is **0**.|
 |init_qpP|int|Initial QP value for P frame, set P frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |init_qpI|int|Initial QP value for I frame, set I frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |init_qpB|int|Initial QP value for B frame, set B frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |qp|int|Constant QP rate control method, same as FFmpeg cqp. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
 |vbr_minqp|int|Variable bitrate mode with MinQP, same as FFmepg qmin. <br>Supported values range from **0** to **51**. <br>The default value is **0**.|
 |vbr_maxqp|int|Variable bitrate mode with MaxQP, same as FFmpeg qmax. <br>Supported values range from **0** to **51**. <br>The default value is **51**.|
-|sar|string|Variable vui sar (width):(height)。 <br>Supported values are **16:11** or getting from stream. <br>Thes default value is **0:0**。|
-|rc|string|Encoder bitrate mode param. <br>Supported values are **vbr/cbr/cqp**。 <br>The default value is **vbr**。|
+|sar|string|Variable vui sar (width):(height)。 <br>Supported values are **16:11** or getting from stream. <br>Thes default value is **0:0**.|
+|rc|string|Encoder bitrate mode param. <br>Supported values are **vbr/cbr/cqp**。 <br>The default value is **vbr**.|
+|stride_align|int|Video encoder stride align of output buffers for encoder, only for video encoder. <br>Supported values range from **1** to **128**, can be **2^(0 - 7)**. <br>The default value is **1**.|
 
 (Notice) Also supports regular ffmpeg settings,such as ``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, please refers to ffmpeg official documents。
 

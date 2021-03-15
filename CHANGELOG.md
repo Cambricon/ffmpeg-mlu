@@ -1,3 +1,9 @@
+# Cambricon® ffmpeg-mlu open source release v1.2.0!
+**Whats new**
+ - Supported setting encoder stride alignment attribute.
+ - Supported decoder&encoder resolution limiting.
+ - Supports for ``cntookit-mlu270-1.5.0 or later``.
+
 # Cambricon® ffmpeg-mlu open source release v1.1.2!
 **Whats new**
  - Supported encoder rate control mode(vbr/cbr/cqp).

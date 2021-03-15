@@ -1,0 +1,574 @@
+/*************************************************************************
+ * Copyright (C) [2019] by Cambricon, Inc.
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ **************************************************************************/
+#include <sys/time.h>
+#include "mlu.h"
+#include "BANG_LOG.h"
+
+#define MAX_SEGMENT 8*1024
+#define MAX_SEGMENT_HF (4*1024)
+#define BUFFER_SIZE (MAX_SEGMENT*27 + 3*256)
+#define MAX_SEGMENT_SM 120*1024
+#define MAX_SEGMENT_SM_HF 60*1024
+#define SCALE 128.0
+#define NORM 100.0
+#define PAD_SIZE 16
+#define PAD_UX(x, p) (x / p + (int)(x % p > 0)) * p
+#define PAD_UP(x) (x / PAD_SIZE + (int)(x % PAD_SIZE > 0)) * PAD_SIZE
+#define PAD_DN(x) (x / PAD_SIZE) * PAD_SIZE
+#define CI 32
+
+// generate mask && weightX to select proper point column-wisely
+// using the formula posSrc = (posDst + 0.5) * scale - 0.5
+// integer part of posSrc will be the index
+// fractional part of posSrc will be (1 - weight)
+/*
+ *      | wx0 | wx1 |
+ * [Y0X0]-----------[Y0X1]
+ *            |
+ *        wy0 | wy0
+ *            |
+ *       -----------
+ *            |
+ *        wy1 | wy1
+ *            |
+ * [Y1X0]-----------[Y1X1]
+ *
+*/
+
+__mlu_func__ void genMaskAndWeights(
+    half* weightX,
+    half* maskX0,
+    half* maskX1,
+    half* maskUV,
+    half* maskUV1,
+    int scaleX,
+    int d_col,
+    int s_col,
+    int dstDealNum,
+    int colLimit) {
+
+  // Initial posSrc where posDst = 0: (800/600*0.5-0.5)*65536
+  int posX = scaleX / 2 - 32768;
+  half fx = 0.0;                  // fractional part
+  int sx = 0;                     // integer part
+  half wx0 = 0.0;                 // weight for left point
+  half wx1 = 0.0;                 // weight for right point
+  int jPrev = 0;
+  int sxPrev = -1;
+  int offsetW0 = 0;
+  int offsetW1 = 0;
+  int trueIdx0 = 0;
+  int trueIdx1 = 0;
+  int seg = s_col/64;
+
+  for (int i = 0; i < 64; i++) {
+      maskUV[i] = i%2;
+      maskUV1[i] = (half)1.f - maskUV[i];
+  }
+
+  for (int i = 1; i < seg; i++) {
+      __memcpy(maskUV + i*64, maskUV, 64*sizeof(half), NRAM2NRAM);
+      __memcpy(maskUV1 + i*64, maskUV1, 64*sizeof(half), NRAM2NRAM);
+  }
+
+  for (int j = 0; j < d_col; j++) {
+    // For each point in dst image, we can uniquely determine
+    // a point in src image. In down-scaling mode, n dst points
+    // has n distict src points, however in up-scaling mode, n dst
+    // points can share 1 src points. This results in the replication
+    // of src image later in the code.
+    half test = (half)((posX & 0xFFFF)>>1);
+    fx = (half)((posX & 0xFFFF) >> 1) / 32768 * (int)(posX > 0);
+    sx = (posX >> 16) * (int)(posX > 0);
+    fx = fx * (int)(sx < colLimit);
+    sx = min(sx, colLimit);
+   /* wx0 = (((half)1.f - fx) * SCALE);
+      wx1 = (half)SCALE - wx0;
+   */
+    wx0 = ((half)1.f - fx);
+    wx1 = (half)1.f - wx0;
+
+    posX += scaleX;
+
+    jPrev  = j * (sxPrev != sx) + jPrev * (sxPrev == sx);
+    sxPrev = sx;
+    offsetW0 = j;
+    offsetW1 = j + dstDealNum;
+    trueIdx0 = sx + (j - jPrev);
+    trueIdx1 = (sx+1) + (j - jPrev);
+
+    weightX[offsetW0++] = wx0;
+    weightX[offsetW1++] = wx1;
+    maskX0[trueIdx0++] = 1;
+    maskX1[trueIdx1++] = 1;
+  }
+}
+
+__mlu_func__ void genKernel(short *dst, short *dst1, short* dst2) {
+    __nramset(dst, 32*64, (short)(0));
+    __nramset(dst1, 32*64, (short)(0));
+    __nramset(dst2, 32*64, (short)(0));
+    int index = 0;
+    int index_ = 0;
+    for (int i = 0; i < 32; i++) {
+        dst[2*i*32 + i] = (short)(1);
+        dst[(2*i+1)*32 + i] = (short)(1);
+        dst1[2*i*32 + i] = (short)(1);
+        dst1[(2*i+1)*32 + i] = (short)(0);
+        dst2[2*i*32 + i] = (short)(0);
+        dst2[(2*i+1)*32 + i] = (short)(1);
+    }
+}
+
+__mlu_func__ void resize(half *src0,
+                         half *src1,
+                         half *src_e0,
+                         half *src_e1,
+                         half *maskX0,
+                         half *maskX1,
+                         half *weightX,
+                         half *wy0,
+                         half *wy1,
+                         int src_size,
+                         int dst_size) {
+      __bang_collect(src_e0,
+                     src0,
+                     maskX0, src_size);
+      __bang_collect(src_e0 + dst_size,
+                     src0,
+                     maskX1, src_size);
+      __bang_collect(src_e1,
+                     src1,
+                     maskX0, src_size);
+      __bang_collect(src_e1 + dst_size,
+                     src1,
+                     maskX1, src_size);
+      __bang_mul(src_e0, src_e0, weightX,
+                 dst_size*2);
+      __bang_add(src0, src_e0, src_e0 + dst_size,
+                 dst_size);
+      __bang_mul(src_e1, src_e1, weightX,
+                 dst_size*2);
+      __bang_add(src1, src_e1, src_e1 + dst_size,
+                 dst_size);
+      __bang_mul_const(src0, src0, wy0[coreId], dst_size);
+      __bang_mul_const(src1, src1, wy1[coreId], dst_size);
+      __bang_add(src0, src0, src1, dst_size);
+}
+
+/*---------------------------- MLU ENTRY FUNCTION ----------------------------*/
+// reSized:         resize operation (support down scale)
+// src_gdram:       src image addrs in gdram
+// dst_gdram:       dst image addrs in gdram
+// s_row:           number of row of src image
+// s_col:           number of col of src image
+// d_row:           number of row of dst image
+// d_col:           number of col of dst image
+__mlu_entry__ void resizeKernel(
+    char* dst_gdram, char** Ysrc_gdram, char** UVsrc_gdram,
+    int s_row, int s_col, int d_row, int d_col,
+    int batch) {
+#if 1
+  struct timeval tstart;
+  struct timeval tend;
+  uint32_t time_usec;
+  gettimeofday(&tstart, NULL);
+#endif
+
+  //---------------------- Initialization ----------------------//
+  int d_col_pad = PAD_UX(d_col, 64);
+  int dstDealNum = min(MAX_SEGMENT, d_col_pad);
+  int s_col_pad = PAD_UX(s_col, 64);
+  int srcDealNum = min(MAX_SEGMENT, s_col_pad);
+  int repeat     = d_col_pad / dstDealNum;
+  int remainder  = d_col_pad % dstDealNum;
+  int scaleX = (s_col << 16) / (d_col);
+  int scaleY = (s_row << 16) / (d_row);
+
+  PRINTF_SCALAR("===== param check =====\n");
+  PRINTF_SCALAR("d_col_pad: %d\n", d_col_pad);
+  PRINTF_SCALAR("d_col: %d\n", d_col);
+  PRINTF_SCALAR("dstDealNum: %d\n", dstDealNum);
+  PRINTF_SCALAR("s_col_pad: %d\n", s_col_pad);
+  PRINTF_SCALAR("d_col: %d\n", d_col);
+  PRINTF_SCALAR("srcDealNum: %d\n", srcDealNum);
+  PRINTF_SCALAR("scaleX: %d\n", scaleX);
+  PRINTF_SCALAR("scaleY: %d\n", scaleY);
+
+  // Memory alloc
+  __nram__ short convkernel[32*64];
+  __nram__ short sumkernel0[32*64];
+  __nram__ short sumkernel1[32*64];
+  __nram__ half buffer[BUFFER_SIZE];
+  __nram__ half wy0[4];
+  __nram__ half wy1[4];
+  __nram__ half temp_[64];
+  half* weightX = buffer;
+  half* maskX0  =  weightX + 2*MAX_SEGMENT;
+  half* maskX1 = maskX0 + 2*MAX_SEGMENT;
+  half* sLine0 = maskX1 + 2*MAX_SEGMENT;
+  half* sLine1 = sLine0 + MAX_SEGMENT;
+  half* sUV0 = sLine1 + MAX_SEGMENT;
+  half* sUV1 = sUV0 + MAX_SEGMENT;
+  half* sLine0_e = sUV1 + MAX_SEGMENT;
+  half* sLine1_e = sLine0_e + 2*MAX_SEGMENT;
+  half* sU0 = sLine1_e + 2*MAX_SEGMENT;
+  half* sU1 = sU0 + 2*MAX_SEGMENT;
+  half* sV0 = sU1 + 2*MAX_SEGMENT;
+  half* sV1 = sV0 + 2*MAX_SEGMENT;
+  half* UVmask = sV1 + 2*MAX_SEGMENT + 256;
+  half* UVmask1 = UVmask + MAX_SEGMENT;
+  half* src = UVmask1 + MAX_SEGMENT;
+  half* SU_r = src + 2*MAX_SEGMENT;
+  half* SV_r = SU_r + MAX_SEGMENT + 256;
+
+  half* temp;
+
+  int rowLimit = s_row - 1;
+  int colLimit = s_col - 1;
+  int posY = scaleY / 2 - 32768;
+  int dst_index = 0;
+  int uv_index = 0;
+  int pos_index = 0;
+  int PY = 0;
+  __mlu_shared__ half sram_buffer[MAX_SEGMENT_SM];
+  __mlu_shared__ half dst_sram_buffer[MAX_SEGMENT_SM];
+
+  __wram__ short cpySyn[32*64];
+  __wram__ short sumkernel0_[32*64];
+  __wram__ short sumkernel1_[32*64];
+
+  genKernel(convkernel, sumkernel0, sumkernel1);
+  __memcpy(cpySyn, convkernel, 32*64*sizeof(short), NRAM2WRAM);
+  __memcpy(sumkernel0_, sumkernel0, 32*64*sizeof(short), NRAM2WRAM);
+  __memcpy(sumkernel1_, sumkernel1, 32*64*sizeof(short), NRAM2WRAM);
+
+  __bang_write_zero(maskX0, srcDealNum);
+  __bang_write_zero(maskX1, srcDealNum);
+
+  genMaskAndWeights(weightX, maskX0, maskX1, UVmask, UVmask1,
+                    scaleX, d_col, s_col_pad,
+                    dstDealNum, colLimit);
+
+  __nramset(temp_, 64, 127);
+
+  // determin batch
+  int batchseg = batch/clusterDim;
+  int batchremain  = batch%clusterDim;
+  int batchNum = batchseg + (int)(batchremain > clusterId);
+  int start = clusterId*batchNum + min(clusterId, batchremain);
+  int end = start + batchNum;
+  int colseg = s_col/(MAX_SEGMENT);
+
+  for (int batchId = start; batchId < end; batchId++) {
+  // determin one image
+      posY = scaleY / 2 - 32768;
+      dst_index = 0;
+      uv_index = 0;
+      pos_index = 0;
+      PY = 0;
+
+      if (colseg != 0) {
+      // TODO(lewis) : need add
+      } else {
+         int rowseg = d_row/(2*coreDim);
+         rowseg = 2*rowseg;
+         int rowremain = d_row%(2*coreDim);
+         half fy = 0.0;
+         int sy = 0;
+         int offset = 0;
+         int offset0 = 0;
+         int offset1 = 0;
+        // int offset0_pad = 0;
+        // int offset1_pad = 0;
+         int offset0_ = 0;
+         int offset1_ = 0;
+        // int offset0_pad_ = 0;
+        // int offset1_pad_ = 0;
+         int size = srcDealNum * sizeof(char);
+         int parity_s = 0;
+         int parity_c = 0;
+         int pad_uv = 0;
+         int pad_uv_r = 0;
+         int pad_dst = 0;
+         pad_uv = PAD_UX(srcDealNum/2, 64);
+         pad_uv_r = PAD_UX(dstDealNum/2, 64);
+         pad_dst = PAD_UX(dstDealNum, 128);
+         char *ysrc_gdram = Ysrc_gdram[batchId];
+         char *uvsrc_gdram = UVsrc_gdram[batchId];
+
+         if (rowseg != 0) {
+             parity_s ^= 1;
+             for (int j = 0; j < coreDim; j++) {
+                 PY = posY + pos_index*scaleY + j*rowseg*scaleY;
+                 fy = (half)((PY & 0xFFFF) >> 1) / 32768 * (int)(PY > 0);
+                 sy = (PY >> 16) * (int)(PY > 0);
+                 fy = fy * (int)(sy < rowLimit) + (int)(sy == rowLimit);
+                 sy = min(sy, rowLimit - 1);
+                 wy0[j] = ((half)1.f - fy);
+                 wy1[j] = (half)1.f - wy0[j];
+                 offset0 = (sy * s_col);
+                 offset1 = ((sy+1) * s_col);
+                 offset0_ = ((sy/2) * s_col);
+                 offset1_ = (((sy+1)/2) *s_col);
+                 __memcpy((unsigned char *)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF,   // NOLINT        
+                          (unsigned char *)ysrc_gdram + offset0,
+                          size, GDRAM2SRAM);
+
+                 __memcpy((unsigned char*)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF + srcDealNum,  // NOLINT
+                         (unsigned char*)ysrc_gdram + offset1,
+                          size, GDRAM2SRAM);
+
+                 __memcpy((unsigned char *)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF + 2*srcDealNum,  // NOLINT
+                          (unsigned char *)uvsrc_gdram + offset0_,
+                          size, GDRAM2SRAM);
+
+                 __memcpy((unsigned char *)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF + 3*srcDealNum,  // NOLINT
+                          (unsigned char *)uvsrc_gdram + offset1_,
+                          size, GDRAM2SRAM);
+
+                 offset += 4*srcDealNum;
+             }
+             pos_index++;
+
+             __sync_cluster();
+
+             for (int i = 0; i < rowseg - 1; i++) {
+                  parity_c ^= 1;
+                 __memcpy((unsigned char *)src + parity_c*4*MAX_SEGMENT_HF,
+                          (unsigned char *)sram_buffer + parity_s*MAX_SEGMENT_SM_HF + coreId*4*srcDealNum,  // NOLINT
+                          4*size, SRAM2NRAM);
+                 __bang_uchar2half(sLine0,
+                                   (unsigned char*)src + parity_c*4*MAX_SEGMENT_HF,  // NOLINT
+                                   srcDealNum * 4);
+
+                 // resize compute
+                 temp = src + parity_c*2*MAX_SEGMENT_HF;
+                 __bang_collect(temp, sLine0 + 2*srcDealNum,
+                                UVmask, srcDealNum);
+
+                 __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+                 __bang_conv(sU0, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                             pad_uv/CI, 1, 1, 1, 1, CI * 2, 0);
+                  __bang_collect(temp, sLine0 + 3*srcDealNum,
+                                UVmask, srcDealNum);
+                 __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+                 __bang_conv(sU1, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                             pad_uv/CI, 1, 1, 1, 1, CI * 2, 0);
+
+                 __bang_collect(temp, sLine0 + 2*srcDealNum,
+                                UVmask1, srcDealNum);
+
+                 __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+                 __bang_conv(sV0, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                             pad_uv/CI, 1, 1, 1, 1, CI * 2, 0);
+                 __bang_collect(temp, sLine0 + 3*srcDealNum,
+                                UVmask1, srcDealNum);
+
+                 __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+                 __bang_conv(sV1, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                             pad_uv/CI, 1, 1, 1, 1, CI * 2, 0);
+                 resize(sLine0, sLine0+srcDealNum, sLine0_e, sLine1_e,
+                        maskX0, maskX1, weightX,
+                        &wy0, &wy1, srcDealNum, dstDealNum);
+
+                 resize(sU0, sU1, sLine0_e, sLine1_e, maskX0, maskX1, weightX,
+                        &wy0, &wy1, srcDealNum, dstDealNum);
+
+                 resize(sV0, sV1, sLine0_e, sLine1_e, maskX0, maskX1, weightX,
+                        &wy0, &wy1, srcDealNum, dstDealNum);
+
+                 temp = sLine0+srcDealNum;
+                 __bang_cycle_gt(temp, sLine0, temp_, dstDealNum, 64);
+                 __bang_mul_const(temp, temp, 256, dstDealNum);
+                 __bang_sub(sLine0, sLine0, temp, dstDealNum);
+                 __bang_half2uchar_dn((signed char*)sLine0, sLine0, pad_dst);
+
+                 if (parity_c == 1) {
+                      __memcpy(SU_r, sU0, dstDealNum*sizeof(half), NRAM2NRAM);
+                      __memcpy(SV_r, sV0, dstDealNum*sizeof(half), NRAM2NRAM);
+                 }
+                 // copy from ddr to sm
+                 parity_s = parity_s^1;
+                 offset = 0;
+                 for (int j = 0; j < coreDim; j++) {
+                     PY = posY+ pos_index*scaleY + j*rowseg*scaleY;
+                     fy = (half)((PY & 0xFFFF) >> 1) / 32768 * (int)(PY > 0);
+                     sy = (PY >> 16) * (int)(PY > 0);
+                     fy = fy * (int)(sy < rowLimit) + (int)(sy == rowLimit);
+                     sy = min(sy, rowLimit - 1);
+                     wy0[j] = ((half)1.f - fy);
+                     wy1[j] = (half)1.f - wy0[j];
+                     offset0 = (sy * s_col);
+                     offset1 = ((sy+1) * s_col);
+                     offset0_ = ((sy/2) * s_col);
+                     offset1_ = (((sy+1)/2)*s_col);
+
+                     __memcpy((unsigned char *)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF,  // NOLINT
+                              (unsigned char*)ysrc_gdram + offset0,
+                              size, GDRAM2SRAM);
+                     __memcpy((unsigned char*)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF + srcDealNum,  // NOLINT
+                              (unsigned char*)ysrc_gdram + offset1,
+                              size, GDRAM2SRAM);
+                     __memcpy((unsigned char *)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF + 2*srcDealNum,  // NOLINT
+                              (unsigned char *)uvsrc_gdram + offset0_,
+                              size, GDRAM2SRAM);
+                     __memcpy((unsigned char *)sram_buffer + offset + parity_s*MAX_SEGMENT_SM_HF + 3*srcDealNum,  // NOLINT
+                              (unsigned char *)uvsrc_gdram + offset1_,
+                              size, GDRAM2SRAM);
+                     offset += 4*srcDealNum;
+                 }
+                 pos_index++;
+                 __sync_cluster();
+
+                 // ct to ddr
+                 __memcpy((char *)dst_gdram + batchId*(d_row*d_col + (d_row*d_col)/2) + coreId*rowseg*d_col + dst_index*d_col,  // NOLINT
+                          (char *)sLine0, d_col*sizeof(char), NRAM2GDRAM);
+
+                 dst_index++;
+                 if (parity_c == 0) {
+                    __bang_add(SU_r, SU_r, sU0, dstDealNum);
+                    __bang_add(SV_r, SV_r, sV0, dstDealNum);
+                    __bang_collect(sU0, SU_r, UVmask, dstDealNum);
+                    __bang_collect(sV0, SV_r, UVmask, dstDealNum);
+                    __bang_collect(sU1, SU_r, UVmask1, dstDealNum);
+                    __bang_collect(sV1, SV_r, UVmask1, dstDealNum);
+
+                    __bang_add(SU_r, sU1, sU0, pad_uv_r);
+                    __bang_add(SV_r, sV1, sV0, pad_uv_r);
+                    __bang_mul_const(sU0, SU_r, 0.25, pad_uv_r);
+                    __bang_mul_const(sV0, SV_r, 0.25, pad_uv_r);
+
+                    __bang_half2int16_rd((short *)sLine0_e, sU0, pad_uv_r, 0);
+                    __bang_half2int16_rd((short *)sLine1_e, sV0, pad_uv_r, 0);
+
+                    __bang_conv(SU_r, (short *)sLine0_e, (short *)sumkernel1_,
+                                CI, 1, pad_uv_r/CI, 1, 1, 1, 1, CI*2, 0);
+                    __bang_conv(SV_r, (short *)sLine1_e, (short *)sumkernel0_,
+                                CI, 1, pad_uv_r/CI, 1, 1, 1, 1, CI*2, 0);
+
+                    __bang_add(SU_r, SU_r, SV_r, dstDealNum);
+
+                    __bang_cycle_gt(sV0, SU_r, temp_, dstDealNum, 64);
+                    __bang_mul_const(sV0, sV0, 256, dstDealNum);
+                    __bang_sub(sV0, SU_r, sV0, dstDealNum);
+                    __bang_half2uchar_dn((signed char*)SU_r, sV0, pad_dst);
+
+                    __memcpy((char *)dst_gdram + batchId*(d_row*d_col + (d_row*d_col)/2) + d_row*d_col + coreId*(rowseg/2)*d_col + uv_index*d_col, // NOLINT
+                             (char*)SU_r, d_col*sizeof(char), NRAM2GDRAM);
+
+                    uv_index++;
+                 }
+             }
+
+             parity_c ^= 1;
+             __memcpy((unsigned char *)src + parity_c*4*MAX_SEGMENT_HF,
+                      (unsigned char *)sram_buffer + parity_s*MAX_SEGMENT_SM_HF + coreId*4*srcDealNum,  // NOLINT
+                       4*size, SRAM2NRAM);
+
+             // resize compute
+             __bang_uchar2half(sLine0,
+                               (unsigned char*)src + parity_c*4*MAX_SEGMENT_HF,
+                               srcDealNum * 4);
+
+             temp = src + parity_c*2*MAX_SEGMENT_HF;
+             __bang_collect(temp, sLine0 + 2*srcDealNum, UVmask, srcDealNum);
+             __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+
+             __bang_conv(sU0, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                         pad_uv / CI, 1, 1, 1, 1, CI * 2, 0);
+
+             __bang_collect(temp, sLine0 + 3*srcDealNum, UVmask, srcDealNum);
+
+             __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+
+             __bang_conv(sU1, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                         pad_uv / CI, 1, 1, 1, 1, CI * 2, 0);
+             // UVmask PADSIZE
+             __bang_collect(temp, sLine0 + 2*srcDealNum,
+                            UVmask1, srcDealNum);
+             __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+             __bang_conv(sV0, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                         pad_uv / CI, 1, 1, 1, 1, CI * 2, 0);
+
+             __bang_collect(temp, sLine0 + 3*srcDealNum,
+                            UVmask1, srcDealNum);
+             __bang_half2int16_rd((short *)sLine0_e, temp, pad_uv, 0);
+             __bang_conv(sV1, (short *)sLine0_e, (short *)cpySyn, CI, 1,
+                         pad_uv / CI, 1, 1, 1, 1, CI * 2, 0);
+             resize(sLine0, sLine0+srcDealNum, sLine0_e, sLine1_e, maskX0,
+                    maskX1, weightX, &wy0, &wy1, srcDealNum, dstDealNum);
+             resize(sU0, sU1, sLine0_e, sLine1_e, maskX0, maskX1, weightX,
+                    &wy0, &wy1, srcDealNum, dstDealNum);
+             resize(sV0, sV1, sLine0_e, sLine1_e, maskX0, maskX1, weightX,
+                    &wy0, &wy1, srcDealNum, dstDealNum);
+
+             temp = sLine0 + MAX_SEGMENT;
+             __bang_cycle_gt(temp, sLine0, temp_, dstDealNum, 64);
+             __bang_mul_const(temp, temp, 256, dstDealNum);
+             __bang_sub(temp, sLine0, temp, dstDealNum);
+             __bang_half2uchar_dn((signed char*)sLine0, temp, pad_dst);
+             // ct to sm && sm to ddr
+             __memcpy((char *)dst_gdram + batchId*(d_row*d_col + (d_row*d_col)/2) + coreId*rowseg*d_col + dst_index*d_col, // NOLINT
+                      (char *)sLine0, d_col*sizeof(char), NRAM2GDRAM);
+             dst_index++;
+
+             if (parity_c == 0) {
+                 __bang_add(SU_r, SU_r, sU0, dstDealNum);
+                 __bang_add(SV_r, SV_r, sV0, dstDealNum);
+                 __bang_collect(sU0, SU_r, UVmask, dstDealNum);
+                 __bang_collect(sV0, SV_r, UVmask, dstDealNum);
+                 __bang_collect(sU1, SU_r, UVmask1, dstDealNum);
+                 __bang_collect(sV1, SV_r, UVmask1, dstDealNum);
+
+                 __bang_add(SU_r, sU1, sU0, pad_uv_r);
+                 __bang_add(SV_r, sV1, sV0, pad_uv_r);
+                 __bang_mul_const(sU0, SU_r, 0.25, pad_uv_r);
+                 __bang_mul_const(sV0, SV_r, 0.25, pad_uv_r);
+
+                 __bang_half2int16_rd((short *)sLine0_e, sU0, pad_uv_r, 0);
+
+                 __bang_half2int16_rd((short *)sLine1_e, sV0, pad_uv_r, 0);
+
+                 __bang_conv(SU_r, (short *)sLine0_e, (short *)sumkernel1_,
+                             CI, 1, pad_uv_r /(CI), 1, 1, 1, 1, CI*2, 0);
+
+                 __bang_conv(SV_r, (short *)sLine1_e, (short *)sumkernel0_,
+                             CI, 1, pad_uv_r /(CI), 1, 1, 1, 1, CI*2, 0);
+
+                 __bang_add(SU_r, SU_r, SV_r, dstDealNum);
+                 __bang_cycle_gt(sV0, SU_r, temp_, dstDealNum, 64);
+                 __bang_mul_const(sV0, sV0, 256, dstDealNum);
+                 __bang_sub(sV0, SU_r, sV0, dstDealNum);
+                 __bang_half2uchar_dn((signed char*)SU_r, sV0, pad_dst);
+                 __memcpy((char *)dst_gdram + batchId*(d_row*d_col + (d_row*d_col)/2) + d_row*d_col + coreId*(rowseg/2)*d_col + uv_index*d_col,  // NOLINT
+                          (char*)SU_r, d_col*sizeof(char), NRAM2GDRAM);
+
+                 uv_index++;
+             }
+         }
+         if (rowremain > 0) {
+         // TODO(lewis) : need to add
+         }
+      }
+  }
+
+#if 1
+  gettimeofday(&tend, NULL);
+  time_usec = (uint32_t)tend.tv_usec - (uint32_t)tstart.tv_usec;
+  // uint32_t time_sec = (uint32_t)tend.tv_sec - (uint32_t)tstart.tv_sec;
+  // printf("Hardware Total Time: %.3f ms\n", time_usec / 1000.0);  // FIXME
+  // printf("Hardware Total Time: %u us\n", time_usec);
+#endif
+}
