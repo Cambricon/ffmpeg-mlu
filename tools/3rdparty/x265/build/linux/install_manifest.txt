@@ -1,0 +1,5 @@
+/home/fanhairui/hairuiWorkspace/3rd_ffmpeg/ffmpeg_build/lib/libx265.a
+/home/fanhairui/hairuiWorkspace/3rd_ffmpeg/ffmpeg_build/include/x265.h
+/home/fanhairui/hairuiWorkspace/3rd_ffmpeg/ffmpeg_build/include/x265_config.h
+/home/fanhairui/hairuiWorkspace/3rd_ffmpeg/ffmpeg_build/lib/pkgconfig/x265.pc
+/home/fanhairui/hairuiWorkspace/3rd_ffmpeg/ffmpeg_build/bin/x265

@@ -1,0 +1,11 @@
+prefix=/home/fanhairui/hairuiWorkspace/3rd_ffmpeg/ffmpeg_build
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: x265
+Description: H.265/HEVC video encoder
+Version: 0.0
+Libs: -L${libdir} -lx265
+Libs.private: -lstdc++ -lm -lgcc_s -lgcc -lgcc_s -lgcc -lrt -ldl -lnuma
+Cflags: -I${includedir}
