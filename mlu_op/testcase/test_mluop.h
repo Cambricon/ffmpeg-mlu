@@ -44,41 +44,44 @@
 typedef struct {
   int algo;
   bool save_flag;
+  uint32_t width;
+  uint32_t height;
   uint32_t src_w;
   uint32_t src_h;
   uint32_t dst_w;
   uint32_t dst_h;
-  uint32_t width;
-  uint32_t height;
-  uint32_t chn_idx;
   uint32_t frame_num;
   uint32_t thread_num;
+  uint32_t depth_size;
+  uint32_t pix_chn_num;
+  uint32_t device_id;
   const char *pix_fmt;
+  const char *depth;
   const char *input_file;
   const char *output_file;
 
-  //rgbx/yuv resize
-  uint32_t depth_size;
-  uint32_t pix_chn_num;
-  uint32_t d_depth;
-  uint32_t device_id;
+  //yuv cncv resize
+  uint32_t src_roi_x;
+  uint32_t src_roi_y;
 
-  //yuv2rgb
-  uint32_t src_pix_chn_num;
-  uint32_t dst_pix_chn_num;
-  const char* src_pix_fmt;
-  const char* dst_pix_fmt;
+  //rgbx cncv resize
+  uint32_t dst_roi_x;
+  uint32_t dst_roi_y;
 
-  //infer_sr
-  int dev_channel;
-  int is_rgb;
-  char* model_path;
-  char *function_name;
+  //yuv2rgbx cncv convert
+  const char *src_pix_fmt;
+  const char *dst_pix_fmt;
+
 }param_ctx_t;
 
-uint32_t getPixFmtChannelNum(cnPixelFormat pixfmt);
-uint32_t getSizeOfDepth(cnDepth_t depth);
-cnPixelFormat getCNPixFmtFromPixindex(const char* pix_fmt);
-cnDepth_t getSizeFromDepth(uint32_t depth);
+uint32_t getPixFmtChannelNum(cncvPixelFormat pixfmt);
+uint32_t getSizeOfDepth(cncvDepth_t depth);
+cncvPixelFormat getCNCVPixFmtFromPixindex(const char* pix_fmt);
+
+int readRawYUV(const char *filename, uint32_t width, uint32_t height,
+               uint8_t **YUV);
+int saveRawYUV(const char *filename, uint32_t width, uint32_t height,
+               const uint8_t *YUV, size_t y_stride, size_t uv_stride);
+int set_cnrt_ctx(unsigned int device_id, cnrtChannelType_t channel_id);
 
 #endif /* __TEST_MLUOP_HPP__ */

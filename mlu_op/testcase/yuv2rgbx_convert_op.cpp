@@ -34,28 +34,55 @@
 #define CV_8UC3 CV_MAKETYPE(CV_8U,3)
 #define CV_8UC(n) CV_MAKETYPE(CV_8U,(n))
 
-void rgbx2rgbx_resize_op(void *ctx_, char **argv) {
+void BGR2YUV420P(cv::Mat src, cv::Mat &dst, const char *pix_fmt) {
+  uint32_t src_width = src.cols;
+  uint32_t src_height = src.rows;
+  uint32_t dst_height = src.rows * 3 / 2;
+
+  dst = cv::Mat(dst_height, src_width, CV_8UC1, cv::Scalar(0));
+  cv::Mat yuvI420 = cv::Mat(dst_height, src_width, CV_8UC1, cv::Scalar(0));
+  cv::cvtColor(src, yuvI420, cv::COLOR_BGR2YUV_I420);
+  // convertYUV_I420TONV12(yuvI420.data, dst.data, src_width, src_height);
+  uint32_t nLenY = src_width * src_height;
+  uint32_t nLenU = nLenY / 4;
+
+  memcpy(dst.data, yuvI420.data, nLenY);
+  if (strncmp(pix_fmt, "NV12", 4) == 0 ||
+      strncmp(pix_fmt, "nv12", 4) == 0) {
+        for (uint32_t i = 0; i < nLenU; i ++) {
+            dst.data[nLenY + 2 * i] = yuvI420.data[nLenY + nLenU + i];
+            dst.data[nLenY + 2 * i + 1] = yuvI420.data[nLenY + i];
+        }
+  } else if (strncmp(pix_fmt, "NV21", 4) == 0 ||
+             strncmp(pix_fmt, "nv21", 4) == 0) {
+        for (uint32_t i = 0; i < nLenU; i ++) {
+            dst.data[nLenY + 2 * i] = yuvI420.data[nLenY + i];
+            dst.data[nLenY + 2 * i + 1] = yuvI420.data[nLenY + nLenU + i];
+        }
+  } else {
+      printf("unsupported pixel format\n");
+  }
+}
+
+void yuv2rgbx_convert_op(void *ctx_, char **argv) {
   param_ctx_t *ctx = (param_ctx_t *)ctx_;
   ctx->algo = atoi(argv[1]);
   ctx->input_file = argv[2];
-  ctx->src_w = atoi(argv[3]);
-  ctx->src_h = atoi(argv[4]);
-  ctx->dst_w = atoi(argv[5]);
-  ctx->dst_h = atoi(argv[6]);
-  ctx->output_file = argv[7];
-  ctx->pix_fmt = argv[8];
-  ctx->frame_num = atoi(argv[9]);
-  ctx->thread_num = atoi(argv[10]);
-  ctx->save_flag = atoi(argv[11]);
-  ctx->device_id = atoi(argv[12]);
+  ctx->width = atoi(argv[3]);
+  ctx->height = atoi(argv[4]);
+  ctx->output_file = argv[5];
+  ctx->src_pix_fmt = argv[6];
+  ctx->dst_pix_fmt = argv[7];
+  ctx->frame_num = atoi(argv[8]);
+  ctx->thread_num = atoi(argv[9]);
+  ctx->save_flag = atoi(argv[10]);
+  ctx->device_id = atoi(argv[11]);
   ctx->depth_size = 1; // depth_size: 1->uint8, 2->f16, 4->f32
 
   char depth_[3] = "8U";
   ctx->depth = depth_;
 
-  if (ctx->algo <= 0) ctx->algo = 1;
-  if (ctx->dst_w <= 0) ctx->dst_w = 352;
-  if (ctx->dst_h <= 0) ctx->dst_h = 288;
+  if (ctx->algo <= 0) ctx->algo = 2;
   if (ctx->save_flag <= 0) ctx->save_flag = 0;
   if (ctx->frame_num <= 0) ctx->frame_num = 10;
   if (ctx->thread_num <= 0) ctx->thread_num = THREADS_NUM;
@@ -69,7 +96,7 @@ void rgbx2rgbx_resize_op(void *ctx_, char **argv) {
 
   for (uint32_t i = 0; i < ctx->thread_num; i++) {
     printf("create thead [%d]\n", i);
-    ret = pthread_create(&tids[i], &attr, process_resize_rgbx, (void *)ctx);
+    ret = pthread_create(&tids[i], &attr, process_convert_yuv2rgbx, (void *)ctx);
   }
 
   pthread_attr_destroy(&attr);
@@ -83,16 +110,14 @@ void rgbx2rgbx_resize_op(void *ctx_, char **argv) {
   }
 }
 
-void *process_resize_rgbx(void *ctx_) {
+void *process_convert_yuv2rgbx(void *ctx_) {
   param_ctx_t *ctx = (param_ctx_t *)ctx_;
   bool save_flag = ctx->save_flag;
-  uint32_t input_w = ctx->src_w;
-  uint32_t input_h =  ctx->src_h;
-  uint32_t dst_w = ctx->dst_w;
-  uint32_t dst_h = ctx->dst_h;
+  uint32_t width = ctx->width;
+  uint32_t height =  ctx->height;
   uint32_t frame_num = ctx->frame_num;
   uint32_t device_id = ctx->device_id;
-  uint32_t pix_chn_num = getPixFmtChannelNum(getCNCVPixFmtFromPixindex(ctx->pix_fmt));
+  uint32_t dst_pix_chn_num = getPixFmtChannelNum(getCNCVPixFmtFromPixindex(ctx->dst_pix_fmt));
   uint32_t depth_size = ctx->depth_size;
   const char *depth = ctx->depth;
   const char *filename = ctx->input_file;
@@ -100,23 +125,45 @@ void *process_resize_rgbx(void *ctx_) {
 
   set_cnrt_ctx(device_id, CNRT_CHANNEL_TYPE_NONE /* CNRT_CHANNEL_TYPE_0 */);
 
-  uint32_t src_stride = PAD_UP(input_w, ALIGN_R_SCALE) * pix_chn_num * depth_size;
-  uint32_t dst_stride = PAD_UP(dst_w, ALIGN_R_SCALE) * pix_chn_num * depth_size;
-  uint32_t src_size = input_h * src_stride;
-  uint32_t dst_size = dst_h * dst_stride;
-  void *src_cpu = (void *)malloc(src_size);
-  void *dst_cpu = (void *)malloc(dst_size);
+  uint32_t src_y_stride = PAD_UP(width, ALIGN_Y2R_CVT) * depth_size;
+  uint32_t src_uv_stride = PAD_UP(width, ALIGN_Y2R_CVT) * depth_size;
+  uint32_t dst_stride = PAD_UP(width, ALIGN_Y2R_CVT) * dst_pix_chn_num * depth_size;
+  uint32_t src_y_size = height * src_y_stride;
+  uint32_t src_uv_size = height * src_uv_stride * 3 / 2;
+  uint32_t src_size = src_y_size + src_uv_size;
+  uint32_t dst_size = height * dst_stride;
+
+  uint8_t *src_cpu = (uint8_t *)malloc(src_size);
+  uint8_t *dst_cpu = (uint8_t *)malloc(dst_size);
 
   cv::Mat src_mat;
+  cv::Mat src_yuv_mat;
   cv::Mat dst_mat;
-  dst_mat = cv::Mat(dst_h, dst_w, CV_8UC3, cv::Scalar(0, 0, 0));
   src_mat = cv::imread(filename, cv::IMREAD_COLOR);  // read 8U_C3 BGR
-  for (uint32_t row = 0; row < input_h; ++row) {
+  BGR2YUV420P(src_mat, src_yuv_mat, ctx->src_pix_fmt);
+  //plane Y
+  for (uint32_t row = 0; row < height; ++row) {
     memcpy(reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(src_cpu) +
-                                       row * src_stride),
-           src_mat.ptr<uint8_t>(row),
-           src_mat.cols * src_mat.elemSize());
+                                       row * src_y_stride),
+           src_yuv_mat.ptr<uint8_t>(row),
+           src_yuv_mat.cols * src_yuv_mat.elemSize());
   }
+  //plane UV
+  for (uint32_t row = 0; row < height / 2; ++row) {
+    memcpy(reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(src_cpu) + src_y_size +
+                                       row * src_uv_stride),
+           src_yuv_mat.ptr<uint8_t>(row + height),
+           src_yuv_mat.cols * src_yuv_mat.elemSize());
+  }
+
+  void *src_y_mlu;
+  void *src_uv_mlu;
+  void *dst_mlu;
+  cnrtMalloc((void **)(&src_y_mlu), src_y_size);
+  cnrtMalloc((void **)(&src_uv_mlu), src_uv_size);
+  cnrtMemcpy(src_y_mlu, src_cpu, src_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  cnrtMemcpy(src_uv_mlu, (src_cpu + src_y_size), src_uv_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  cnrtMalloc((void **)(&dst_mlu), dst_size);
 
   HANDLE handle;
   #if PRINT_TIME
@@ -126,28 +173,21 @@ void *process_resize_rgbx(void *ctx_) {
   gettimeofday(&start, NULL);
   #endif
   /*--------init op--------*/
-  mluop_resize_rgbx_init(&handle,
-                         input_w, input_h,
-                         dst_w, dst_h,
-                         ctx->pix_fmt, depth);
+  mluop_convert_yuv2rgbx_init(&handle,
+                              width, height,
+                              ctx->src_pix_fmt, ctx->dst_pix_fmt, depth);
   #if PRINT_TIME
   gettimeofday(&end, NULL);
   time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
   printf("[init] time: %.3f ms\n", time_use/1000);
   #endif
 
-  void *src_mlu;
-  void *dst_mlu;
-  CNRT_CHECK(cnrtMalloc((void **)(&src_mlu), depth_size * src_size));
-  CNRT_CHECK(cnrtMemcpy(src_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV));
-  CNRT_CHECK(cnrtMalloc((void **)(&dst_mlu), depth_size * dst_size));
-
   #if PRINT_TIME
   gettimeofday(&start, NULL);
   #endif
   /*-------execute op-------*/
   for (uint32_t i = 0; i < frame_num; i++) {
-    mluop_resize_rgbx_exec(handle, src_mlu, dst_mlu);
+    mluop_convert_yuv2rgbx_exec(handle, src_y_mlu, src_uv_mlu, dst_mlu);
   }
   #if PRINT_TIME
   gettimeofday(&end, NULL);
@@ -160,7 +200,7 @@ void *process_resize_rgbx(void *ctx_) {
   gettimeofday(&start, NULL);
   #endif
   /*-------destroy op-------*/
-  mluop_resize_rgbx_destroy(handle);
+  mluop_convert_yuv2rgbx_destroy(handle);
   #if PRINT_TIME
   gettimeofday(&end, NULL);
   time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
@@ -168,8 +208,8 @@ void *process_resize_rgbx(void *ctx_) {
   #endif
   /*-------sace file-------*/
   if (save_flag){
-    dst_mat.create(dst_h, dst_w, CV_8UC(3));
-    for (uint32_t row = 0; row < dst_h; ++row) {
+    dst_mat.create(height, width, CV_8UC(dst_pix_chn_num));
+    for (uint32_t row = 0; row < height; ++row) {
         memcpy(dst_mat.ptr<uint8_t>(row),
                 reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst_cpu) +
                                  row * dst_stride),
@@ -180,8 +220,10 @@ void *process_resize_rgbx(void *ctx_) {
   }
   if (src_cpu)
     free(src_cpu);
-  if (src_mlu)
-    cnrtFree(src_mlu);
+  if (src_y_mlu)
+    cnrtFree(src_y_mlu);
+  if (src_uv_mlu)
+    cnrtFree(src_uv_mlu);
   if (dst_cpu)
     free(dst_cpu);
   if (dst_mlu)
