@@ -1,3 +1,13 @@
+# Cambricon® ffmpeg-mlu open source release v1.3.0!
+**Whats new**
+ - Supported mlu encoder preset function.
+ - Supported yuv2yuv resize mlu filter.
+ - Supported yuv2rgbx convert mlu filter.
+ - Supported rgbx2yuv convert mlu filter.
+ - Supported rgbx2rgbx resize mlu filter.
+ - Removed mlu op before mlu encoder.
+ - Supports for ``cntookit-mlu270-1.7.0 or later``.
+
 # Cambricon® ffmpeg-mlu open source release v1.2.0!
 **Whats new**
  - Supported setting encoder stride alignment attribute.

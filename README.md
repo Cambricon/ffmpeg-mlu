@@ -1,37 +1,38 @@
-EN|[CN](README_cn.md)
+中文|[英文](README.md)
 
-Cambricon<sup>®</sup> FFmpeg-MLU
+寒武纪<sup>®</sup> FFmpeg-MLU
 ====================================
 
-Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding and encoding using a plain C API on Cambricon MLU hardware platforms.
+基于寒武纪<sup>®</sup> MLU硬件平台，寒武纪 FFmpeg-MLU使用纯C接口实现硬件加速的视频编解码。
 
-## Requirements ## 
+## 必备条件 ##
 
-- Supported OS: 
+- 支持的操作系统如下：
     - Ubuntu
 	- Centos
 	- Debian
-- Cambricon MLU Driver:
-    - neuware-mlu270-driver-4.7.0 or later.
-- Cambricon MLU SDK: 
-    - cntookit-mlu270-1.5.0-1 or later, but must be less than 1.7.0 .
+- 寒武纪MLU驱动:
+    - neuware-mlu270-driver-4.9.x。
+- 寒武纪MLU SDK:
+    - cntookit-mlu270-1.7.x或更高版本。
+    - cncv-0.4.602版本。
 
-## Patch and Build FFmpeg-MLU ## 
+## 补丁、编译FFmpeg-MLU ##
 
-1. Get FFmpeg sources and patch with the following Git* command:
+1. 获取FFmpeg源代码并通过下面Git*命令打补丁：
 
    ```sh
    git clone https://gitee.com/mirrors/ffmpeg.git -b release/4.2 --depth=1
-   cd ffmpeg    
+   cd ffmpeg
    git apply ../ffmpeg4.2_mlu.patch
    ```
-2. If you are using CentOS, you need to set ``LD_LIBRARY_PATH`` to the proper directory by running the following commands:
+2. 如果使用CentOS操作系统，运行下面命令，通过 ``LD_LIBRARY_PATH`` 设置指定路径：
 
    ```sh
    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/neuware/lib64
    ```
 
-3. Run the following commands to configure and build FFmpeg-MLU:
+3. 运行下面命令配置并创建 FFmpeg-MLU:
 
    ```sh
    ./configure --enable-gpl \
@@ -42,75 +43,90 @@ Cambricon<sup>®</sup> FFmpeg-MLU supports hardware-accelerated video decoding a
                --extra-libs="-lcncodec -lcnrt -ldl -lcndrv"
    make -j
    ```
-4. (Notice) If you need a MLU transcode demo with multi-threads, run the following commands:
+4. (可选) 如果想要运行MLU支持多线程的转码示例，运行下面命令：
 
    ```sh
    make -j examples
    ```
 
-5. (Optional) If you need support downscaling with MLU operators, build ``mluop`` and copy ``libeasyOP.so``  to the ``/usr/local/neuware/lib64`` folder.
+5. (可选) 如果想要通过MLU算子实现视频缩放等功能，编译 ``mluop`` 并拷贝 ``libeasyOP.so`` 到 ``/usr/local/neuware/lib64`` 目录下。
+   ```sh
+   cd mlu_op & mkdir build
+   cd build & cmake .. & make -j
+   mv ../lib/libeasyOP.so /usr/local/neuware/lib64
+   ```
 
-## Decoding and Encoding with FFmpeg-MLU ## 
+## FFmpeg-MLU视频编解码 ##
 
-### Decoding ###
+### 视频解码 ###
 
-Supported video decoding formats are as follows:
-
-- H.264/AVC 
-    - Codec Name: ``h264_mludec``
-- HEVC
-    - Codec Name: ``hevc_mludec``
-- VP8
-    - Codec Name: ``vp8_mludec``
-- VP9
-    - Codec Name: ``vp9_mludec``
-- JPEG
-    - Codec Name: ``mjpeg_mludec``
-  
-**Example**
-
-```sh
-./ffmpeg -c:v h264_mludec -i input_file -f null -
-```
-### Encoding ###
-
-Supported video encoding formats are as follows:
+FFmpeg-MLU支持的视频解码格式如下：
 
 - H.264/AVC
-    - Codec Name: ``h264_mluenc``
+    - Codec名称：``h264_mludec``
 - HEVC
-    - Codec Name: ``hevc_mluenc``
+    - Codec名称：``hevc_mludec``
+- VP8
+    - Codec名称：``vp8_mludec``
+- VP9
+    - Codec名称：``vp9_mludec``
 - JPEG
-    - Codec Name: ``mjpeg_mluenc``
+    - Codec名称：``mjpeg_mludec``
 
-**Example**  
+**运行示例**
+
+```sh
+./ffmpeg -c:v h264_mludec -i input_file output_file.yuv
+```
+### 视频编码 ###
+
+FFmpeg-MLU支持的视频编码格式如下：
+
+- H.264/AVC
+    - Codec名称：``h264_mluenc``
+- HEVC
+    - Codec名称：``hevc_mluenc``
+- JPEG
+    - 待更新
+
+**运行示例**
 
 ```sh
 ./ffmpeg -i input_file -c:v h264_mluenc <output.h264>
 ```
-## Basic Testing ##
+## 基本测试 ##
 
-### Encode Baseline Test ###
+### Baseline编码测试 ###
 
 
 ```sh
 ./ffmpeg -benchmark -re -i input.mkv -c:v h264_mluenc -f null -
 ```
-### Decode with Scaling ###
+### 缩放解码 ###
 ```sh
 ./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale=320:240 output_320x240.mp4
+
+./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale_yuv2yuv_mlu=320:240:0 output_320x240.mp4
 ```
-### 1:1 Transcode Without Scaling ###
+### 1:1无缩放转码 ###
 
     ./ffmpeg -y -vsync 0 -c:v h264_mludec -i fhd_input.mkv -c:a copy -c:v h264_mluenc -b:v 5M output.mp4
 
-### 1:N Transcode With Scaling ###
+### 1:N可缩放转码 ###
 ```sh
 ./ffmpeg -y -vsync 0 -c:v h264_mludec -i fhd_input.mkv -vf scale=1280:720 -c:a copy -c:v h264_mluenc -b:v 2M output1.mp4 -vf scale=640:360 -c:a copy -c:v h264_mluenc -b:v 512K output2.mp4
 ```
-## Quality Testing ##
 
-This section introduces how to test video quality with PSNR and SSTM.
+### 解码 + MLU Filter + 编码 ###
+```sh
+./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale_yuv2yuv_mlu=320:240:0 -c:v h264_mluenc output_320x240.h264
+
+./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf cvt_yuv2rgbx_mlu=rgb:0,cvt_rgbx2yuv_mlu=nv12:0 output.h264
+```
+
+## 视频质量测试 ##
+
+本节介绍了如何通过PSNR和SSTM方法测试视频质量：
 
 ### PSNR ###
 
@@ -122,60 +138,71 @@ This section introduces how to test video quality with PSNR and SSTM.
 ```sh
 ./ffmpeg -i src.h264  -i dst.h264  -lavfi ssim="stats_file=ssim.log" -f null -
 ```
-## Performance Fine-Tune ##
+## 性能调优 ##
 
-This section introduces how to improve the performance.
+本节介绍了如何调试改进视频编解码的性能。
 
-### MLU Decoder ###
+### MLU解码器 ###
 
 
-|Option name|Type|Description|
+|选项|类型|描述|
 |-|-|-|
-|device_id|int|Select the accelerator card. <br>Supported values range from **0** to *INT_MAX*. *INT_MAX* is the total number of accelerator cards minus 1. <br>The default value is **0**.|
-|instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - **INT_MAX**: Represents VPU instance. <br>- **0**: The VPU instance is auto-selected. <br>The default value is **0**.|
-|cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
-|input_buf_num|int|Number of input buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **4**.|
-|output_buf_num|int|Number of output buffers for decoder. <br>Supported values range from **1** to **18**. <br>The default value is **3**.|
-|stride_align|int|Stride align of output buffers for decoder. <br>Supported values range from **1** to **128**, can be **2^(0 - 7)**. <br>The default value is **1**.|
-|output_pixfmt|int|The output pixel format. <br>Supported values are: <br>- **nv12/nv21/p010/i420**. <br>The default value is **nv12**.|
-|resize|string|Resize (width)x(height). <br>Only supports **1/2** and **1/4** for down scaling. <br>The default is null.|
-|trace|int|MLU FFmpeg MLU trace switch. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **0**.|
+|device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。 <br>默认值为 **0**。|
+|instance_id|int|选择使用的VPU实例。 <br>支持设置的值为： <br>- 取为 **0** - **INT_MAX** 范围: 表示VPU/JPU实例编号。 <br>- **0**: 表示自动选择。 <br>默认值为 **0**。|
+|cnrt_init_flag|int|初始化或销毁FFmpeg的IPU设备。 <br>支持设置的值为：<br>- **0**: 表示销毁设备。 <br>- **1**: 表示初始化设备。 <br>默认值为 **1**。|
+|input_buf_num|int|用于解码器输入缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **4**。|
+|output_buf_num|int|用于解码器输出缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **3**。|
+|stride_align|int|解码器输出对齐的步长。 <br>支持设置的值的范围为：**1** - **128**，可以是 **2^(0 - 7)**。 <br>默认值为 **1**。|
+|output_pixfmt|int|输出像素的格式。 <br>支持设置的值为： <br>- **nv12/nv21/p010/i420**。 <br>默认值为 **nv12**。|
+|resize|string|调整视频大小 （宽）x（高）。 <br>可以设置为 **1/2** 或 **1/4** 缩放视频。 <br>默认为 null。|
+|trace|int|FFmpeg-MLU调试开关。<br>支持设置的值为：<br>- **0**: 表示关闭。 <br>- **1**: 表示开启。 <br>默认值为 **0**。|
 
-### MLU Encoder ###
+### MLU编码器 ###
 
-#### Common ###
+#### 通用 ###
 
-|Option name|Type|Description|
+|选项|类型|描述|
 |-|-|-|
-|device_id|int|Select the accelerator card. <br>Supported values range from **0** to *INT_MAX*. *INT_MAX* is the total number of accelerator cards minus 1. <br>The default value is **0**.|
-|instance_id|int|Select the VPU instance. <br>Supported values are: <br>- Value in the range **0** - *INT_MAX*: Represents VPU instance. <br>- **0**: The VPU instance is auto-selected. <br>The default value is **0**.|
-|cnrt_init_flag|int|Initialize or destory cnrt context in FFmpeg. <br>Supported values are: <br>- **0**: Represents disabled. <br>- **1**: Represents enabled. <br>The default value is **1**.|
-|input_buf_num|int|Number of input buffers for encoder. <br>Supported values range from **1** to **18**. <br>The default value is **3**.|
-|output_buf_num|int|Number of output buffers for encoder. <br>Supported values range from **1** to **18**. <br>The default value is **5**.|
-|trace|int|MLU FFmpeg debug switch. <br>Supported values are: <br>- **0** Represents disabled.<br>- **2**: Represents enabled. <br>The default value is **0**.|
-|init_qpP|int|Initial QP value for P frame, set P frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
-|init_qpI|int|Initial QP value for I frame, set I frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
-|init_qpB|int|Initial QP value for B frame, set B frame QP. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
-|qp|int|Constant QP rate control method, same as FFmpeg cqp. <br>Supported values range from **-1** to **51**. <br>The default value is **-1**.|
-|vbr_minqp|int|Variable bitrate mode with MinQP, same as FFmepg qmin. <br>Supported values range from **0** to **51**. <br>The default value is **0**.|
-|vbr_maxqp|int|Variable bitrate mode with MaxQP, same as FFmpeg qmax. <br>Supported values range from **0** to **51**. <br>The default value is **51**.|
-|sar|string|Variable vui sar (width):(height)。 <br>Supported values are **16:11** or getting from stream. <br>Thes default value is **0:0**.|
-|rc|string|Encoder bitrate mode param. <br>Supported values are **vbr/cbr/cqp**。 <br>The default value is **vbr**.|
-|stride_align|int|Video encoder stride align of output buffers for encoder, only for video encoder. <br>Supported values range from **1** to **128**, can be **2^(0 - 7)**. <br>The default value is **1**.|
+|device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。<br>默认值为 **0**。|
+|instance_id|int|选择使用的VPU实例。<br>支持设置的值为： <br>- 值为 **0** - *INT_MAX* 范围：表示VPU实例编号。 <br>- **0**：表示自动选择。 <br>默认值为 **0**。|
+|cnrt_init_flag|int|是否在ffmpeg初始化/销毁cnrt。 <br>支持设置的值为： <br>- **0**：表示外部初始化/销毁。 <br>- **1**：表示由ffmpeg初始化/销毁。 <br>默认值为 **1**。|
+|input_buf_num|int|用于编码器输入缓冲的数量。  <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **3**。|
+|output_buf_num|int|用于编码器输出缓冲的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **5**。|
+|trace|int|FFmpeg-MLU调试信息开关。<br>支持的设置的值为： <br>- **0** 表示关闭调试打印信息。<br>- **2**：表示打开调试打印信息。<br>默认值为 **0**。|
+|init_qpP|int|设置P帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|init_qpI|int|设置I帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|init_qpB|int|设置B帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|qp|int|恒定QP控制方法，同FFmpeg cqp。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
+|vbr_minqp|int|可变比特率模式，并提供MinQP，同FFmepg qmin。 <br>支持设置的值的范围为：**0** - **51**。 <br>默认值为 **0**。|
+|vbr_maxqp|int|可变比特率模式，并提供MaxQP，同FFmpeg qmax。 <br>支持设置的值的范围为：**0** - **51**。 <br>默认值为 **51**。|
+|sar|string|设置编码器sar (宽):(高)。 <br>可以设置为: **16:11** 或直接读取视频流的值。 <br>默认为 **0:0**。|
+|rc|string|编码码率控制模式参数。 <br>可以设置为: **vbr/cbr/cqp**。 <br>默认为 **vbr**。|
+|stride_align|int|视频编码器输出对齐的步长, 目前图像编码器不适用。 <br>支持设置的值的范围为：**1** - **128**，可以是 **2^(0 - 7)**。 <br>默认值为 **1**。|
 
-(Notice) Also supports regular ffmpeg settings,such as ``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, please refers to ffmpeg official documents。
+(通用) 支持常规ffmpeg的设置：``-b``, ``-bf``, ``-g``, ``-qmin``, ``-qmax``, 具体意义及值范围请参考ffmpeg官方文档。
 
 #### H264 ###
 
-|Option name|Type|Description|
+|选项|类型|描述|
 |-|-|-|
-|profile|const|Set the encoding profile. <br>Supported values are: **baseline**, **main**, **high**, and **high444p**. <br>The default value is **high**.|
-|level|const|Set the encoding level restriction. <br>Supported values are: in the range **1** - **5.1**, or **auto**. <br>The default value is **4.2**.|
-|coder|const|Set the encoding entropy mode. <br>Supported values are: **cabac** and **cavlc**. <br>The default value is **cavlc**.|
+|profile|const|设置编码档次。<br>支持设置的值为：**baseline**、**main**、**high**和 **high444p**。 <br>默认值为 **high**。|
+|level|const|设置编码级别。<br>支持设置的值为：值为 **1** - **5.1** 范围、**auto** 。 <br>默认值为 **4.2**。|
+|coder|const|设置编码熵（entropy）模式。<br>支持设置的值为：**cabac** 和 **cavlc**。 <br>默认值为 **cavlc**。|
 
 #### HEVC ###
 
-|Option name|Type|Description|
+|选项|类型|描述|
 |-|-|-|
-|profile|const|Set the encoding profile. <br>Supported values are: **main**, **main_still**, **main_intra**, and **main10**. <br>The default value is **main**.|
-|level|const|Set the encoding level restriction. <br>Supported values are: in the range **1** - **6.2**, or **auto**. <br>The default value is **1**.|
+|profile|const|设置编码档次。<br>支持设置的值为： **main**、**main_still**、**main_intra**和 **main10**。 <br>默认值为 **main**。|
+|level|const|设置编码级别。<br>支持设置的值为：值为 **1** - **6.2** 范围、**auto** 。 <br>默认值为 **1**。|
+
+### MLU Filter ###
+
+
+|filter名|功能描述|调用示例|约束|
+|-|-|-|-|
+|scale_yuv2yuv_mlu|接收 YUV 格式图像（NV12/NV21），再调整到指定大小后输出。|**-vf scale_yuv2yuv_mlu=<output_w>:<output_h>:<dev_id>**<br>- <output_w>:输出图像宽度 <br>- <output_h>:输出图像高度 <br>- <dev_id>:设备号|<br>- 输出的宽度和高度必须为偶数<br>- 支持图像像素深度为 8u|
+|scale_rgbx2rgbx_mlu|接收 RGBX 格式图像，再调整到指定大小后输出。|**-vf  scale_rgbx2rgbx_mlu=<output_w>:<output_h>:<dev_id>**<br>- <output_w>:输出图像宽度 <br>- <output_h>:输出图像高度 <br>- <dev_id>:设备号|<br>- 输入图像的宽度和高度不超过 8192 像素<br>- 支持图像像素深度为 8u|
+|cvt_yuv2rgbx_mlu|输入为 YUV 图像（NV12/NV21），将图像颜色空间转换为指定 RGBX 系列后输出|**-vf  cvt_yuv2rgbx_mlu=<output_fmt>:<dev_id>**<br>- <output_fmt>:输出像素格式<br>- <dev_id>:设备号|<br>- 输入图像的宽度和高度不超过 8192 像素<br>- 输入图像的宽度和高度必须为偶数<br>- 支持图像像素深度为 8u|
+|cvt_rgbx2yuv_mlu|输入为指定的 RGBX 系列图像，将图像色彩空间转换为指定的 YUV 图像（NV12/NV21）|**-vf  cvt_yuv2rgbx_mlu=<output_fmt>:<dev_id>**<br>- <output_fmt>:输出像素格式<br>- <dev_id>:设备号|<br>- 输入图像的宽度和高度大于等于 2<br>- 输入图像的像素格式（pixel_fmt）支持 RGB、BGR、RGBA、BGRA、ARGB、ABGR<br>- 支持图像像素深度为 8U<br>- 输出图像的像素格式（pixel_fmt）支持 NV12 和 NV21|
+

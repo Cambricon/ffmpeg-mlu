@@ -38,25 +38,25 @@ int main(int argc, char **argv) {
     printf("|----------------------------------------------------------------------------------|\n");
     printf("|Algo list:                                                                        |\n");
     printf("|----------------------------------------------------------------------------------|\n");
-    printf("|[0] <--> process_resize_invoke_yuv                                                |\n");
+    printf("|[0] <--> process_resize_yuv                                                       |\n");
+    printf("|                                                                                  |\n");
+    printf("|./test mluop <algo> <src_file> <src_width> <src_height> <dst_width> <dst_height>  |\n"
+           "|  <dst_file> <pixfmt> <frame_num> <thread_num> <save_flag> <device_id>            |\n");
+    printf("|----------------------------------------------------------------------------------|\n");
+    printf("|[1] <--> process_resize_rgbx                                                      |\n");
     printf("|                                                                                  |\n");
     printf("|./test mluop <algo> <src_file> <src_width> <src_height> <dst_width> <dst_height>  |\n"
            "| <dst_file> <pixfmt> <frame_num> <thread_num> <save_flag> <device_id>             |\n");
     printf("|----------------------------------------------------------------------------------|\n");
-    printf("|[1] <--> process_resize_invoke_rgbx                                               |\n");
+    printf("|[2] <--> process_convert_yuvrgbx                                                  |\n");
     printf("|                                                                                  |\n");
-    printf("|./test mluop <algo> <src_file> <src_width> <src_height> <dst_width> <dst_height>  |\n"
-           "| <dst_file> <pixfmt> <frame_num> <thread_num> <save_flag> <device_id>             |\n");
+    printf("|./test mluop <algo> <src_file> <width> <height> <dst_file> <src_pixfmt>           |\n"
+           "| <dst_pixfmt> <frame_num> <thread_num> <save_flag> <device_id>                    |\n");
     printf("|----------------------------------------------------------------------------------|\n");
-    printf("|[2] <--> process_convert_invoke_yuv_to_rgbx                                       |\n");
+    printf("|[3] <--> process_convert_rgbx2yuv                                                 |\n");
     printf("|                                                                                  |\n");
-    printf("|./test mluop <algo> <src_file> <width> <height> <src_pixfmt> <dst_pixfmt>         |\n"
-           "| <dst_file> <frame_num> <thread_num> <save_flag> <device_id>                      |\n");
-    printf("|----------------------------------------------------------------------------------|\n");
-    printf("|[3] <--> process_infer_src                                                        |\n");
-    printf("|                                                                                  |\n");
-    printf("|./test mluop <algo> <src_file> <model_path>                                       |\n"
-           "| <dev_id> <dev_channel> <is_rgb> <frame_num> <thread_num>                         |\n");
+    printf("|./test mluop <algo> <src_file> <width> <height> <dst_file> <src_pixfmt>           |\n"
+           "| <dst_pixfmt> <frame_num> <thread_num> <save_flag> <device_id>                    |\n");
     printf(" ================================================================================== \n");
 
     return 1;
@@ -67,17 +67,17 @@ int main(int argc, char **argv) {
 
   ctx->algo = atoi(argv[1]);
   if (0 == ctx->algo) {
-    printf("exec algo[%d]: process_resize_invoke_yuv \n", ctx->algo);
+    printf("exec algo[%d]: process_resize_yuv \n", ctx->algo);
     yuv2yuv_resize_op(ctx, argv);
   } else if (1 == ctx->algo) {
-    printf("exec algo[%d]: process_resize_invoke_rgbx \n", ctx->algo);
+    printf("exec algo[%d]: process_resize_rgbx \n", ctx->algo);
     rgbx2rgbx_resize_op(ctx, argv);
-  }else if (2 == ctx->algo) {
-    printf("exec algo[%d]: process_convert_invoke_yuv_to_rgbx \n", ctx->algo);
-    yuv2rgb_convert_op(ctx, argv);
+  } else if (2 == ctx->algo) {
+    printf("exec algo[%d]: process_convert_yuvrgbx \n", ctx->algo);
+    yuv2rgbx_convert_op(ctx, argv);
   } else if (3 == ctx->algo) {
-    printf("exec algo[%d]: process_infer_src \n", ctx->algo);
-    infer_sr_op(ctx, argv);
+    printf("exec algo[%d]: process_convert_rgbx2yuv \n", ctx->algo);
+    rgbx2yuv_convert_op(ctx, argv);
   } else {
     printf("don't support algo ...\n");
   }

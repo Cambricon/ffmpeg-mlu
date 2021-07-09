@@ -27,22 +27,21 @@
 extern "C" {
 #endif /* __cplusplus */
 
-/*------------- yuv2yuv resize --------------*/
+/*------------- yuv2yuv resize cncv--------------*/
 void yuv2yuv_resize_op(void *ctx_, char **argv);
-void *process_resize_invoke_yuv(void *ctx_);
+void *process_resize_yuv(void *ctx_);
 
-/*------------- rgbx2rgbx resize --------------*/
+/*------------- rgbx2rgbx resize cncv--------------*/
 void rgbx2rgbx_resize_op(void *ctx_, char **argv);
-void *process_resize_invoke_rgbx(void *ctx_);
+void *process_resize_rgbx(void *ctx_);
 
-/*-----------------yuv2rgb -----------------*/
-void yuv2rgb_convert_op(void *ctx_, char **argv);
-void *process_yuv2rgb_op(void *ctx_);
+/*------------- yuv2rgbx convert cncv--------------*/
+void yuv2rgbx_convert_op(void *ctx_, char **argv);
+void *process_convert_yuv2rgbx(void *ctx_);
 
-/*-----------------src----------------------*/
-void infer_sr_op(void *ctx_, char **argv);
-void *process_sr_op(void *ctx_);
-
+/*------------- rgbx2yuv convert cncv--------------*/
+void rgbx2yuv_convert_op(void *ctx_, char **argv);
+void *process_convert_rgbx2yuv(void *ctx_);
 
 #if defined(__cplusplus)
 }
