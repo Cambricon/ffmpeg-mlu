@@ -1,4 +1,3 @@
-中文|[英文](README.md)
 
 寒武纪<sup>®</sup> FFmpeg-MLU
 ====================================
@@ -12,10 +11,13 @@
 	- Centos
 	- Debian
 - 寒武纪MLU驱动:
-    - neuware-mlu270-driver-4.9.x。
+    - neuware-mlu2xx-driver-4.9.x
+    - neuware-mlu2xx-driver-4.6.142
 - 寒武纪MLU SDK:
-    - cntookit-mlu270-1.7.x或更高版本。
-    - cncv-0.4.602版本。
+    - cntookit-mlu2xx-1.7.x或更高版本
+    - cntookit-mlu2xx-1.4.122
+    - cncv-0.4.602版本
+    - cncv-0.2.118版本
 
 ## 补丁、编译FFmpeg-MLU ##
 
@@ -26,10 +28,10 @@
    cd ffmpeg
    git apply ../ffmpeg4.2_mlu.patch
    ```
-2. 如果使用CentOS操作系统，运行下面命令，通过 ``LD_LIBRARY_PATH`` 设置指定路径：
+2. 运行下面命令，通过 ``LD_LIBRARY_PATH`` 设置指定路径：
 
    ```sh
-   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/neuware/lib64
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${NEUWARE_HOME}/lib64
    ```
 
 3. 运行下面命令配置并创建 FFmpeg-MLU:
@@ -38,8 +40,8 @@
    ./configure --enable-gpl \
                --enable-version3 \
                --enable-mlumpp \
-               --extra-cflags="-I/usr/local/neuware/include" \
-               --extra-ldflags="-L/usr/local/neuware/lib64" \
+               --extra-cflags="-I${NEUWARE_HOME}/include" \
+               --extra-ldflags="-L${NEUWARE_HOME}/lib64" \
                --extra-libs="-lcncodec -lcnrt -ldl -lcndrv"
    make -j
    ```
@@ -49,11 +51,15 @@
    make -j examples
    ```
 
-5. (可选) 如果想要通过MLU算子实现视频缩放等功能，编译 ``mluop`` 并拷贝 ``libeasyOP.so`` 到 ``/usr/local/neuware/lib64`` 目录下。
+5. (可选) 如果想要通过MLU加速实现视频缩放及颜色空间转换等功能，需先安装**MLU-CNCV硬件加速库**(参考具体版本要求), 然后编译 ``mlu_op`` 并拷贝 ``libeasyOP.so`` 到 ``${NEUWARE_HOME}/lib64`` 目录下。
    ```sh
+   #1: 安装完成cncv库
+    ...
+   #2: 编译mlu_op算子
    cd mlu_op & mkdir build
    cd build & cmake .. & make -j
-   mv ../lib/libeasyOP.so /usr/local/neuware/lib64
+   #3: 拷贝libeasyOP.so 到NEUWARE_HOME路径下
+   mv ../lib/libeasyOP.so ${NEUWARE_HOME}/lib64
    ```
 
 ## FFmpeg-MLU视频编解码 ##
@@ -87,18 +93,17 @@ FFmpeg-MLU支持的视频编码格式如下：
 - HEVC
     - Codec名称：``hevc_mluenc``
 - JPEG
-    - 待更新
+    - TODO
 
 **运行示例**
 
 ```sh
 ./ffmpeg -i input_file -c:v h264_mluenc <output.h264>
 ```
+
 ## 基本测试 ##
 
 ### Baseline编码测试 ###
-
-
 ```sh
 ./ffmpeg -benchmark -re -i input.mkv -c:v h264_mluenc -f null -
 ```
@@ -121,7 +126,7 @@ FFmpeg-MLU支持的视频编码格式如下：
 ```sh
 ./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale_yuv2yuv_mlu=320:240:0 -c:v h264_mluenc output_320x240.h264
 
-./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf cvt_yuv2rgbx_mlu=rgb:0,cvt_rgbx2yuv_mlu=nv12:0 output.h264
+./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf cvt_yuv2rgbx_mlu=rgb24:0,cvt_rgbx2yuv_mlu=nv12:0 output.h264
 ```
 
 ## 视频质量测试 ##
@@ -153,7 +158,7 @@ FFmpeg-MLU支持的视频编码格式如下：
 |input_buf_num|int|用于解码器输入缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **4**。|
 |output_buf_num|int|用于解码器输出缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **3**。|
 |stride_align|int|解码器输出对齐的步长。 <br>支持设置的值的范围为：**1** - **128**，可以是 **2^(0 - 7)**。 <br>默认值为 **1**。|
-|output_pixfmt|int|输出像素的格式。 <br>支持设置的值为： <br>- **nv12/nv21/p010/i420**。 <br>默认值为 **nv12**。|
+|output_pixfmt|int|输出像素的格式。 <br>支持设置的值为： <br>- **nv12/nv21/p010/yuv420p**。 <br>默认值为 **nv12**。|
 |resize|string|调整视频大小 （宽）x（高）。 <br>可以设置为 **1/2** 或 **1/4** 缩放视频。 <br>默认为 null。|
 |trace|int|FFmpeg-MLU调试开关。<br>支持设置的值为：<br>- **0**: 表示关闭。 <br>- **1**: 表示开启。 <br>默认值为 **0**。|
 
@@ -198,11 +203,10 @@ FFmpeg-MLU支持的视频编码格式如下：
 
 ### MLU Filter ###
 
-
-|filter名|功能描述|调用示例|约束|
-|-|-|-|-|
-|scale_yuv2yuv_mlu|接收 YUV 格式图像（NV12/NV21），再调整到指定大小后输出。|**-vf scale_yuv2yuv_mlu=<output_w>:<output_h>:<dev_id>**<br>- <output_w>:输出图像宽度 <br>- <output_h>:输出图像高度 <br>- <dev_id>:设备号|<br>- 输出的宽度和高度必须为偶数<br>- 支持图像像素深度为 8u|
-|scale_rgbx2rgbx_mlu|接收 RGBX 格式图像，再调整到指定大小后输出。|**-vf  scale_rgbx2rgbx_mlu=<output_w>:<output_h>:<dev_id>**<br>- <output_w>:输出图像宽度 <br>- <output_h>:输出图像高度 <br>- <dev_id>:设备号|<br>- 输入图像的宽度和高度不超过 8192 像素<br>- 支持图像像素深度为 8u|
-|cvt_yuv2rgbx_mlu|输入为 YUV 图像（NV12/NV21），将图像颜色空间转换为指定 RGBX 系列后输出|**-vf  cvt_yuv2rgbx_mlu=<output_fmt>:<dev_id>**<br>- <output_fmt>:输出像素格式<br>- <dev_id>:设备号|<br>- 输入图像的宽度和高度不超过 8192 像素<br>- 输入图像的宽度和高度必须为偶数<br>- 支持图像像素深度为 8u|
-|cvt_rgbx2yuv_mlu|输入为指定的 RGBX 系列图像，将图像色彩空间转换为指定的 YUV 图像（NV12/NV21）|**-vf  cvt_yuv2rgbx_mlu=<output_fmt>:<dev_id>**<br>- <output_fmt>:输出像素格式<br>- <dev_id>:设备号|<br>- 输入图像的宽度和高度大于等于 2<br>- 输入图像的像素格式（pixel_fmt）支持 RGB、BGR、RGBA、BGRA、ARGB、ABGR<br>- 支持图像像素深度为 8U<br>- 输出图像的像素格式（pixel_fmt）支持 NV12 和 NV21|
+|filter名|功能描述|调用示例|
+|-|-|-|
+|scale_yuv2yuv_mlu|- 接收 YUV 格式图像（NV12/NV21）<br>- scale到指定大小后输出,<br>- 输出的宽度和高度必须为偶数<br>- 支持图像像素深度为 8u|**-vf filter=<out_w>:<out_h>:<dev_id>**<br>- <out_w>:输出图像宽度 <br>- <ou_h>:输出图像高度 <br>- <dev_id>:设备号|
+|scale_rgbx2rgbx_mlu|- 接收RGBX格式图像,scale到指定大小后输出<br>- 要求输入图像的宽高均不超过8192像素<br>- 支持图像像素深度为 8u|**-vf  filter=<out_w>:<out_h>:<dev_id>**<br>- <out_w>:输出图像宽度 <br>- <out_h>:输出图像高度 <br>- <dev_id>:设备号|
+|cvt_yuv2rgbx_mlu|- 接收YUV图像(NV12/NV21)<br>- 将图像颜色空间转换为指定RGBX后输出, <br>- 输入图像的宽高均不超过 8192 像素<br>- 输入图像的宽高必须为偶数<br>- 支持图像像素深度为 8u|**-vf filter=<out_fmt>:<dev_id>**<br>- <out_fmt>:输出像素格式<br>- <dev_id>:设备号|
+|cvt_rgbx2yuv_mlu|- 接收RGBX图像,<br>- 将图像色彩空间转换为指定的YUV(NV12/NV21), <br>- 输入图像的宽高不小于 2<br>- 输入图像像素格式支持 RGB24、BGR24、RGBA、BGRA、ARGB、ABGR<br>- 输出图像像素格式支持NV12和NV21<br>- 支持图像像素深度为 8U|**-vf filter=<out_fmt>:<dev_id>**<br>- <out_fmt>:输出像素格式<br>- <dev_id>:设备号|
 

@@ -1,3 +1,12 @@
+# Cambricon® ffmpeg-mlu open source release v1.4.0!
+**Whats new**
+ - Rename rgb&bgr to rgb24&bgr24 in mlu filters.
+ - Supported yuv420p pixfmt for mlu decoder.
+ - Removed i420 pixfmt for mlu decoder.
+ - Unupported mlu mjpeg encoder in this version.
+ - Compatible with different special cntoolkit versions and drivers.
+ - Supported cntookit and drivers version, see readme.
+
 # Cambricon® ffmpeg-mlu open source release v1.3.0!
 **Whats new**
  - Supported mlu encoder preset function.

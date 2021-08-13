@@ -1,15 +1,15 @@
-From f233ba80896037caa4ec78f5ac837851ac753769 Mon Sep 17 00:00:00 2001
+From 269ee58d0cbadc9fe2ea40f9fae29cb0ec8660ed Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Fri, 9 Jul 2021 17:09:06 +0800
+Date: Tue, 10 Aug 2021 22:17:14 +0800
 Subject: [PATCH] gen new patch
 
 ---
- configure                            |   17 +
+ configure                            |   16 +
  doc/examples/Makefile                |    1 +
  doc/examples/mlumpp_transcode.c      |  396 ++++++
  libavcodec/Makefile                  |    8 +
  libavcodec/allcodecs.c               |    8 +
- libavcodec/mlumpp_dec.c              | 1705 ++++++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c              | 1715 ++++++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c         |  160 +++
  libavcodec/mlumpp_enc_hevc.c         |  157 +++
  libavcodec/mlumpp_enc_jpeg.c         |  844 +++++++++++++
@@ -19,12 +19,12 @@ Subject: [PATCH] gen new patch
  libavcodec/mlumpp_vid_enc.h          |  131 ++
  libavfilter/Makefile                 |    5 +
  libavfilter/allfilters.c             |    5 +
- libavfilter/vf_cvt_rgbx2yuv_mlu.c    |  490 ++++++++
- libavfilter/vf_cvt_yuv2rgbx_mlu.c    |  463 +++++++
- libavfilter/vf_scale_rgbx2rgbx_mlu.c |  459 +++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c   |  417 +++++++
+ libavfilter/vf_cvt_rgbx2yuv_mlu.c    |  466 +++++++
+ libavfilter/vf_cvt_yuv2rgbx_mlu.c    |  457 +++++++
+ libavfilter/vf_scale_rgbx2rgbx_mlu.c |  436 +++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c   |  411 ++++++
  libavfilter/vf_sr_mlu.c              |  271 ++++
- 20 files changed, 6977 insertions(+)
+ 20 files changed, 6927 insertions(+)
  create mode 100755 doc/examples/mlumpp_transcode.c
  mode change 100644 => 100755 libavcodec/Makefile
  mode change 100644 => 100755 libavcodec/allcodecs.c
@@ -43,7 +43,7 @@ Subject: [PATCH] gen new patch
  create mode 100644 libavfilter/vf_sr_mlu.c
 
 diff --git a/configure b/configure
-index 34c2adb4a4..8f5bddf2f9 100755
+index 34c2adb4a4..2265d67853 100755
 --- a/configure
 +++ b/configure
 @@ -340,6 +340,7 @@ External library support:
@@ -123,13 +123,12 @@ index 34c2adb4a4..8f5bddf2f9 100755
  vp9_mediacodec_decoder_deps="mediacodec"
  vp9_rkmpp_decoder_deps="rkmpp"
  vp9_vaapi_encoder_deps="VAEncPictureParameterBufferVP9"
-@@ -6367,6 +6380,10 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
+@@ -6367,6 +6380,9 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
                               }
  enabled vapoursynth       && require_pkg_config vapoursynth "vapoursynth-script >= 42" VSScript.h vsscript_init
  
 +if enabled mlumpp; then
 +    require_headers  cn_video_dec.h && require_headers  cn_video_enc.h || die "ERROR: mlumpp requires proper neuware environment";
-+    check_lib cncodec cn_video_dec.h cnvideoDecQueryAvailInputBuf -lcncodec -lcnrt -lcndrv || die "ERROR: mlumpp requires 1.3 or above neuware environment" ;
 +fi
  
  if enabled gcrypt; then
@@ -651,10 +650,10 @@ index d2f9a39ce5..311ca7a05b
  
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..22b6ffdae0
+index 0000000000..aec3b035a3
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1705 @@
+@@ -0,0 +1,1715 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -720,7 +719,7 @@ index 0000000000..22b6ffdae0
 +#define CNCODEC_VERSION_1_6 AV_VERSION_INT(1, 6, 0)
 +#endif
 +#define FF_MLU_MAJPR_VERSION 1
-+#define FF_MLU_MINOR_VERSION 3
++#define FF_MLU_MINOR_VERSION 4
 +#define FF_MLU_PATCH_VERSION 0
 +
 +static av_cold void mlumpp_empty_frame_queue(AVCodecContext *avctx);
@@ -788,7 +787,7 @@ index 0000000000..22b6ffdae0
 +/************************************************************************************************************/
 +// mlumpp helper function,internal function
 +static inline void mlumpp_get_version(void) {
-+    av_log(NULL, AV_LOG_INFO, "rel time: 2021/07/02 \n");
++    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/07/20 \n");
 +    av_log(NULL, AV_LOG_INFO, "CNCODEC: %d.%d.%d \n",
 +            CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION);
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",
@@ -971,14 +970,14 @@ index 0000000000..22b6ffdae0
 +        return CNCODEC_PIX_FMT_NV12;
 +    } else if (!strcmp("nv21", pixfmt) || !strcmp("NV21", pixfmt)) {
 +        return CNCODEC_PIX_FMT_NV21;
-+    } else if (!strcmp("i420", pixfmt) || !strcmp("I420", pixfmt)) {
++    } else if (!strcmp("yuv420p", pixfmt) || !strcmp("YUV420P", pixfmt)) {
 +        return CNCODEC_PIX_FMT_I420;
 +    } else if (!strcmp("p010", pixfmt) || !strcmp("P010", pixfmt) ||
 +               !strcmp("p010le", pixfmt) || !strcmp("P010LE", pixfmt) ||
 +               !strcmp("p010be", pixfmt) || !strcmp("P010BE", pixfmt)) {
 +        return CNCODEC_PIX_FMT_P010;
 +    } else {
-+        av_log(NULL, AV_LOG_ERROR, "unsupport pix fmt: %s, cndecoder only suport nv12/nv21/i420/p010 \n", pixfmt);
++        av_log(NULL, AV_LOG_ERROR, "unsupport pix fmt: %s, cndecoder only suport nv12/nv21/yuv420p/p010 \n", pixfmt);
 +        return -1;
 +    }
 +}
@@ -1020,15 +1019,25 @@ index 0000000000..22b6ffdae0
 +    }
 +    if (nonblock_flag) {
 +        int ret = 0;
-+        if (ctx->handle)
++        if (ctx->handle){
++#if CNCODEC_PATCH_VERSION < 100
 +            ret = cnvideoDecQueryAvailInputBuf(ctx->handle);
++#else
++            ret = cnvideoDecQueryAvailInputBufCnt(ctx->handle);
++#endif
++        }
 +        return ret;
 +    } else {
 +        int ret = 0;
 +        int counts = 500;
 +        while (!ctx->codec_abort_flag && --counts) { // timeout = 500ms
-+            if (ctx->handle)
++            if (ctx->handle) {
++#if CNCODEC_PATCH_VERSION < 100
 +                ret = cnvideoDecQueryAvailInputBuf(ctx->handle);
++#else
++                ret = cnvideoDecQueryAvailInputBufCnt(ctx->handle);
++#endif
++            }
 +            if (ret)
 +                return 1;
 +            av_usleep(1000);
@@ -1692,7 +1701,7 @@ index 0000000000..22b6ffdae0
 +        }
 +        break;
 +    default:
-+        av_log(avctx, AV_LOG_ERROR, "not support pix fmt: %d, except NV12/NV21/I420/P010 \n", cnframe->pixelFmt);
++        av_log(avctx, AV_LOG_ERROR, "not support pix fmt: %d, except NV12/NV21/YUV420P/P010 \n", cnframe->pixelFmt);
 +        break;
 +    }
 +    return 0;
@@ -2310,7 +2319,7 @@ index 0000000000..22b6ffdae0
 +    { "input_buf_num",  "Number of input buffers for decoder",   OFFSET(num_input_buffers),   AV_OPT_TYPE_INT, { .i64 = 4}, 1, 18, VD },\
 +    { "output_buf_num","Number of output buffers for decoder",   OFFSET(num_output_buffers),  AV_OPT_TYPE_INT, { .i64 = 3}, 1, 18, VD },\
 +    { "stride_align","stride align of output buffers for decoder",OFFSET(stride_align),   AV_OPT_TYPE_INT, { .i64 = 1 },0, 128, VD },\
-+    { "output_pixfmt",        "output pix fmt",                   OFFSET(output_pixfmt),   AV_OPT_TYPE_STRING, { .str = "nv12" },0, 0, VD }, /*NV12, NV21, I420, P010*/
++    { "output_pixfmt",        "output pix fmt",                   OFFSET(output_pixfmt),   AV_OPT_TYPE_STRING, { .str = "nv12" },0, 0, VD }, /*NV12, NV21, YUV420P, P010*/
 +
 +static const AVOption options[] = {
 +    MLU2XX_COMMON_OPTS
@@ -5201,10 +5210,10 @@ index 04a3df7d56..520310c978 100644
  extern AVFilter ff_vf_streamselect;
 diff --git a/libavfilter/vf_cvt_rgbx2yuv_mlu.c b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 new file mode 100644
-index 0000000000..9193b59861
+index 0000000000..95b74c583b
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
-@@ -0,0 +1,490 @@
+@@ -0,0 +1,466 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -5259,112 +5268,6 @@ index 0000000000..9193b59861
 +    AV_PIX_FMT_BGRA,
 +};
 +
-+static enum AVPixelFormat getAVPixFmtFromPixindex(const char* pix_fmt) {
-+  if (strcmp(pix_fmt, "NV12") == 0 ||
-+      strcmp(pix_fmt, "nv12") == 0) {
-+        return AV_PIX_FMT_NV12;
-+  } else if (strcmp(pix_fmt, "NV21") == 0 ||
-+             strcmp(pix_fmt, "nv21") == 0) {
-+        return AV_PIX_FMT_NV21;
-+  } else if (strcmp(pix_fmt, "RGB") == 0 ||
-+             strcmp(pix_fmt, "rgb") == 0) {
-+        return AV_PIX_FMT_RGB24;
-+  } else if (strcmp(pix_fmt, "BGR") == 0 ||
-+             strcmp(pix_fmt, "bgr") == 0) {
-+        return AV_PIX_FMT_BGR24;
-+  } else if (strcmp(pix_fmt, "ARGB") == 0 ||
-+             strcmp(pix_fmt, "argb") == 0) {
-+        return AV_PIX_FMT_ARGB;
-+  } else if (strcmp(pix_fmt, "ABGR") == 0 ||
-+             strcmp(pix_fmt, "abgr") == 0) {
-+        return AV_PIX_FMT_ABGR;
-+  } else if (strcmp(pix_fmt, "RGBA") == 0 ||
-+             strcmp(pix_fmt, "rgba") == 0) {
-+        return AV_PIX_FMT_RGBA;
-+  } else if (strcmp(pix_fmt, "BGRA") == 0 ||
-+             strcmp(pix_fmt, "bgra") == 0) {
-+        return AV_PIX_FMT_BGRA;
-+  } else {
-+        printf("unsupported pixel format\n");
-+        return AV_PIX_FMT_NONE;
-+  }
-+}
-+
-+static char* cvtAVFmt2IndexFmt(enum AVPixelFormat fmt) {
-+  char *pix_fmt;
-+  switch (fmt) {
-+  case AV_PIX_FMT_NV12:{
-+    static char pix_fmt_[5] = "nv12";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_NV21:{
-+    static char pix_fmt_[5] = "nv21";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_RGB24:{
-+    static char pix_fmt_[5] = "rgb";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_BGR24:{
-+    static char pix_fmt_[5] = "bgr";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_ARGB:{
-+    static char pix_fmt_[5] = "argb";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_ABGR:{
-+    static char pix_fmt_[5] = "abgr";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_BGRA:{
-+    static char pix_fmt_[5] = "bgra";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_RGBA:{
-+    static char pix_fmt_[5] = "rgba";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  default:{
-+    printf("unsupport pix fmt for converting...\n");
-+    static char pix_fmt_[5] = "in";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  }
-+}
-+
-+static uint32_t getPixFmtChannelNum(enum AVPixelFormat pixfmt) {
-+  if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV12) {
-+    return 1;
-+  } else if (pixfmt == AV_PIX_FMT_BGR24 || pixfmt == AV_PIX_FMT_RGB24) {
-+    return 3;
-+  } else if (pixfmt == AV_PIX_FMT_ABGR || pixfmt == AV_PIX_FMT_ARGB ||
-+             pixfmt == AV_PIX_FMT_BGRA || pixfmt == AV_PIX_FMT_RGBA) {
-+    return 4;
-+  } else {
-+    printf("unsupport pix fmt for getting chennel num...\n");
-+    return 0;
-+  }
-+}
-+
 +typedef struct MluCVTRGBX2YUVContext {
 +    const AVClass *class;
 +    enum AVPixelFormat in_fmt;
@@ -5381,6 +5284,7 @@ index 0000000000..9193b59861
 +    char *enter_out_fmt;         ///< dst pixel format  expression string
 +    char *n_expr;                ///< device_id expression string
 +    char *depth;
++    const char *pic_pixfmt;
 +
 +    // buffers and mlu-resize func-ptrs
 +    void *input_mlu_rgbx;
@@ -5404,6 +5308,7 @@ index 0000000000..9193b59861
 +    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
 +    return dlsym(handle, buf);
 +}
++
 +static int mluop_load(MluCVTRGBX2YUVContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
 +        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
@@ -5430,12 +5335,91 @@ index 0000000000..9193b59861
 +    }
 +    return 0;
 +}
++
 +static int mluop_unload(MluCVTRGBX2YUVContext *ctx) {
 +    if (ctx->lib) {
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +    }
 +    return 0;
++}
++
++static uint32_t getPixFmtChannelNum(enum AVPixelFormat pixfmt) {
++  if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV21) {
++    return 1;
++  } else if (pixfmt == AV_PIX_FMT_BGR24 || pixfmt == AV_PIX_FMT_RGB24) {
++    return 3;
++  } else if (pixfmt == AV_PIX_FMT_ABGR || pixfmt == AV_PIX_FMT_ARGB ||
++             pixfmt == AV_PIX_FMT_BGRA || pixfmt == AV_PIX_FMT_RGBA) {
++    return 4;
++  } else {
++    printf("unsupport pix fmt for getting chennel num...\n");
++    return 0;
++  }
++}
++
++static enum AVPixelFormat getAVPixFmtFromPixindex(const char* pix_fmt) {
++  if (strcmp(pix_fmt, "NV12") == 0 ||
++      strcmp(pix_fmt, "nv12") == 0) {
++        return AV_PIX_FMT_NV12;
++  } else if (strcmp(pix_fmt, "NV21") == 0 ||
++             strcmp(pix_fmt, "nv21") == 0) {
++        return AV_PIX_FMT_NV21;
++  } else if (strcmp(pix_fmt, "RGB24") == 0 ||
++             strcmp(pix_fmt, "rgb24") == 0) {
++        return AV_PIX_FMT_RGB24;
++  } else if (strcmp(pix_fmt, "BGR24") == 0 ||
++             strcmp(pix_fmt, "bgr24") == 0) {
++        return AV_PIX_FMT_BGR24;
++  } else if (strcmp(pix_fmt, "ARGB") == 0 ||
++             strcmp(pix_fmt, "argb") == 0) {
++        return AV_PIX_FMT_ARGB;
++  } else if (strcmp(pix_fmt, "ABGR") == 0 ||
++             strcmp(pix_fmt, "abgr") == 0) {
++        return AV_PIX_FMT_ABGR;
++  } else if (strcmp(pix_fmt, "RGBA") == 0 ||
++             strcmp(pix_fmt, "rgba") == 0) {
++        return AV_PIX_FMT_RGBA;
++  } else if (strcmp(pix_fmt, "BGRA") == 0 ||
++             strcmp(pix_fmt, "bgra") == 0) {
++        return AV_PIX_FMT_BGRA;
++  } else {
++        printf("unsupported pixel format\n");
++        return AV_PIX_FMT_NONE;
++  }
++}
++
++static void cvtAVFmt2IndexFmt(MluCVTRGBX2YUVContext *ctx, enum AVPixelFormat fmt) {
++  switch (fmt) {
++    case AV_PIX_FMT_NV12:
++      ctx->pic_pixfmt = "nv12";
++      break;
++    case AV_PIX_FMT_NV21:
++      ctx->pic_pixfmt = "nv21";
++      break;
++    case AV_PIX_FMT_RGB24:
++      ctx->pic_pixfmt = "rgb24";
++      break;
++    case AV_PIX_FMT_BGR24:
++      ctx->pic_pixfmt = "bgr24";
++      break;
++    case AV_PIX_FMT_ARGB:
++      ctx->pic_pixfmt = "argb";
++      break;
++    case AV_PIX_FMT_ABGR:
++      ctx->pic_pixfmt = "abgr";
++      break;
++    case AV_PIX_FMT_BGRA:
++      ctx->pic_pixfmt = "bgra";
++      break;
++    case AV_PIX_FMT_RGBA:
++      ctx->pic_pixfmt = "rgba";
++      break;
++    default:
++      printf("unsupport pix fmt, %s\n",av_get_pix_fmt_name(fmt));
++      ctx->pic_pixfmt = "in";
++      break;
++  }
 +}
 +
 +static int mlurgbx2yuv_query_formats(AVFilterContext *ctx)
@@ -5540,10 +5524,11 @@ index 0000000000..9193b59861
 +
 +        char depth_[3] = "8U";
 +        s->depth = depth_;
++        cvtAVFmt2IndexFmt(s, s->format);
 +
 +        s->ptr_convert_rgbx2yuv_init(&s->op_handle,
 +                                     inlink->w, inlink->h,
-+                                     cvtAVFmt2IndexFmt(s->format), s->enter_out_fmt,
++                                     s->pic_pixfmt, s->enter_out_fmt,
 +                                     s->depth);
 +        ret = cnrtMalloc((void **)(&s->input_mlu_rgbx), sizeof(char) * s->input_mlu_rgbx_size);
 +        CNRT_ERROR_CHECK(ctx, ret);
@@ -5697,10 +5682,10 @@ index 0000000000..9193b59861
 +};
 diff --git a/libavfilter/vf_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..83675c08a0
+index 0000000000..9b27f64cc7
 --- /dev/null
 +++ b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
-@@ -0,0 +1,463 @@
+@@ -0,0 +1,457 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -5755,64 +5740,8 @@ index 0000000000..83675c08a0
 +    AV_PIX_FMT_BGRA,
 +};
 +
-+static enum AVPixelFormat getAVPixFmtFromPixindex(const char* pix_fmt) {
-+  if (strcmp(pix_fmt, "NV12") == 0 ||
-+      strcmp(pix_fmt, "nv12") == 0) {
-+        return AV_PIX_FMT_NV12;
-+  } else if (strcmp(pix_fmt, "NV21") == 0 ||
-+             strcmp(pix_fmt, "nv21") == 0) {
-+        return AV_PIX_FMT_NV21;
-+  } else if (strcmp(pix_fmt, "RGB") == 0 ||
-+             strcmp(pix_fmt, "rgb") == 0) {
-+        return AV_PIX_FMT_RGB24;
-+  } else if (strcmp(pix_fmt, "BGR") == 0 ||
-+             strcmp(pix_fmt, "bgr") == 0) {
-+        return AV_PIX_FMT_BGR24;
-+  } else if (strcmp(pix_fmt, "ARGB") == 0 ||
-+             strcmp(pix_fmt, "argb") == 0) {
-+        return AV_PIX_FMT_ARGB;
-+  } else if (strcmp(pix_fmt, "ABGR") == 0 ||
-+             strcmp(pix_fmt, "abgr") == 0) {
-+        return AV_PIX_FMT_ABGR;
-+  } else if (strcmp(pix_fmt, "RGBA") == 0 ||
-+             strcmp(pix_fmt, "rgba") == 0) {
-+        return AV_PIX_FMT_RGBA;
-+  } else if (strcmp(pix_fmt, "BGRA") == 0 ||
-+             strcmp(pix_fmt, "bgra") == 0) {
-+        return AV_PIX_FMT_BGRA;
-+  } else {
-+        printf("unsupported pixel format\n");
-+        return AV_PIX_FMT_NONE;
-+  }
-+}
-+
-+static char* cvtAVFmt2IndexFmt(enum AVPixelFormat fmt) {
-+  char *pix_fmt;
-+  switch (fmt) {
-+  case AV_PIX_FMT_NV12:{
-+    static char pix_fmt_[5] = "nv12";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_NV21:{
-+    static char pix_fmt_[5] = "nv21";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  default:{
-+    printf("unsupport pix fmt for converting...\n");
-+    static char pix_fmt_[5] = "in";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  }
-+}
-+
 +static uint32_t getPixFmtChannelNum(enum AVPixelFormat pixfmt) {
-+  if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV12) {
++  if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV21) {
 +    return 1;
 +  } else if (pixfmt == AV_PIX_FMT_BGR24 || pixfmt == AV_PIX_FMT_RGB24) {
 +    return 3;
@@ -5841,6 +5770,7 @@ index 0000000000..83675c08a0
 +    char *enter_out_fmt;         ///< dst pixel format  expression string
 +    char *n_expr;                ///< device_id expression string
 +    char *depth;
++    const char *pic_pixfmt;
 +
 +    // buffers and mlu-resize func-ptrs
 +    void *input_mlu_y;
@@ -5864,6 +5794,7 @@ index 0000000000..83675c08a0
 +    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
 +    return dlsym(handle, buf);
 +}
++
 +static int mluop_load(MluCVTYUV2RGBXContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
 +        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
@@ -5890,12 +5821,59 @@ index 0000000000..83675c08a0
 +    }
 +    return 0;
 +}
++
 +static int mluop_unload(MluCVTYUV2RGBXContext *ctx) {
 +    if (ctx->lib) {
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +    }
 +    return 0;
++}
++
++static enum AVPixelFormat getAVPixFmtFromPixindex(const char* pix_fmt) {
++  if (strcmp(pix_fmt, "NV12") == 0 ||
++      strcmp(pix_fmt, "nv12") == 0) {
++        return AV_PIX_FMT_NV12;
++  } else if (strcmp(pix_fmt, "NV21") == 0 ||
++             strcmp(pix_fmt, "nv21") == 0) {
++        return AV_PIX_FMT_NV21;
++  } else if (strcmp(pix_fmt, "RGB24") == 0 ||
++             strcmp(pix_fmt, "rgb24") == 0) {
++        return AV_PIX_FMT_RGB24;
++  } else if (strcmp(pix_fmt, "BGR24") == 0 ||
++             strcmp(pix_fmt, "bgr24") == 0) {
++        return AV_PIX_FMT_BGR24;
++  } else if (strcmp(pix_fmt, "ARGB") == 0 ||
++             strcmp(pix_fmt, "argb") == 0) {
++        return AV_PIX_FMT_ARGB;
++  } else if (strcmp(pix_fmt, "ABGR") == 0 ||
++             strcmp(pix_fmt, "abgr") == 0) {
++        return AV_PIX_FMT_ABGR;
++  } else if (strcmp(pix_fmt, "RGBA") == 0 ||
++             strcmp(pix_fmt, "rgba") == 0) {
++        return AV_PIX_FMT_RGBA;
++  } else if (strcmp(pix_fmt, "BGRA") == 0 ||
++             strcmp(pix_fmt, "bgra") == 0) {
++        return AV_PIX_FMT_BGRA;
++  } else {
++        printf("unsupported pixel format\n");
++        return AV_PIX_FMT_NONE;
++  }
++}
++
++static void cvtAVFmt2IndexFmt(MluCVTYUV2RGBXContext *ctx, enum AVPixelFormat fmt) {
++    switch (fmt) {
++    case AV_PIX_FMT_NV12:
++        ctx->pic_pixfmt = "nv12";
++        break;
++    case AV_PIX_FMT_NV21:
++        ctx->pic_pixfmt = "nv21";
++        break;
++    default:
++        printf("unsupport pix fmt, %s\n", av_get_pix_fmt_name(fmt));
++        ctx->pic_pixfmt = "in";
++        break;
++    }
 +}
 +
 +static int mluyuv2rgbx_query_formats(AVFilterContext *ctx)
@@ -6000,10 +5978,11 @@ index 0000000000..83675c08a0
 +
 +        char depth_[3] = "8U";
 +        s->depth = depth_;
++        cvtAVFmt2IndexFmt(s, s->format);
 +
 +        s->ptr_convert_yuv2rgbx_init(&s->op_handle,
 +                                     inlink->w, inlink->h,
-+                                     cvtAVFmt2IndexFmt(s->format), s->enter_out_fmt,
++                                     s->pic_pixfmt, s->enter_out_fmt,
 +                                     s->depth);
 +        ret = cnrtMalloc((void **)(&s->input_mlu_y), sizeof(char) * s->input_mlu_y_size);
 +        CNRT_ERROR_CHECK(ctx, ret);
@@ -6166,10 +6145,10 @@ index 0000000000..83675c08a0
 +};
 diff --git a/libavfilter/vf_scale_rgbx2rgbx_mlu.c b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..018adfd558
+index 0000000000..8296a49ab3
 --- /dev/null
 +++ b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
-@@ -0,0 +1,459 @@
+@@ -0,0 +1,436 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6222,69 +6201,8 @@ index 0000000000..018adfd558
 +    AV_PIX_FMT_BGRA,
 +};
 +
-+static char* cvtAVFmt2IndexFmt(enum AVPixelFormat fmt) {
-+  char *pix_fmt;
-+  switch (fmt) {
-+  case AV_PIX_FMT_NV12:{
-+    static char pix_fmt_[5] = "nv12";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_NV21:{
-+    static char pix_fmt_[5] = "nv21";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_RGB24:{
-+    static char pix_fmt_[5] = "rgb";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_BGR24:{
-+    static char pix_fmt_[5] = "bgr";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_ARGB:{
-+    static char pix_fmt_[5] = "argb";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_ABGR:{
-+    static char pix_fmt_[5] = "abgr";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_RGBA:{
-+    static char pix_fmt_[5] = "rgba";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_BGRA:{
-+    static char pix_fmt_[5] = "bgra";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  default:{
-+    printf("unsupport pix fmt for converting...\n");
-+    static char pix_fmt_[5] = "in";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  }
-+}
-+
 +static uint32_t getPixFmtChannelNum(enum AVPixelFormat pixfmt) {
-+  if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV12) {
++  if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV21) {
 +    return 1;
 +  } else if (pixfmt == AV_PIX_FMT_BGR24 || pixfmt == AV_PIX_FMT_RGB24) {
 +    return 3;
@@ -6314,6 +6232,7 @@ index 0000000000..018adfd558
 +    char *h_expr;               ///< height expression string
 +    char *n_expr;               ///< device_id expression string
 +    char *depth;
++    const char *pic_pixfmt;
 +
 +    // buffers and mlu-resize func-ptrs
 +    void *input_mlu_rgbx;
@@ -6335,6 +6254,7 @@ index 0000000000..018adfd558
 +    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
 +    return dlsym(handle, buf);
 +}
++
 +static int mluop_load(MluScaleRGBXContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
 +        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
@@ -6361,12 +6281,46 @@ index 0000000000..018adfd558
 +    }
 +    return 0;
 +}
++
 +static int mluop_unload(MluScaleRGBXContext *ctx) {
 +    if (ctx->lib) {
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +    }
 +    return 0;
++}
++
++static void cvtAVFmt2IndexFmt(MluScaleRGBXContext *ctx, enum AVPixelFormat fmt) {
++    switch (fmt) {
++    case AV_PIX_FMT_NV12:
++        ctx->pic_pixfmt = "nv12";
++        break;
++    case AV_PIX_FMT_NV21:
++        ctx->pic_pixfmt = "nv21";
++        break;
++    case AV_PIX_FMT_RGB24:
++        ctx->pic_pixfmt = "rgb24";
++        break;
++    case AV_PIX_FMT_BGR24:
++        ctx->pic_pixfmt = "bgr24";
++        break;
++    case AV_PIX_FMT_ARGB:
++        ctx->pic_pixfmt = "argb";
++        break;
++    case AV_PIX_FMT_ABGR:
++        ctx->pic_pixfmt = "abgr";
++        break;
++    case AV_PIX_FMT_RGBA:
++        ctx->pic_pixfmt = "rgba";
++        break;
++    case AV_PIX_FMT_BGRA:
++        ctx->pic_pixfmt = "bgra";
++        break;
++    default:
++        printf("unsupport pix fmt for converting, %s\n", av_get_pix_fmt_name(fmt));
++        ctx->pic_pixfmt = "in";
++        break;
++    }
 +}
 +
 +static int mlurgbxscale_query_formats(AVFilterContext *ctx)
@@ -6472,9 +6426,11 @@ index 0000000000..018adfd558
 +
 +        char depth_[3] = "8U";
 +        s->depth = depth_;
++        cvtAVFmt2IndexFmt(s, s->format);
++
 +        s->ptr_resize_rgbx_init(&s->op_handle,
 +                                inlink->w, inlink->h, outlink->w, outlink->h,
-+                                cvtAVFmt2IndexFmt(s->format), s->depth);
++                                s->pic_pixfmt, s->depth);
 +        ret = cnrtMalloc((void **)(&s->input_mlu_rgbx), sizeof(char) * s->input_mlu_size);
 +        CNRT_ERROR_CHECK(ctx, ret);
 +        ret = cnrtMalloc((void **)(&s->output_mlu_rgbx), sizeof(char) * s->output_mlu_size);
@@ -6631,10 +6587,10 @@ index 0000000000..018adfd558
 +};
 diff --git a/libavfilter/vf_scale_yuv2yuv_mlu.c b/libavfilter/vf_scale_yuv2yuv_mlu.c
 new file mode 100644
-index 0000000000..6fe121f367
+index 0000000000..e2474ed958
 --- /dev/null
 +++ b/libavfilter/vf_scale_yuv2yuv_mlu.c
-@@ -0,0 +1,417 @@
+@@ -0,0 +1,411 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6683,31 +6639,6 @@ index 0000000000..6fe121f367
 +    AV_PIX_FMT_NV21,
 +};
 +
-+static char* cvtAVFmt2IndexFmt(enum AVPixelFormat fmt) {
-+  char *pix_fmt;
-+  switch (fmt) {
-+  case AV_PIX_FMT_NV12:{
-+    static char pix_fmt_[5] = "nv12";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  case AV_PIX_FMT_NV21:{
-+    static char pix_fmt_[5] = "nv21";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  default:{
-+    printf("unsupport pix fmt for converting...\n");
-+    static char pix_fmt_[5] = "in";
-+    pix_fmt = pix_fmt_;
-+    return pix_fmt;
-+  }
-+    break;
-+  }
-+}
-+
 +typedef struct MluScaleContext {
 +    const AVClass *class;
 +    enum AVPixelFormat in_fmt;
@@ -6725,6 +6656,7 @@ index 0000000000..6fe121f367
 +    char *h_expr;               ///< height expression string
 +    char *n_expr;               ///< device_id expression string
 +    char *depth;
++    const char *pic_pixfmt;
 +
 +    // buffers and mlu-resize func-ptrs
 +    void *input_mlu_y;
@@ -6745,6 +6677,7 @@ index 0000000000..6fe121f367
 +    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
 +    return dlsym(handle, buf);
 +}
++
 +static int mluop_load(MluScaleContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
 +        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
@@ -6771,12 +6704,28 @@ index 0000000000..6fe121f367
 +    }
 +    return 0;
 +}
++
 +static int mluop_unload(MluScaleContext *ctx) {
 +    if (ctx->lib) {
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +    }
 +    return 0;
++}
++
++static void cvtAVFmt2IndexFmt(MluScaleContext *ctx, enum AVPixelFormat fmt) {
++    switch (fmt) {
++    case AV_PIX_FMT_NV12:
++        ctx->pic_pixfmt = "nv12";
++        break;
++    case AV_PIX_FMT_NV21:
++        ctx->pic_pixfmt = "nv21";
++        break;
++    default:
++        printf("unsupport pix fmt, %s\n", av_get_pix_fmt_name(fmt));
++        ctx->pic_pixfmt = "in";
++        break;
++    }
 +}
 +
 +static int mluscale_query_formats(AVFilterContext *ctx)
@@ -6876,9 +6825,10 @@ index 0000000000..6fe121f367
 +
 +        char depth_[3] = "8U";
 +        s->depth = depth_;
++        cvtAVFmt2IndexFmt(s, inlink->format);
 +
 +        s->ptr_resize_yuv_init(&s->op_handle, inlink->w, inlink->h, outlink->w, outlink->h,
-+                               s->depth, cvtAVFmt2IndexFmt(inlink->format));
++                               s->depth, s->pic_pixfmt);
 +        ret = cnrtMalloc((void **)(&s->input_mlu_y), sizeof(char) * inlink->w * inlink->h);
 +        CNRT_ERROR_CHECK(ctx, ret);
 +        ret = cnrtMalloc((void **)(&s->input_mlu_uv), sizeof(char) * inlink->w * inlink->h / 2);
