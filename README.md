@@ -11,17 +11,14 @@
 	- Centos
 	- Debian
 - 寒武纪MLU驱动:
-    - neuware-mlu2xx-driver-4.9.x
-    - neuware-mlu2xx-driver-4.6.142
+    - neuware-mlu270-driver-4.9.x
 - 寒武纪MLU SDK:
-    - cntookit-mlu2xx-1.7.x或更高版本
-    - cntookit-mlu2xx-1.4.122
+    - cntookit-mlu270-1.7.x或更高版本
     - cncv-0.4.602版本
-    - cncv-0.2.118版本
 
 ## 补丁、编译FFmpeg-MLU ##
 
-1. 获取FFmpeg源代码并通过下面Git*命令打补丁：
+1. 获取FFmpeg源代码并通过下面Git*命令打patch：
 
    ```sh
    git clone https://gitee.com/mirrors/ffmpeg.git -b release/4.2 --depth=1
@@ -37,14 +34,26 @@
 3. 运行下面命令配置并创建 FFmpeg-MLU:
 
    ```sh
-   ./configure --enable-gpl \
-               --enable-version3 \
-               --enable-mlumpp \
-               --extra-cflags="-I${NEUWARE_HOME}/include" \
-               --extra-ldflags="-L${NEUWARE_HOME}/lib64" \
-               --extra-libs="-lcncodec -lcnrt -ldl -lcndrv"
+   ./configure  --enable-gpl \
+                --extra-cflags="-I${NEUWARE_HOME}/include" \
+                --extra-ldflags="-L${NEUWARE_HOME}/lib64" \
+                --extra-libs="-lcncodec -lcnrt -ldl -lcndrv" \
+                --enable-ffplay \
+                --enable-ffmpeg \
+                --enable-mlumpp \
+                --enable-gpl \
+                --enable-version3 \
+                --enable-nonfree \
+                --disable-shared \
+                --enable-static \
+                --disable-debug \
+                --enable-stripping \
+                --enable-optimizations \
+                --enable-hwaccel=mlu
+
    make -j
    ```
+
 4. (可选) 如果想要运行MLU支持多线程的转码示例，运行下面命令：
 
    ```sh
@@ -82,7 +91,8 @@ FFmpeg-MLU支持的视频解码格式如下：
 **运行示例**
 
 ```sh
-./ffmpeg -c:v h264_mludec -i input_file output_file.yuv
+ffmpeg -y -c:v h264_mludec -i input_file output_file.yuv
+ffmpeg -y -hwaccel mlu -hwaccel_output_format mlu -c:v h264_mludec -i input_file -vf hwdownload_mlu output_file.yuv
 ```
 ### 视频编码 ###
 
@@ -93,40 +103,47 @@ FFmpeg-MLU支持的视频编码格式如下：
 - HEVC
     - Codec名称：``hevc_mluenc``
 - JPEG
-    - TODO
+    - Codec名称：``mjpeg_mluenc``
 
 **运行示例**
 
 ```sh
-./ffmpeg -i input_file -c:v h264_mluenc <output.h264>
+ffmpeg -i input_file -c:v h264_mluenc <output.h264>
 ```
-
 ## 基本测试 ##
 
 ### Baseline编码测试 ###
+
+
 ```sh
-./ffmpeg -benchmark -re -i input.mkv -c:v h264_mluenc -f null -
+ffmpeg -benchmark -re -i input.mkv -c:v h264_mluenc -f null -
 ```
 ### 缩放解码 ###
 ```sh
-./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale=320:240 output_320x240.mp4
+ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale=320:240 output_320x240.mp4
 
-./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale_yuv2yuv_mlu=320:240:0 output_320x240.mp4
+ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale_yuv2yuv_mlu=320:240:0 output_320x240.mp4
+
+ffmpeg -y -hwaccel mlu -hwaccel_output_format mlu -c:v h264_mludec -i input_file -vf scale_yuv2yuv_mlu=320:240:0,hwdownload_mlu output_file.yuv
 ```
 ### 1:1无缩放转码 ###
 
-    ./ffmpeg -y -vsync 0 -c:v h264_mludec -i fhd_input.mkv -c:a copy -c:v h264_mluenc -b:v 5M output.mp4
+ffmpeg -y -vsync 0 -c:v h264_mludec -i fhd_input.mkv -c:a copy -c:v h264_mluenc -b:v 5M output.mp4
+
+ffmpeg -y -hwaccel mlu -hwaccel_output_format mlu -c:v h264_mludec -i input_file -c:v h264_mluenc output_file.h264
 
 ### 1:N可缩放转码 ###
 ```sh
-./ffmpeg -y -vsync 0 -c:v h264_mludec -i fhd_input.mkv -vf scale=1280:720 -c:a copy -c:v h264_mluenc -b:v 2M output1.mp4 -vf scale=640:360 -c:a copy -c:v h264_mluenc -b:v 512K output2.mp4
+ffmpeg -y -vsync 0 -c:v h264_mludec -i fhd_input.mkv -vf scale=1280:720 -c:a copy -c:v h264_mluenc -b:v 2M output1.mp4 -vf scale=640:360 -c:a copy -c:v h264_mluenc -b:v 512K output2.mp4
 ```
 
 ### 解码 + MLU Filter + 编码 ###
 ```sh
-./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale_yuv2yuv_mlu=320:240:0 -c:v h264_mluenc output_320x240.h264
+ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf scale_yuv2yuv_mlu=320:240:0 -c:v h264_mluenc output_320x240.h264
 
-./ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf cvt_yuv2rgbx_mlu=rgb24:0,cvt_rgbx2yuv_mlu=nv12:0 output.h264
+ffmpeg -y -vsync 0 -c:v h264_mludec -i input_1920x1080.mkv -vf cvt_yuv2rgbx_mlu=rgb24:0,cvt_rgbx2yuv_mlu=nv12:0 output.h264
+
+ffmpeg -y -hwaccel mlu -hwaccel_output_format mlu -c:v h264_mludec -i input_file -vf scale_yuv2yuv_mlu=320:240:0 -c:v h264_mluenc output_file.h264
 ```
 
 ## 视频质量测试 ##
@@ -136,12 +153,12 @@ FFmpeg-MLU支持的视频编码格式如下：
 ### PSNR ###
 
 ```sh
-./ffmpeg -i src.h264  -i dst.h264  -lavfi psnr="stats_file=psnr.log" -f null -
+ffmpeg -i src.h264  -i dst.h264  -lavfi psnr="stats_file=psnr.log" -f null -
 ```
 ### SSIM ###
 
 ```sh
-./ffmpeg -i src.h264  -i dst.h264  -lavfi ssim="stats_file=ssim.log" -f null -
+ffmpeg -i src.h264  -i dst.h264  -lavfi ssim="stats_file=ssim.log" -f null -
 ```
 ## 性能调优 ##
 
@@ -153,27 +170,25 @@ FFmpeg-MLU支持的视频编码格式如下：
 |选项|类型|描述|
 |-|-|-|
 |device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。 <br>默认值为 **0**。|
-|instance_id|int|选择使用的VPU实例。 <br>支持设置的值为： <br>- 取为 **0** - **INT_MAX** 范围: 表示VPU/JPU实例编号。 <br>- **0**: 表示自动选择。 <br>默认值为 **0**。|
-|cnrt_init_flag|int|初始化或销毁FFmpeg的IPU设备。 <br>支持设置的值为：<br>- **0**: 表示销毁设备。 <br>- **1**: 表示初始化设备。 <br>默认值为 **1**。|
+|instance_id|int|选择使用的VPU实例。 <br>支持设置的值为： <br>- 取为 **-1** - **6** 范围: 表示VPU/JPU实例编号。 <br> **-1**: 表示自动选择。 <br>默认值为 **-1**。|
 |input_buf_num|int|用于解码器输入缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **4**。|
-|output_buf_num|int|用于解码器输出缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **3**。|
+|output_buf_num|int|用于解码器输出缓冲器的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **4**。|
 |stride_align|int|解码器输出对齐的步长。 <br>支持设置的值的范围为：**1** - **128**，可以是 **2^(0 - 7)**。 <br>默认值为 **1**。|
 |output_pixfmt|int|输出像素的格式。 <br>支持设置的值为： <br>- **nv12/nv21/p010/yuv420p**。 <br>默认值为 **nv12**。|
-|resize|string|调整视频大小 （宽）x（高）。 <br>可以设置为 **1/2** 或 **1/4** 缩放视频。 <br>默认为 null。|
+|resize|string|调整视频大小(宽)x(高)。 <br>可以设置为 **1/2** 或 **1/4** 缩放视频。 <br>默认为 null。|
 |trace|int|FFmpeg-MLU调试开关。<br>支持设置的值为：<br>- **0**: 表示关闭。 <br>- **1**: 表示开启。 <br>默认值为 **0**。|
 
 ### MLU编码器 ###
 
-#### 通用 ###
+#### 通用（除MJPEG以外） ###
 
 |选项|类型|描述|
 |-|-|-|
-|device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。<br>默认值为 **0**。|
-|instance_id|int|选择使用的VPU实例。<br>支持设置的值为： <br>- 值为 **0** - *INT_MAX* 范围：表示VPU实例编号。 <br>- **0**：表示自动选择。 <br>默认值为 **0**。|
-|cnrt_init_flag|int|是否在ffmpeg初始化/销毁cnrt。 <br>支持设置的值为： <br>- **0**：表示外部初始化/销毁。 <br>- **1**：表示由ffmpeg初始化/销毁。 <br>默认值为 **1**。|
-|input_buf_num|int|用于编码器输入缓冲的数量。  <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **3**。|
-|output_buf_num|int|用于编码器输出缓冲的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **5**。|
-|trace|int|FFmpeg-MLU调试信息开关。<br>支持的设置的值为： <br>- **0** 表示关闭调试打印信息。<br>- **2**：表示打开调试打印信息。<br>默认值为 **0**。|
+|device_id|int|选择使用的加速卡。<br>支持设置的值的范围：**0** - *INT_MAX*。*INT_MAX* 为加速卡总数减1。<br>默认值为 **0**。|
+|instance_id|int|选择使用的VPU实例。<br>支持设置的值为： <br> 值为 **-1** - **6** 范围：表示VPU实例编号。 <br> **-1**：表示自动选择。 <br>默认值为 **-1**。|
+|input_buf_num|int|用于编码器输入缓冲的数量。  <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **4**。|
+|output_buf_num|int|用于编码器输出缓冲的数量。 <br>支持设置的值的范围为：**1** - **18**。 <br>默认值为 **4**。|
+|trace|int|FFmpeg-MLU调试信息开关。<br>支持的设置的值为： <br> **0** 表示关闭调试打印信息。<br> **2**：表示打开调试打印信息。<br>默认值为 **0**。|
 |init_qpP|int|设置P帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |init_qpI|int|设置I帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
 |init_qpB|int|设置B帧初始值为QP。<br>支持设置的值的范围为：**-1** - **51**。 <br>默认值为 **-1**。|
@@ -200,6 +215,15 @@ FFmpeg-MLU支持的视频编码格式如下：
 |-|-|-|
 |profile|const|设置编码档次。<br>支持设置的值为： **main**、**main_still**、**main_intra**和 **main10**。 <br>默认值为 **main**。|
 |level|const|设置编码级别。<br>支持设置的值为：值为 **1** - **6.2** 范围、**auto** 。 <br>默认值为 **1**。|
+
+#### MJPEG ###
+
+|选项|类型|描述|
+|-|-|-|
+|device_id|int|选择使用的加速卡。<br>支持设置的值的范围为：**0** - *INT_MAX*。其中 *INT_MAX* 为加速卡总数减1。<br>默认值为 **0**。|
+|instance_id|int|选择使用的VPU实例。<br>支持设置的值为： <br> 值为 **0** - **6** 范围：表示VPU实例编号。 <br> **6**：表示自动选择。 <br>默认值为 **6**。|
+|quality|int|选择编码jpg图像的质量。<br>支持设置的值的范围为：**0** - **100**。其中，0代表质量最差，100代表质量最好。<br>默认值为 **100**。|
+
 
 ### MLU Filter ###
 
