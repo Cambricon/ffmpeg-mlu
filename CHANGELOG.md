@@ -1,3 +1,12 @@
+# Cambricon® ffmpeg-mlu open source release v1.5.0!
+**Whats new**
+ - Supported hwaccel mlu api&cmd mode.
+ - Supported hwaccel mlu decoder(h264/hevc/mjpeg/vp8/vp9).
+ - Supported hwaccel mlu encoder(h264/hevc/mjpeg).
+ - Supported hwaccel mlu hwfilter(cvt_yuv2rgbx/cvt_rgbx2yuv/scale_yuv2yuv/scale_rgbx2rgbx).
+ - Supported hwaccel transcoding on the MLU hardware.
+ - Supports for ``cntookit-mlu270-1.7.0 or later``.
+
 # Cambricon® ffmpeg-mlu open source release v1.4.0!
 **Whats new**
  - Rename rgb&bgr to rgb24&bgr24 in mlu filters.
@@ -85,7 +94,7 @@
 # Cambricon® ffmpeg-mlu open source release v1.0.4!
 **Whats new**
  - Added abort event handling to avoid dead-lock when receive abort event.
- 
+
 **Known limitations**:
 
  - If try to transcode a stream within only "one process" or one thread, need define ``instance_id`` to "1" for ``neuware-mlu270-1.3.0-1``
@@ -93,7 +102,7 @@
 # Cambricon® ffmpeg-mlu open source release v1.0.3!
 **Whats new**
  - Added more errors handling
- 
+
 **Known limitations**:
 
  - If try to transcode a stream within only "one process" or one thread, need define ``instance_id`` to "1" for ``neuware-mlu270-1.3.0-1``
