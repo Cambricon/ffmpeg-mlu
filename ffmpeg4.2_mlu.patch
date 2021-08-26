@@ -1,6 +1,6 @@
-From 2afa2e3ad958e4bc95661d42038a1d6847a83f68 Mon Sep 17 00:00:00 2001
+From 82ae960adb5187d85b108d56bbf49b7d87084c3a Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Tue, 24 Aug 2021 18:03:55 +0800
+Date: Thu, 26 Aug 2021 11:48:47 +0800
 Subject: [PATCH] gen new patch
 
 ---
@@ -1083,7 +1083,7 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..b053879a8e
+index 0000000000..6d3c06c780
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
 @@ -0,0 +1,1690 @@
@@ -1157,7 +1157,7 @@ index 0000000000..b053879a8e
 +#endif
 +#define FF_MLU_MAJPR_VERSION 1
 +#define FF_MLU_MINOR_VERSION 5
-+#define FF_MLU_PATCH_VERSION 0
++#define FF_MLU_PATCH_VERSION 1
 +
 +static av_cold void mlumpp_empty_frame_queue(AVCodecContext *avctx);
 +typedef struct MLUMPPContext
@@ -1235,7 +1235,7 @@ index 0000000000..b053879a8e
 +} MLUJpegFrameInfo_t;
 +
 +static inline void mlumpp_get_version(void) {
-+    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/08/24 \n");
++    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/08/26 \n");
 +    av_log(NULL, AV_LOG_INFO, "CNCODEC: %d.%d.%d \n",
 +            CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION);
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",
@@ -4399,7 +4399,7 @@ index 0000000000..45dc55ad4a
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000000..0e735fd1a2
+index 0000000000..36068ff0f4
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
 @@ -0,0 +1,1301 @@
@@ -5183,7 +5183,7 @@ index 0000000000..0e735fd1a2
 +    if (cnctx->trace_flag > 0) {
 +        av_log(avctx, AV_LOG_INFO, "Cnencode init ... \n");
 +    }
-+    cnctx->stride_align = CN_VENC_FRAME_ALIGNMENT;
++    // cnctx->stride_align = CN_VENC_FRAME_ALIGNMENT;
 +    ret = mlumpp_check_stride_align(avctx, cnctx);
 +    if (ret != 0) {
 +        return AVERROR(EINVAL);
