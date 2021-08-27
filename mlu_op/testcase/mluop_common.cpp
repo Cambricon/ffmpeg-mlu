@@ -58,11 +58,11 @@ cncvPixelFormat getCNCVPixFmtFromPixindex(const char* pix_fmt) {
   } else if (strncmp(pix_fmt, "NV21", 4) == 0 ||
              strncmp(pix_fmt, "nv21", 4) == 0) {
       return CNCV_PIX_FMT_NV21;
-  } else if (strncmp(pix_fmt, "RGB", 3) == 0 ||
-             strncmp(pix_fmt, "rgb", 3) == 0) {
-      return CNCV_PIX_FMT_RGB;
-  } else if (strncmp(pix_fmt, "BGR", 3) == 0 ||
-             strncmp(pix_fmt, "bgr", 3) == 0) {
+  } else if (strcmp(pix_fmt , "RGB24") == 0 ||
+             strcmp(pix_fmt , "rgb24") == 0) {
+        return  CNCV_PIX_FMT_RGB;
+  } else if (strcmp(pix_fmt , "BGR24") == 0 ||
+             strcmp(pix_fmt , "bgr24") == 0) {
       return CNCV_PIX_FMT_BGR;
   } else if (strncmp(pix_fmt, "ARGB", 4) == 0 ||
              strncmp(pix_fmt, "argb", 4) == 0) {
