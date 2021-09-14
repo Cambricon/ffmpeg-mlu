@@ -1,3 +1,12 @@
+# Cambricon® ffmpeg-mlu open source release v1.5.2!
+**Whats new**
+ - Modified vid&jpeg frame resolution judgment of v1.5.0 and v1.5.1 decoder.
+
+# Cambricon® ffmpeg-mlu open source release v1.5.1!
+**Whats new**
+ - Fix encode stride align parament of v1.5.0.
+ - Fix mlu_op of v1.5.0.
+
 # Cambricon® ffmpeg-mlu open source release v1.5.0!
 **Whats new**
  - Supported hwaccel mlu api&cmd mode.
