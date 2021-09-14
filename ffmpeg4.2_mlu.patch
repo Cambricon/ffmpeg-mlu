@@ -1,6 +1,6 @@
-From 82ae960adb5187d85b108d56bbf49b7d87084c3a Mon Sep 17 00:00:00 2001
+From f2b890d993d33530c781cdd10f06008b0661f3b6 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Thu, 26 Aug 2021 11:48:47 +0800
+Date: Tue, 14 Sep 2021 10:41:52 +0800
 Subject: [PATCH] gen new patch
 
 ---
@@ -15,7 +15,7 @@ Subject: [PATCH] gen new patch
  libavcodec/Makefile                  |    8 +
  libavcodec/allcodecs.c               |    8 +
  libavcodec/hwaccel.h                 |    2 +
- libavcodec/mlumpp_dec.c              | 1690 ++++++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c              | 1665 ++++++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c         |  175 +++
  libavcodec/mlumpp_enc_hevc.c         |  172 +++
  libavcodec/mlumpp_enc_jpeg.c         | 1084 +++++++++++++++++
@@ -28,7 +28,7 @@ Subject: [PATCH] gen new patch
  libavfilter/vf_cvt_rgbx2yuv_mlu.c    |  547 +++++++++
  libavfilter/vf_cvt_yuv2rgbx_mlu.c    |  541 +++++++++
  libavfilter/vf_hwdownload_mlu.c      |  209 ++++
- libavfilter/vf_hwupload_mlu.c        |  200 +++
+ libavfilter/vf_hwupload_mlu.c        |  200 ++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c |  495 ++++++++
  libavfilter/vf_scale_yuv2yuv_mlu.c   |  502 ++++++++
  libavfilter/vf_sr_mlu.c              |  271 +++++
@@ -40,7 +40,7 @@ Subject: [PATCH] gen new patch
  libavutil/hwcontext_mlu.h            |   62 +
  libavutil/pixdesc.c                  |    4 +
  libavutil/pixfmt.h                   |    6 +
- 36 files changed, 8794 insertions(+)
+ 36 files changed, 8769 insertions(+)
  create mode 100644 doc/examples/hw_decode_mlu.c
  create mode 100755 doc/examples/mlumpp_transcode.c
  create mode 100644 fftools/ffmpeg_mlu.c
@@ -1083,10 +1083,10 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..6d3c06c780
+index 0000000000..b5f639e8e7
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1690 @@
+@@ -0,0 +1,1665 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1157,7 +1157,7 @@ index 0000000000..6d3c06c780
 +#endif
 +#define FF_MLU_MAJPR_VERSION 1
 +#define FF_MLU_MINOR_VERSION 5
-+#define FF_MLU_PATCH_VERSION 1
++#define FF_MLU_PATCH_VERSION 2
 +
 +static av_cold void mlumpp_empty_frame_queue(AVCodecContext *avctx);
 +typedef struct MLUMPPContext
@@ -1184,10 +1184,6 @@ index 0000000000..6d3c06c780
 +    {
 +        int width;
 +        int height;
-+        void *in_y_ptr;
-+        void *in_uv_ptr;
-+        void *out_y_ptr;
-+        void *out_uv_ptr;
 +    } resize;
 +    int progressive;
 +    void *handle;
@@ -1235,7 +1231,7 @@ index 0000000000..6d3c06c780
 +} MLUJpegFrameInfo_t;
 +
 +static inline void mlumpp_get_version(void) {
-+    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/08/26 \n");
++    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/09/13 \n");
 +    av_log(NULL, AV_LOG_INFO, "CNCODEC: %d.%d.%d \n",
 +            CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION);
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",
@@ -1549,6 +1545,7 @@ index 0000000000..6d3c06c780
 +    }
 +    return ret;
 +}
++
 +static int mlumpp_send_jpeg_data(AVCodecContext *avctx,const AVPacket *avpkt, int eos)
 +{
 +    cnjpegDecInput input;
@@ -1594,19 +1591,17 @@ index 0000000000..6d3c06c780
 +    return ret;
 +}
 +
-+// cncodec callback
-+static av_cold int mlumpp_decode_end(AVCodecContext *avctx);
 +static int mlumpp_dec_sequence_cb(void *pData, cnvideoDecSequenceInfo *info)
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t *)pData;
 +    AVCodecContext *avctx = ctx->avctx;
 +    int ret = -1;
 +    if (ctx->trace_flag > 0) {
-+        av_log(avctx, AV_LOG_WARNING, "cndecoder received sequence cb event \n");
-+        av_log(avctx, AV_LOG_INFO, "in sequence cb func, handle: %lu \n", (long unsigned)ctx->handle);
++        av_log(avctx, AV_LOG_WARNING, "Cndecode received sequence cb event \n");
++        av_log(avctx, AV_LOG_INFO, "Sequence cb func, handle: %lu \n", (long unsigned)ctx->handle);
 +    }
 +    if (ctx->codec_info.width == info->width && ctx->codec_info.height == info->height) {
-+        av_log(avctx, AV_LOG_WARNING, "sequece event happend, but video resolution dont' changed \n");
++        av_log(avctx, AV_LOG_WARNING, "Sequece event happend, but video resolution dont' changed \n");
 +        return 0;
 +    }
 +
@@ -2371,8 +2366,6 @@ index 0000000000..6d3c06c780
 +    // MluContext *mlu_ctx = NULL;
 +
 +    int ret = 0;
-+    int old_width = 0;
-+    int old_height = 0;
 +    int probed_width = 0;
 +    int probed_height = 0;
 +    int bitstream_size = 0;
@@ -2396,13 +2389,12 @@ index 0000000000..6d3c06c780
 +    if (ctx->trace_flag > 0) {
 +        av_log(avctx, AV_LOG_INFO, "Cndecoder init ... \n");
 +    }
-+
 +    if (ctx->resize_str && sscanf(ctx->resize_str, "%dx%d",
 +                                &ctx->resize.width, &ctx->resize.height) != 2) {
 +        av_log(avctx, AV_LOG_ERROR, "Invalid resize string\n");
 +        return AVERROR(EINVAL);
 +    }
-+    if (ctx->resize_str && avctx->codec_type == CNCODEC_JPEG) {
++    if (ctx->resize_str && avctx->codec->id == AV_CODEC_ID_MJPEG) {
 +        av_log(avctx, AV_LOG_ERROR, "Jpeg decode unsuported resize feature\n");
 +        return AVERROR(EINVAL);
 +    }
@@ -2418,24 +2410,21 @@ index 0000000000..6d3c06c780
 +
 +    ctx->avctx = avctx;
 +    ctx->frame_queue = NULL;
-+    old_width  = avctx->width;
-+    old_height = avctx->height;
 +    probed_width  = avctx->coded_width ? avctx->coded_width : 1920;
 +    probed_height = avctx->coded_height ? avctx->coded_height : 1080;
 +    if (avctx->codec->id == AV_CODEC_ID_MJPEG) {
-+        ctx->stride_align = CN_JFRAME_ALIGNMENT_W;
++        ctx->stride_align  = CN_JFRAME_ALIGNMENT_W;
 +        avctx->coded_width = FFALIGN(avctx->coded_width, CN_JFRAME_ALIGNMENT_W);
 +        avctx->coded_height= FFALIGN(avctx->coded_height,CN_JFRAME_ALIGNMENT_H);
++        if(0 != mlumpp_adapt_resolution(avctx)) {
++            return AVERROR(EINVAL);
++        }
 +    } else {
-+        ctx->stride_align = CN_VFRAME_ALIGNMENT;
-+        avctx->coded_width = FFALIGN(avctx->coded_width, CN_VFRAME_ALIGNMENT);
++        // ctx->stride_align  = CN_VFRAME_ALIGNMENT;
++        avctx->coded_width = FFALIGN(avctx->coded_width, ctx->stride_align);
 +    }
 +
 +    mlumpp_get_version();
-+    if(0 != mlumpp_adapt_resolution(avctx)) {
-+        return AVERROR(EINVAL);
-+    }
-+
 +    sprintf(device_idx, "%d", ctx->device_id);
 +    if (avctx->hw_frames_ctx) {
 +        av_buffer_unref(&ctx->hwframe);
@@ -2489,16 +2478,6 @@ index 0000000000..6d3c06c780
 +            goto error;
 +        }
 +        hwframe_ctx = (AVHWFramesContext*)ctx->hwframe->data;
-+        if (!hwframe_ctx->pool) {
-+            hwframe_ctx->format = AV_PIX_FMT_MLU;
-+            hwframe_ctx->sw_format = avctx->sw_pix_fmt;
-+            hwframe_ctx->width  = avctx->coded_width;
-+            hwframe_ctx->height = avctx->height;
-+            if ((ret = av_hwframe_ctx_init(ctx->hwframe)) < 0) {
-+                av_log(avctx, AV_LOG_ERROR, "Error, av_hwframe_ctx_init failed\n");
-+                return 0;
-+            }
-+        }
 +    }
 +
 +    ctx->hwframes_ctx = hwframe_ctx;
@@ -2514,10 +2493,6 @@ index 0000000000..6d3c06c780
 +    ctx->decoder_flushing = 0;
 +    ctx->eos_sended = 0;
 +    ctx->eos_received = 0;
-+    ctx->resize.in_y_ptr = NULL;
-+    ctx->resize.in_uv_ptr = NULL;
-+    ctx->resize.out_y_ptr = NULL;
-+    ctx->resize.out_uv_ptr = NULL;
 +    ctx->first_packet = 1;
 +    ctx->codec_abort_flag = 0;
 +    switch (avctx->codec->id) {
