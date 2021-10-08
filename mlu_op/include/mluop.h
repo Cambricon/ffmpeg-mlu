@@ -27,6 +27,7 @@
 #include "cncv.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
@@ -69,6 +70,16 @@ int mluop_resize_yuv_init(HANDLE *h,
 int mluop_resize_yuv_exec(HANDLE h,
                           void *input_y, void *input_uv,
                           void *output_y, void *output_uv);
+int mluop_resize_pad_yuv_exec(HANDLE h,
+                              void *input_y, void *input_uv,
+                              void *output_y, void *output_uv);
+int mluop_resize_roi_yuv_exec(HANDLE h,
+                              void *input_y, void *input_uv,
+                              void *output_y, void *output_uv,
+                              uint32_t src_roi_x, uint32_t src_roi_y,
+                              uint32_t src_roi_w, uint32_t src_roi_h,
+                              uint32_t dst_roi_x, uint32_t dst_roi_y,
+                              uint32_t dst_roi_w, uint32_t dst_roi_h);
 int mluop_resize_yuv_destroy(HANDLE h);
 
 /*------------------------resize rgbx2rgbx cncv----------------------*/

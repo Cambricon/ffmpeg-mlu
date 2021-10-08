@@ -40,7 +40,7 @@ using std::to_string;
 #define CNRT_ERROR_CHECK(ret)                                                  \
   if (ret != CNRT_RET_SUCCESS) {                                               \
     fprintf(stderr, "error occur, func: %s, line: %d\n", __func__, __LINE__);  \
-    return 0;                                                                 \
+    return 0;                                                                  \
   }
 
 extern cncvStatus_t cncvResizeRgbx(cncvHandle_t handle,
@@ -76,55 +76,44 @@ static uint32_t getPixFmtChannelNum(cncvPixelFormat pixfmt) {
   } else if (pixfmt == CNCV_PIX_FMT_NV12 || pixfmt == CNCV_PIX_FMT_NV21) {
     return 1;
   } else {
-    std::cout << "don't suport pixfmt" << std::endl;
+    printf("Unsupported pixfmt(%d)\n", pixfmt);
     return 0;
   }
 }
 
 static cncvDepth_t getCNCVDepthFromIndex(const char* depth) {
-  if (strncmp(depth, "8U", 2) == 0 ||
-      strncmp(depth, "8u", 2) == 0) {
-        return CNCV_DEPTH_8U;
-  } else if (strncmp(depth, "16F", 3) == 0 ||
-             strncmp(depth, "16f", 3) == 0) {
-      return CNCV_DEPTH_16F;
-  } else if (strncmp(depth, "32F", 3) == 0 ||
-             strncmp(depth, "32f", 3) == 0) {
-      return CNCV_DEPTH_32F;
+  if (strcmp(depth, "8U") == 0 || strcmp(depth, "8u") == 0) {
+    return CNCV_DEPTH_8U;
+  } else if (strcmp(depth, "16F") == 0 || strcmp(depth, "16f") == 0) {
+    return CNCV_DEPTH_16F;
+  } else if (strcmp(depth, "32F") == 0 || strcmp(depth, "32f") == 0) {
+    return CNCV_DEPTH_32F;
   } else {
-      printf("unsupported depth\n");
-      return CNCV_DEPTH_INVALID;
-    }
+    printf("Unsupported depth(%s)\n", depth);
+    return CNCV_DEPTH_INVALID;
+  }
 }
 
 static cncvPixelFormat getCNCVPixFmtFromPixindex(const char* pix_fmt) {
-  if (strcmp(pix_fmt , "NV12") == 0 ||
-      strcmp(pix_fmt , "nv12") == 0) {
-        return  CNCV_PIX_FMT_NV12;
-  } else if (strcmp(pix_fmt , "NV21") == 0 ||
-             strcmp(pix_fmt , "nv21") == 0) {
-        return  CNCV_PIX_FMT_NV21;
-  } else if (strcmp(pix_fmt , "RGB24") == 0 ||
-             strcmp(pix_fmt , "rgb24") == 0) {
-        return  CNCV_PIX_FMT_RGB;
-  } else if (strcmp(pix_fmt , "BGR24") == 0 ||
-             strcmp(pix_fmt , "bgr24") == 0) {
-        return  CNCV_PIX_FMT_BGR;
-  } else if (strcmp(pix_fmt , "ARGB") == 0 ||
-             strcmp(pix_fmt , "argb") == 0) {
-        return  CNCV_PIX_FMT_ARGB;
-  } else if (strcmp(pix_fmt , "ABGR") == 0 ||
-             strcmp(pix_fmt , "abgr") == 0) {
-        return  CNCV_PIX_FMT_ABGR;
-  } else if (strcmp(pix_fmt , "RGBA") == 0 ||
-             strcmp(pix_fmt , "rgba") == 0) {
-        return  CNCV_PIX_FMT_RGBA;
-  } else if (strcmp(pix_fmt , "BGRA") == 0 ||
-             strcmp(pix_fmt , "bgra") == 0) {
-        return  CNCV_PIX_FMT_BGRA;
+  if (strcmp(pix_fmt, "NV12") == 0 || strcmp(pix_fmt, "nv12") == 0) {
+    return CNCV_PIX_FMT_NV12;
+  } else if(strcmp(pix_fmt, "NV21") == 0 || strcmp(pix_fmt, "nv21") == 0) {
+    return CNCV_PIX_FMT_NV21;
+  } else if(strcmp(pix_fmt, "RGB24") == 0 || strcmp(pix_fmt, "rgb24") == 0) {
+    return CNCV_PIX_FMT_RGB;
+  } else if(strcmp(pix_fmt, "BGR24") == 0 || strcmp(pix_fmt, "bgr24") == 0) {
+    return CNCV_PIX_FMT_BGR;
+  } else if(strcmp(pix_fmt, "ARGB") == 0 || strcmp(pix_fmt, "argb") == 0) {
+    return CNCV_PIX_FMT_ARGB;
+  } else if(strcmp(pix_fmt, "ABGR") == 0 || strcmp(pix_fmt, "abgr") == 0) {
+    return CNCV_PIX_FMT_ABGR;
+  } else if(strcmp(pix_fmt, "RGBA") == 0 || strcmp(pix_fmt, "rgba") == 0) {
+    return CNCV_PIX_FMT_RGBA;
+  } else if (strcmp(pix_fmt, "BGRA") == 0 || strcmp(pix_fmt, "bgra") == 0) {
+    return CNCV_PIX_FMT_BGRA;
   } else {
-        printf("unsupported pixel format\n");
-        return  CNCV_PIX_FMT_INVALID;
+    printf("Unsupported pixfmt(%s)\n", pix_fmt);
+    return CNCV_PIX_FMT_INVALID;
   }
 }
 
@@ -177,27 +166,34 @@ int mluop_resize_rgbx_init(HANDLE *h,
 
   d_ptr_->depth_size = getSizeOfDepth(getCNCVDepthFromIndex(depth));
   d_ptr_->pix_chn_num = getPixFmtChannelNum(getCNCVPixFmtFromPixindex(pix_fmt));
-  d_ptr_->input_stride_in_bytes = d_ptr_->input_w * d_ptr_->pix_chn_num * d_ptr_->depth_size;
-  d_ptr_->output_stride_in_bytes = d_ptr_->output_w * d_ptr_->pix_chn_num * d_ptr_->depth_size;
+  d_ptr_->input_stride_in_bytes = d_ptr_->input_w *
+                                  d_ptr_->pix_chn_num * d_ptr_->depth_size;
+  d_ptr_->output_stride_in_bytes = d_ptr_->output_w *
+                                  d_ptr_->pix_chn_num * d_ptr_->depth_size;
 
-  d_ptr_->src_rgbx_ptrs_cpu_ = reinterpret_cast<void **>(malloc(sizeof(char*) * d_ptr_->batch_size));
-  d_ptr_->dst_rgbx_ptrs_cpu_ = reinterpret_cast<void **>(malloc(sizeof(char*) * d_ptr_->batch_size));
+  d_ptr_->src_rgbx_ptrs_cpu_ = reinterpret_cast<void **>(malloc(sizeof(char*) *
+                              d_ptr_->batch_size));
+  d_ptr_->dst_rgbx_ptrs_cpu_ = reinterpret_cast<void **>(malloc(sizeof(char*) *
+                              d_ptr_->batch_size));
 
-  cnret = cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->src_rgbx_ptrs_mlu_), sizeof(char*) * d_ptr_->batch_size);
+  cnret = cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->src_rgbx_ptrs_mlu_),
+                    sizeof(char*) * d_ptr_->batch_size);
   if (cnret != CNRT_RET_SUCCESS) {
-    std::cout << "Malloc mlu buffer failed. Error code:" << std::endl;
+    printf("Malloc mlu buffer failed. Error code:%d\n", cnret);
     return -1;
   }
-  cnret = cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->dst_rgbx_ptrs_mlu_), sizeof(char*) * d_ptr_->batch_size);
+  cnret = cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->dst_rgbx_ptrs_mlu_),
+                    sizeof(char*) * d_ptr_->batch_size);
   if (cnret != CNRT_RET_SUCCESS) {
-    std::cout << "Malloc mlu buffer failed. Error code:" << std::endl;
+    printf("Malloc mlu buffer failed. Error code:%d\n", cnret);
     return -1;
   }
 
   cncvGetResizeRgbxWorkspaceSize(d_ptr_->batch_size, &d_ptr_->workspace_size);
-  cnret = cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace), d_ptr_->workspace_size);
+  cnret = cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
+                    d_ptr_->workspace_size);
   if (cnret != CNRT_RET_SUCCESS) {
-    std::cout << "Malloc mlu buffer workspace failed. Error code:" << std::endl;
+    printf("Malloc mlu buffer workspace failed. Error code:%d\n", cnret);
     return -1;
   }
 
@@ -231,11 +227,12 @@ int mluop_resize_rgbx_exec(HANDLE h,
                            void *input, void *output) {
   CVResizeRgbxPrivate *d_ptr_ = static_cast<CVResizeRgbxPrivate *>(h);
   if (nullptr == d_ptr_->queue_) {
-     std::cout << "cnrt queue is nlll." << std::endl;
+     printf("cnrt queue is nlll.");
      return -1;
   }
-  d_ptr_->src_rgbx_ptrs_cache_.push_back(input); // input is mlu src ptr, ..._ptrs_cache_ is cpu ptr for batch address
-  d_ptr_->dst_rgbx_ptrs_cache_.push_back(output); //
+  // input is mlu src ptr, ..._ptrs_cache_ is cpu ptr for batch address
+  d_ptr_->src_rgbx_ptrs_cache_.push_back(input);
+  d_ptr_->dst_rgbx_ptrs_cache_.push_back(output);
   for (uint32_t bi = 0; bi < d_ptr_->batch_size; ++bi) {
     d_ptr_->src_rgbx_ptrs_cpu_[bi] = d_ptr_->src_rgbx_ptrs_cache_.front();
     d_ptr_->dst_rgbx_ptrs_cpu_[bi] = d_ptr_->dst_rgbx_ptrs_cache_.front();
@@ -244,16 +241,18 @@ int mluop_resize_rgbx_exec(HANDLE h,
   }
 
   cnrtRet_t cnret;
-  cnret = cnrtMemcpy(d_ptr_->src_rgbx_ptrs_mlu_, reinterpret_cast<void**>(d_ptr_->src_rgbx_ptrs_cpu_),
-      sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  cnret = cnrtMemcpy(d_ptr_->src_rgbx_ptrs_mlu_,
+              reinterpret_cast<void**>(d_ptr_->src_rgbx_ptrs_cpu_),
+              sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
   if (cnret != CNRT_RET_SUCCESS) {
-    std::cout << "Memcpy host to device failed. Error code: " << std::endl;
+    printf("Memcpy host to device failed. Error code:%d\n", cnret);
     return -1;
   }
-  cnret = cnrtMemcpy(d_ptr_->dst_rgbx_ptrs_mlu_, reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_cpu_),
-      sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  cnret = cnrtMemcpy(d_ptr_->dst_rgbx_ptrs_mlu_,
+              reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_cpu_),
+              sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
   if (cnret != CNRT_RET_SUCCESS) {
-    std::cout << "Memcpy host to device failed. Error code: " << std::endl;
+    printf("Memcpy host to device failed. Error code:%d\n", cnret);
     return -1;
   }
   #if PRINT_TIME
@@ -262,7 +261,8 @@ int mluop_resize_rgbx_exec(HANDLE h,
   struct timeval start;
   gettimeofday(&start, NULL);
   #endif
-  cncvResizeRgbx(d_ptr_->handle,
+  cncvStatus_t cncv_ret;
+  cncv_ret = cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
                  &d_ptr_->src_rois,
@@ -273,6 +273,15 @@ int mluop_resize_rgbx_exec(HANDLE h,
                  d_ptr_->workspace_size,
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR);
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec cncvResizeRgbx failed, error code:%d\n", cncv_ret);
+    return -1;
+  }
+  cncv_ret = cncvSyncQueue(d_ptr_->handle);
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec cncvSyncQueue failed,  error code:%d\n", cncv_ret);
+    return -1;
+  }
   #if PRINT_TIME
   gettimeofday(&end, NULL);
   time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
@@ -312,7 +321,7 @@ int mluop_resize_rgbx_destroy(HANDLE h) {
     if (d_ptr_->queue_) {
       auto ret = cnrtDestroyQueue(d_ptr_->queue_);
       if (ret != CNRT_RET_SUCCESS) {
-        std::cout << "Destroy queue failed. Error code: %u" << std::endl;
+        printf("Destroy queue failed. Error code:%d\n", ret);
         return -1;
       }
       d_ptr_->queue_ = nullptr;
@@ -320,11 +329,11 @@ int mluop_resize_rgbx_destroy(HANDLE h) {
     if (d_ptr_->handle) {
       auto ret = cncvDestroy(d_ptr_->handle);
       if (ret != CNCV_STATUS_SUCCESS) {
-      std::cout << "Destroy cncv handle failed. Error code: %u" << std::endl;
-      return -1;
+        printf("Destroy cncv handle failed. Error code:%d\n", ret);
+        return -1;
       }
       d_ptr_->handle = nullptr;
-  }
+    }
     delete d_ptr_;
     d_ptr_ = nullptr;
   }

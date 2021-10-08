@@ -139,24 +139,25 @@ void *process_resize_rgbx(void *ctx_) {
   void *src_mlu;
   void *dst_mlu;
   CNRT_CHECK(cnrtMalloc((void **)(&src_mlu), depth_size * src_size));
-  CNRT_CHECK(cnrtMemcpy(src_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV));
   CNRT_CHECK(cnrtMalloc((void **)(&dst_mlu), depth_size * dst_size));
+  CNRT_CHECK(cnrtMemcpy(src_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV));
 
-  #if PRINT_TIME
-  gettimeofday(&start, NULL);
-  #endif
   /*-------execute op-------*/
   for (uint32_t i = 0; i < frame_num; i++) {
+    CNRT_CHECK(cnrtMemcpy(src_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV));
+    #if PRINT_TIME
+    gettimeofday(&start, NULL);
+    #endif
     mluop_resize_rgbx_exec(handle, src_mlu, dst_mlu);
+    #if PRINT_TIME
+    gettimeofday(&end, NULL);
+    time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+    printf("[exec] time(ave.): %.3f ms, total frame: %d\n", (time_use/1000.0)/frame_num, frame_num);
+    #endif
+    /*----------D2H-----------*/
+    cnrtMemcpy(dst_cpu, dst_mlu, dst_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
   }
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[exec] time(ave.): %.3f ms, total frame: %d\n", (time_use/1000.0)/frame_num, frame_num);
-  #endif
-  /*----------D2H-----------*/
-  cnrtMemcpy(dst_cpu, dst_mlu, dst_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
-  #if PRINT_TIME
+ #if PRINT_TIME
   gettimeofday(&start, NULL);
   #endif
   /*-------destroy op-------*/
