@@ -90,14 +90,18 @@ void *process_resize_yuv(void *ctx_) {
   const char *depth = ctx->depth;
   const char *filename = ctx->input_file;
   const char *output_file =ctx->output_file;
-
   set_cnrt_ctx(device_id, CNRT_CHANNEL_TYPE_NONE /* CNRT_CHANNEL_TYPE_0 */);
+
   uint8_t *input_cpu_yuv = (uint8_t *)malloc(width * height * 3 / 2 * sizeof(uint8_t));
-  FILE *fp = fopen(filename, "r");
-  for (uint32_t j = 0; j < width * height * 3 / 2; ++j) {
-    assert(fscanf(fp, "%c", input_cpu_yuv + j));
-  }
+
+  FILE *fp = fopen(filename, "rb");
+  size_t read_size = fread(input_cpu_yuv, 1, width * height * 3 / 2 * sizeof(uint8_t), fp);
   fclose(fp);
+  if (read_size != width * height * 3 / 2 * sizeof(uint8_t)) {
+    printf("read file size failed!\n");
+    free(input_cpu_yuv);
+    return NULL;
+  }
 
   HANDLE handle;
   #if PRINT_TIME
@@ -127,38 +131,50 @@ void *process_resize_yuv(void *ctx_) {
   void *dst_uv_mlu;
   cnrtMalloc((void **)(&src_y_mlu), src_y_elem_size);
   cnrtMalloc((void **)(&src_uv_mlu), src_uv_elem_size);
+  cnrtMalloc((void **)(&dst_y_mlu), dst_y_elem_size);
+  cnrtMalloc((void **)(&dst_uv_mlu), dst_uv_elem_size);
   cnrtMemcpy(src_y_mlu, input_cpu_yuv, src_y_elem_size,
              CNRT_MEM_TRANS_DIR_HOST2DEV);
   cnrtMemcpy(src_uv_mlu, (input_cpu_yuv + src_y_elem_size), src_uv_elem_size,
              CNRT_MEM_TRANS_DIR_HOST2DEV);
-  cnrtMalloc((void **)(&dst_y_mlu), dst_y_elem_size);
-  cnrtMalloc((void **)(&dst_uv_mlu), dst_uv_elem_size);
 
   uint8_t *dst_yuv_cpu = (uint8_t *)malloc(dst_elem_size);
 
-  #if PRINT_TIME
-  gettimeofday(&start, NULL);
-  #endif
   /*-------execute op-------*/
+
   for (uint32_t i = 0; i < frame_num; i++) {
+    cnrtMemcpy(src_y_mlu, input_cpu_yuv, src_y_elem_size,
+              CNRT_MEM_TRANS_DIR_HOST2DEV);
+    cnrtMemcpy(src_uv_mlu, (input_cpu_yuv + src_y_elem_size), src_uv_elem_size,
+              CNRT_MEM_TRANS_DIR_HOST2DEV);
+    #if PRINT_TIME
+    gettimeofday(&start, NULL);
+    #endif
     mluop_resize_yuv_exec(handle, src_y_mlu, src_uv_mlu,
                           dst_y_mlu, dst_uv_mlu);
+    /* mluop_resize_roi_yuv_exec(handle, src_y_mlu, src_uv_mlu,
+                                 dst_y_mlu, dst_uv_mlu, 0,0,960,540,10,10,640,360); */
+    /* mluop_resize_pad_yuv_exec(handle, src_y_mlu, src_uv_mlu,
+                                 dst_y_mlu, dst_uv_mlu);*/
+
+    #if PRINT_TIME
+    gettimeofday(&end, NULL);
+    time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+    printf("[exec] time(ave.): %.3f ms, total frame: %d\n", (time_use/1000.0)/frame_num, frame_num);
+    #endif
+    /*----------D2H-----------*/
+    cnrtMemcpy(dst_yuv_cpu, dst_y_mlu, dst_y_elem_size,
+               CNRT_MEM_TRANS_DIR_DEV2HOST);
+    cnrtMemcpy((dst_yuv_cpu + dst_y_elem_size), dst_uv_mlu, dst_uv_elem_size,
+                CNRT_MEM_TRANS_DIR_DEV2HOST);
   }
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[exec] time(ave.): %.3f ms, total frame: %d\n", (time_use/1000.0)/frame_num, frame_num);
-  #endif
-  /*----------D2H-----------*/
-  cnrtMemcpy(dst_yuv_cpu, dst_y_mlu, dst_y_elem_size,
-             CNRT_MEM_TRANS_DIR_DEV2HOST);
-  cnrtMemcpy((dst_yuv_cpu + dst_y_elem_size), dst_uv_mlu, dst_uv_elem_size,
-              CNRT_MEM_TRANS_DIR_DEV2HOST);
+
   #if PRINT_TIME
   gettimeofday(&start, NULL);
   #endif
   /*-------destroy op-------*/
   mluop_resize_yuv_destroy(handle);
+
   #if PRINT_TIME
   gettimeofday(&end, NULL);
   time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
@@ -183,5 +199,6 @@ void *process_resize_yuv(void *ctx_) {
     cnrtFree(dst_y_mlu);
   if (dst_uv_mlu)
     cnrtFree(dst_uv_mlu);
+
   return NULL;
 }

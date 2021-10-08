@@ -161,9 +161,9 @@ void *process_convert_yuv2rgbx(void *ctx_) {
   void *dst_mlu;
   cnrtMalloc((void **)(&src_y_mlu), src_y_size);
   cnrtMalloc((void **)(&src_uv_mlu), src_uv_size);
+  cnrtMalloc((void **)(&dst_mlu), dst_size);
   cnrtMemcpy(src_y_mlu, src_cpu, src_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
   cnrtMemcpy(src_uv_mlu, (src_cpu + src_y_size), src_uv_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
-  cnrtMalloc((void **)(&dst_mlu), dst_size);
 
   HANDLE handle;
   #if PRINT_TIME
@@ -182,20 +182,22 @@ void *process_convert_yuv2rgbx(void *ctx_) {
   printf("[init] time: %.3f ms\n", time_use/1000);
   #endif
 
-  #if PRINT_TIME
-  gettimeofday(&start, NULL);
-  #endif
   /*-------execute op-------*/
   for (uint32_t i = 0; i < frame_num; i++) {
+    cnrtMemcpy(src_y_mlu, src_cpu, src_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+    cnrtMemcpy(src_uv_mlu, (src_cpu + src_y_size), src_uv_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+    #if PRINT_TIME
+    gettimeofday(&start, NULL);
+    #endif
     mluop_convert_yuv2rgbx_exec(handle, src_y_mlu, src_uv_mlu, dst_mlu);
+    #if PRINT_TIME
+    gettimeofday(&end, NULL);
+    time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+    printf("[exec] time(ave.): %.3f ms, total frame: %d\n", (time_use/1000.0)/1.0, i);
+    #endif
+    /*----------D2H-----------*/
+    cnrtMemcpy(dst_cpu, dst_mlu, dst_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
   }
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[exec] time(ave.): %.3f ms, total frame: %d\n", (time_use/1000.0)/frame_num, frame_num);
-  #endif
-  /*----------D2H-----------*/
-  cnrtMemcpy(dst_cpu, dst_mlu, dst_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
   #if PRINT_TIME
   gettimeofday(&start, NULL);
   #endif

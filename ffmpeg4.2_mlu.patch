@@ -1,6 +1,6 @@
-From f2b890d993d33530c781cdd10f06008b0661f3b6 Mon Sep 17 00:00:00 2001
+From 4e89543640b8a682241b0e0adfe1302d910ebfa2 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Tue, 14 Sep 2021 10:41:52 +0800
+Date: Fri, 8 Oct 2021 20:35:59 +0800
 Subject: [PATCH] gen new patch
 
 ---
@@ -36,11 +36,11 @@ Subject: [PATCH] gen new patch
  libavutil/hwcontext.c                |    5 +
  libavutil/hwcontext.h                |    1 +
  libavutil/hwcontext_internal.h       |    1 +
- libavutil/hwcontext_mlu.c            |  433 +++++++
+ libavutil/hwcontext_mlu.c            |  448 +++++++
  libavutil/hwcontext_mlu.h            |   62 +
  libavutil/pixdesc.c                  |    4 +
  libavutil/pixfmt.h                   |    6 +
- 36 files changed, 8769 insertions(+)
+ 36 files changed, 8784 insertions(+)
  create mode 100644 doc/examples/hw_decode_mlu.c
  create mode 100755 doc/examples/mlumpp_transcode.c
  create mode 100644 fftools/ffmpeg_mlu.c
@@ -5927,7 +5927,7 @@ index 04a3df7d56..c7076cda52 100644
  extern AVFilter ff_vf_streamselect;
 diff --git a/libavfilter/vf_cvt_rgbx2yuv_mlu.c b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 new file mode 100644
-index 0000000000..c6a98af9e0
+index 0000000000..3e4fb9fa4c
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 @@ -0,0 +1,547 @@
@@ -6221,7 +6221,7 @@ index 0000000000..c6a98af9e0
 +            mlu_ctx->mluMemFree(s->output_mlu_uv);
 +    }
 +
-+    mluop_unload(s);
++    // mluop_unload(s);
 +    if (s->in_hw_frame_ref) {
 +        av_buffer_unref(&s->in_hw_frame_ref);
 +    }
@@ -6480,7 +6480,7 @@ index 0000000000..c6a98af9e0
 +};
 diff --git a/libavfilter/vf_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..cbefa1620e
+index 0000000000..fd53ad3237
 --- /dev/null
 +++ b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 @@ -0,0 +1,541 @@
@@ -6758,7 +6758,7 @@ index 0000000000..cbefa1620e
 +    if (s->op_handle) {
 +        s->ptr_convert_yuv2rgbx_destroy(s->op_handle);
 +    }
-+    mluop_unload(s);
++    // mluop_unload(s);
 +    if(s->inlink_pixfmt != AV_PIX_FMT_MLU) {
 +        if (s->input_mlu_y)
 +            mlu_ctx->mluMemFree(s->input_mlu_y);
@@ -7448,7 +7448,7 @@ index 0000000000..c0e8b0807d
 +};
 diff --git a/libavfilter/vf_scale_rgbx2rgbx_mlu.c b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..f7a7c369d4
+index 0000000000..1aa32e768a
 --- /dev/null
 +++ b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 @@ -0,0 +1,495 @@
@@ -7688,7 +7688,7 @@ index 0000000000..f7a7c369d4
 +            mlu_ctx->mluMemFree(s->output_mlu_rgbx);
 +    }
 +
-+    mluop_unload(s);
++    // mluop_unload(s);
 +    if (s->in_hw_frame_ref) {
 +        av_buffer_unref(&s->in_hw_frame_ref);
 +    }
@@ -7949,7 +7949,7 @@ index 0000000000..f7a7c369d4
 +};
 diff --git a/libavfilter/vf_scale_yuv2yuv_mlu.c b/libavfilter/vf_scale_yuv2yuv_mlu.c
 new file mode 100644
-index 0000000000..996c58d3e4
+index 0000000000..48020ed252
 --- /dev/null
 +++ b/libavfilter/vf_scale_yuv2yuv_mlu.c
 @@ -0,0 +1,502 @@
@@ -8184,7 +8184,7 @@ index 0000000000..996c58d3e4
 +            mlu_ctx->mluMemFree(s->output_mlu_uv);
 +    }
 +
-+    mluop_unload(s);
++    // mluop_unload(s);
 +    if (s->in_hw_frame_ref) {
 +        av_buffer_unref(&s->in_hw_frame_ref);
 +    }
@@ -8816,10 +8816,10 @@ index 77dc47ddd6..0f7bb9957f 100644
  extern const HWContextType ff_hwcontext_type_dxva2;
 diff --git a/libavutil/hwcontext_mlu.c b/libavutil/hwcontext_mlu.c
 new file mode 100644
-index 0000000000..d1c96b57a9
+index 0000000000..ca84e1a393
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.c
-@@ -0,0 +1,433 @@
+@@ -0,0 +1,448 @@
 +/*
 + * This file is part of FFmpeg.
 + *
@@ -8841,6 +8841,7 @@ index 0000000000..d1c96b57a9
 +#include <dlfcn.h>
 +#include "buffer.h"
 +#include "common.h"
++#include "thread.h"
 +#include "hwcontext.h"
 +#include "hwcontext_internal.h"
 +#include "hwcontext_mlu.h"
@@ -9045,6 +9046,14 @@ index 0000000000..d1c96b57a9
 +    return 0;
 +}
 +
++static void mlu_hwdev_init(void) {
++    cnrtInit(0);
++}
++
++static void mlu_hwdev_uinit(void) {
++    cnrtDestroy();
++}
++
 +static void mlu_device_uninit(AVHWDeviceContext *device_ctx)
 +{
 +    AVMLUDeviceContext *hwctx = device_ctx->hwctx;
@@ -9053,7 +9062,9 @@ index 0000000000..d1c96b57a9
 +        hwctx->mlu_cnrt_lib = NULL;
 +    }
 +
-+    hwctx->mlu_ctx->mluDestroy();
++    // hwctx->mlu_ctx->mluDestroy();
++    static AVOnce control = AV_ONCE_INIT;
++    ff_thread_once(&control, mlu_hwdev_uinit);
 +
 +    if (hwctx->mlu_ctx) {
 +        av_freep(&hwctx->mlu_ctx);
@@ -9193,12 +9204,16 @@ index 0000000000..d1c96b57a9
 +        av_log(device_ctx, AV_LOG_ERROR, "mlu load functions failed\n");
 +        goto error;
 +    }
++
 +    mlu_ctx = hwctx->mlu_ctx;
-+    cnrt_ret = mlu_ctx->mluInit(0);
-+    if (cnrt_ret < 0){
-+        av_log(device_ctx, AV_LOG_ERROR, "mlu init failed \n");
-+        goto error;
-+    }
++
++    // cnrt_ret = mlu_ctx->mluInit(0);
++    // if (cnrt_ret < 0){
++    //     av_log(device_ctx, AV_LOG_ERROR, "mlu init failed \n");
++    //    goto error;
++    // }
++    static AVOnce control = AV_ONCE_INIT;
++    ff_thread_once(&control, mlu_hwdev_init);
 +
 +    cnrt_ret = mlu_ctx->mluGetDeviceCount(&dev_num);
 +    if (cnrt_ret !=0 || dev_num == 0) {

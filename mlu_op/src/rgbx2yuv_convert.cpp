@@ -94,49 +94,38 @@ static uint32_t getSizeOfDepth(cncvDepth_t depth) {
 }
 
 static cncvDepth_t getCNCVDepthFromIndex(const char* depth) {
-  if (strncmp(depth, "8U", 2) == 0 ||
-      strncmp(depth, "8u", 2) == 0) {
-        return CNCV_DEPTH_8U;
-  } else if (strncmp(depth, "16F", 3) == 0 ||
-             strncmp(depth, "16f", 3) == 0) {
-      return CNCV_DEPTH_16F;
-  } else if (strncmp(depth, "32F", 3) == 0 ||
-             strncmp(depth, "32f", 3) == 0) {
-      return CNCV_DEPTH_32F;
+  if (strcmp(depth, "8U") == 0 || strcmp(depth, "8u") == 0) {
+    return CNCV_DEPTH_8U;
+  } else if(strcmp(depth, "16F") == 0 || strcmp(depth, "16f") == 0) {
+    return CNCV_DEPTH_16F;
+  } else if(strcmp(depth, "32F") == 0 || strcmp(depth, "32f") == 0) {
+    return CNCV_DEPTH_32F;
   } else {
-      printf("unsupported depth\n");
-      return CNCV_DEPTH_INVALID;
-    }
+    printf("Unsupported depth(%s)\n", depth);
+    return CNCV_DEPTH_INVALID;
+  }
 }
 
 static cncvPixelFormat getCNCVPixFmtFromPixindex(const char* pix_fmt) {
-  if (strcmp(pix_fmt , "NV12") == 0 ||
-      strcmp(pix_fmt , "nv12") == 0) {
-        return  CNCV_PIX_FMT_NV12;
-  } else if (strcmp(pix_fmt , "NV21") == 0 ||
-             strcmp(pix_fmt , "nv21") == 0) {
-        return  CNCV_PIX_FMT_NV21;
-  } else if (strcmp(pix_fmt , "RGB24") == 0 ||
-             strcmp(pix_fmt , "rgb24") == 0) {
-        return  CNCV_PIX_FMT_RGB;
-  } else if (strcmp(pix_fmt , "BGR24") == 0 ||
-             strcmp(pix_fmt , "bgr24") == 0) {
-        return  CNCV_PIX_FMT_BGR;
-  } else if (strcmp(pix_fmt , "ARGB") == 0 ||
-             strcmp(pix_fmt , "argb") == 0) {
-        return  CNCV_PIX_FMT_ARGB;
-  } else if (strcmp(pix_fmt , "ABGR") == 0 ||
-             strcmp(pix_fmt , "abgr") == 0) {
-        return  CNCV_PIX_FMT_ABGR;
-  } else if (strcmp(pix_fmt , "RGBA") == 0 ||
-             strcmp(pix_fmt , "rgba") == 0) {
-        return  CNCV_PIX_FMT_RGBA;
-  } else if (strcmp(pix_fmt , "BGRA") == 0 ||
-             strcmp(pix_fmt , "bgra") == 0) {
-        return  CNCV_PIX_FMT_BGRA;
+  if (strcmp(pix_fmt, "NV12") == 0 || strcmp(pix_fmt, "nv12") == 0) {
+    return CNCV_PIX_FMT_NV12;
+  } else if(strcmp(pix_fmt, "NV21") == 0 || strcmp(pix_fmt, "nv21") == 0) {
+    return CNCV_PIX_FMT_NV21;
+  } else if(strcmp(pix_fmt, "RGB24") == 0 || strcmp(pix_fmt, "rgb24") == 0) {
+    return CNCV_PIX_FMT_RGB;
+  } else if(strcmp(pix_fmt, "BGR24") == 0 || strcmp(pix_fmt, "bgr24") == 0) {
+    return CNCV_PIX_FMT_BGR;
+  } else if(strcmp(pix_fmt, "ARGB") == 0 || strcmp(pix_fmt, "argb") == 0) {
+    return CNCV_PIX_FMT_ARGB;
+  } else if(strcmp(pix_fmt, "ABGR") == 0 || strcmp(pix_fmt, "abgr") == 0) {
+    return CNCV_PIX_FMT_ABGR;
+  } else if(strcmp(pix_fmt, "RGBA") == 0 || strcmp(pix_fmt, "rgba") == 0) {
+    return CNCV_PIX_FMT_RGBA;
+  } else if (strcmp(pix_fmt, "BGRA") == 0 || strcmp(pix_fmt, "bgra") == 0) {
+    return CNCV_PIX_FMT_BGRA;
   } else {
-        printf("unsupported pixel format\n");
-        return  CNCV_PIX_FMT_INVALID;
+    printf("Unsupported pixfmt(%s)\n", pix_fmt);
+    return CNCV_PIX_FMT_INVALID;
   }
 }
 
@@ -149,7 +138,7 @@ static uint32_t getPixFmtChannelNum(cncvPixelFormat pixfmt) {
   } else if (pixfmt == CNCV_PIX_FMT_NV12 || pixfmt == CNCV_PIX_FMT_NV21) {
     return 1;
   } else {
-    std::cout << "don't suport pixfmt" << std::endl;
+    printf("Didn't support pixfmt(%d)\n", pixfmt);
     return 0;
   }
 }
@@ -185,7 +174,7 @@ int mluop_convert_rgbx2yuv_init(HANDLE *h,
   d_ptr_->dst_yuv_ptrs_cpu_ = reinterpret_cast<void **>(malloc(sizeof(char*) * 2));
   cnret = cnrtMalloc(reinterpret_cast<void **>(&d_ptr_->dst_yuv_ptrs_mlu_), 2 * sizeof(char*));
   if (cnret != CNRT_RET_SUCCESS) {
-    std::cout << "Malloc mlu buffer failed. Error code:" << std::endl;
+    printf("Malloc mlu buffer failed. Error code:%d\n", cnret);
     return -1;
   }
 
@@ -193,10 +182,13 @@ int mluop_convert_rgbx2yuv_init(HANDLE *h,
   d_ptr_->height = height;
   d_ptr_->src_pix_fmt = getCNCVPixFmtFromPixindex(src_pix_fmt);
   d_ptr_->dst_pix_fmt = getCNCVPixFmtFromPixindex(dst_pix_fmt);
-  d_ptr_->src_stride[0] = d_ptr_->width * getSizeOfDepth(getCNCVDepthFromIndex(depth)) *
-                                 getPixFmtChannelNum(getCNCVPixFmtFromPixindex(src_pix_fmt));
-  d_ptr_->dst_stride[0] = d_ptr_->width * getSizeOfDepth(getCNCVDepthFromIndex(depth));
-  d_ptr_->dst_stride[1] = d_ptr_->width * getSizeOfDepth(getCNCVDepthFromIndex(depth));
+  d_ptr_->src_stride[0] = d_ptr_->width *
+                          getSizeOfDepth(getCNCVDepthFromIndex(depth)) *
+                          getPixFmtChannelNum(getCNCVPixFmtFromPixindex(src_pix_fmt));
+  d_ptr_->dst_stride[0] = d_ptr_->width *
+                          getSizeOfDepth(getCNCVDepthFromIndex(depth));
+  d_ptr_->dst_stride[1] = d_ptr_->width *
+                          getSizeOfDepth(getCNCVDepthFromIndex(depth));
   d_ptr_->depth = getCNCVDepthFromIndex(depth);
 
   *h = static_cast<void *>(d_ptr_);
@@ -208,8 +200,8 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
                                 void *output_y, void *output_uv) {
   CVRGBX2YUVPrivate *d_ptr_ = static_cast<CVRGBX2YUVPrivate *>(h);
   if (nullptr == d_ptr_->queue_) {
-     std::cout << "cnrt queue is nlll." << std::endl;
-     return -1;
+    printf("Not create cnrt queue\n");
+    return -1;
   }
 
   d_ptr_->dst_yuv_ptrs_cache_.push_back(std::make_pair(output_y, output_uv));
@@ -218,10 +210,11 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
   d_ptr_->dst_yuv_ptrs_cache_.pop_front();
 
   cnrtRet_t cnret;
-  cnret = cnrtMemcpy(d_ptr_->dst_yuv_ptrs_mlu_, reinterpret_cast<void **>(d_ptr_->dst_yuv_ptrs_cpu_),
-                     sizeof(char*) * 2, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  cnret = cnrtMemcpy(d_ptr_->dst_yuv_ptrs_mlu_,
+                      reinterpret_cast<void **>(d_ptr_->dst_yuv_ptrs_cpu_),
+                      sizeof(char*) * 2, CNRT_MEM_TRANS_DIR_HOST2DEV);
   if (cnret != CNRT_RET_SUCCESS) {
-    std::cout << "Memcpy host to device failed. Error code: " << std::endl;
+    printf("Memcpy host to device failed. Error code:%d\n", cnret);
     return -1;
   }
   #if PRINT_TIME
@@ -245,13 +238,22 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
                                         d_ptr_->dst_color_space,
                                         d_ptr_->depth};
   const struct cncvRect src_rois = {0, 0, d_ptr_->width, d_ptr_->height};
-
-  cncvRgbxToYuv(d_ptr_->handle,
+  cncvStatus_t cncv_ret;
+  cncv_ret = cncvRgbxToYuv(d_ptr_->handle,
                 src_desc,
                 src_rois,
                 reinterpret_cast<const void *>(input_rgbx),
                 dst_desc,
                 reinterpret_cast<void **>(d_ptr_->dst_yuv_ptrs_mlu_));
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec cncvRgbxToYuv failed, error code:%d\n", cncv_ret);
+    return -1;
+  }
+  cncv_ret = cncvSyncQueue(d_ptr_->handle);
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec cncvSyncQueue failed,  error code:%d\n", cncv_ret);
+    return -1;
+  }
   #if PRINT_TIME
   gettimeofday(&end, NULL);
   time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
@@ -263,30 +265,30 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
 int mluop_convert_rgbx2yuv_destroy(HANDLE h) {
   CVRGBX2YUVPrivate *d_ptr_ = static_cast<CVRGBX2YUVPrivate *>(h);
   if (d_ptr_->dst_yuv_ptrs_cpu_) {
-      free(d_ptr_->dst_yuv_ptrs_cpu_);
-      d_ptr_->dst_yuv_ptrs_cpu_ = nullptr;
+    free(d_ptr_->dst_yuv_ptrs_cpu_);
+    d_ptr_->dst_yuv_ptrs_cpu_ = nullptr;
   }
   if (d_ptr_->dst_yuv_ptrs_mlu_) {
-      cnrtFree(d_ptr_->dst_yuv_ptrs_mlu_);
-      d_ptr_->dst_yuv_ptrs_mlu_ = nullptr;
+    cnrtFree(d_ptr_->dst_yuv_ptrs_mlu_);
+    d_ptr_->dst_yuv_ptrs_mlu_ = nullptr;
   }
   d_ptr_->dst_yuv_ptrs_cache_.clear();
 
   if (d_ptr_->queue_) {
-      auto ret = cnrtDestroyQueue(d_ptr_->queue_);
-      if (ret != CNRT_RET_SUCCESS) {
-      std::cout << "Destroy queue failed. Error code: %u" << std::endl;
+    auto ret = cnrtDestroyQueue(d_ptr_->queue_);
+    if (ret != CNRT_RET_SUCCESS) {
+      printf("Destroy queue failed. Error code: %d\n", ret);
       return -1;
-      }
-      d_ptr_->queue_ = nullptr;
+    }
+    d_ptr_->queue_ = nullptr;
   }
   if (d_ptr_->handle) {
-      auto ret = cncvDestroy(d_ptr_->handle);
-      if (ret != CNCV_STATUS_SUCCESS) {
-      std::cout << "Destroy cncv handle failed. Error code: %u" << std::endl;
+    auto ret = cncvDestroy(d_ptr_->handle);
+    if (ret != CNCV_STATUS_SUCCESS) {
+      printf("Destroy cncv handle failed. Error code: %d\n", ret);
       return -1;
-      }
-      d_ptr_->handle = nullptr;
+    }
+    d_ptr_->handle = nullptr;
   }
   delete d_ptr_;
   d_ptr_ = nullptr;
