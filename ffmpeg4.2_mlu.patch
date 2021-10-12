@@ -1,6 +1,6 @@
-From 4e89543640b8a682241b0e0adfe1302d910ebfa2 Mon Sep 17 00:00:00 2001
+From c235bb19574ee7dc6196a41aa435dfa90eca35fc Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Fri, 8 Oct 2021 20:35:59 +0800
+Date: Tue, 12 Oct 2021 17:57:56 +0800
 Subject: [PATCH] gen new patch
 
 ---
@@ -21,22 +21,22 @@ Subject: [PATCH] gen new patch
  libavcodec/mlumpp_enc_jpeg.c         | 1084 +++++++++++++++++
  libavcodec/mlumpp_mluop.c            |  122 ++
  libavcodec/mlumpp_mluop.h            |   33 +
- libavcodec/mlumpp_vid_enc.c          | 1301 ++++++++++++++++++++
- libavcodec/mlumpp_vid_enc.h          |  147 +++
+ libavcodec/mlumpp_vid_enc.c          | 1362 +++++++++++++++++++++
+ libavcodec/mlumpp_vid_enc.h          |  146 +++
  libavfilter/Makefile                 |   10 +
  libavfilter/allfilters.c             |   10 +
- libavfilter/vf_cvt_rgbx2yuv_mlu.c    |  547 +++++++++
- libavfilter/vf_cvt_yuv2rgbx_mlu.c    |  541 +++++++++
+ libavfilter/vf_cvt_rgbx2yuv_mlu.c    |  535 +++++++++
+ libavfilter/vf_cvt_yuv2rgbx_mlu.c    |  529 ++++++++
  libavfilter/vf_hwdownload_mlu.c      |  209 ++++
  libavfilter/vf_hwupload_mlu.c        |  200 ++++
- libavfilter/vf_scale_rgbx2rgbx_mlu.c |  495 ++++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c   |  502 ++++++++
- libavfilter/vf_sr_mlu.c              |  271 +++++
+ libavfilter/vf_scale_rgbx2rgbx_mlu.c |  483 ++++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c   |  490 ++++++++
+ libavfilter/vf_sr_mlu.c              |  264 ++++
  libavutil/Makefile                   |    3 +
  libavutil/hwcontext.c                |    5 +
  libavutil/hwcontext.h                |    1 +
  libavutil/hwcontext_internal.h       |    1 +
- libavutil/hwcontext_mlu.c            |  448 +++++++
+ libavutil/hwcontext_mlu.c            |  443 +++++++
  libavutil/hwcontext_mlu.h            |   62 +
  libavutil/pixdesc.c                  |    4 +
  libavutil/pixfmt.h                   |    6 +
@@ -1083,7 +1083,7 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..b5f639e8e7
+index 0000000000..4ade3b1249
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
 @@ -0,0 +1,1665 @@
@@ -1157,7 +1157,7 @@ index 0000000000..b5f639e8e7
 +#endif
 +#define FF_MLU_MAJPR_VERSION 1
 +#define FF_MLU_MINOR_VERSION 5
-+#define FF_MLU_PATCH_VERSION 2
++#define FF_MLU_PATCH_VERSION 4
 +
 +static av_cold void mlumpp_empty_frame_queue(AVCodecContext *avctx);
 +typedef struct MLUMPPContext
@@ -1231,7 +1231,7 @@ index 0000000000..b5f639e8e7
 +} MLUJpegFrameInfo_t;
 +
 +static inline void mlumpp_get_version(void) {
-+    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/09/13 \n");
++    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/10/12\n");
 +    av_log(NULL, AV_LOG_INFO, "CNCODEC: %d.%d.%d \n",
 +            CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION);
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",
@@ -4374,10 +4374,10 @@ index 0000000000..45dc55ad4a
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000000..36068ff0f4
+index 0000000000..34096fe3c2
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1301 @@
+@@ -0,0 +1,1362 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4482,15 +4482,20 @@ index 0000000000..36068ff0f4
 +            av_log(cnctx->avctx, AV_LOG_ERROR, "malloc sps/pps pkt buff(CPU) failed\n");
 +            return -1;
 +        }
-+        ff_mutex_lock(&cnctx->queue_mutex);
-+        cnrt_ret =  cnctx->mlu_ctx->mluMemcpyD2H((void *)cnctx->avctx->extradata,
++
++        cnrt_ret = cnctx->mlu_ctx->mluMemcpyD2H((void *)cnctx->avctx->extradata,
 +                (void *)(pStream->streamBuffer.addr + pStream->dataOffset), cnctx->avctx->extradata_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
-+        ff_mutex_unlock(&cnctx->queue_mutex);
++
 +        if(cnrt_ret != CNRT_RET_SUCCESS){
 +            av_log(cnctx->avctx, AV_LOG_ERROR, "Can't get SPS/PPS, D2H failed, ret(%d)\n", cnrt_ret);
 +            return AVERROR(EINVAL);
 +        }
 +
++        return 0;
++    } else if(NULL != cnctx->avctx->extradata) {
++        if (cnctx->trace_flag > 0) {
++            av_log(cnctx->avctx, AV_LOG_INFO, "Extradata of avctx is not NULL, normal return 0.\n");
++        }
 +        return 0;
 +    } else {
 +        return -1;
@@ -4511,10 +4516,6 @@ index 0000000000..36068ff0f4
 +            pStream->sliceType  == CNCODEC_SLICE_NALU_SPS || pStream->sliceType == CNCODEC_SLICE_HEVC_VPS_SPS_PPS)) {
 +            if(process_sps_pps(pData, pStream) != 0) {
 +                av_log(cnctx->avctx, AV_LOG_WARNING, "Process sps/pps failed \n");
-+            }
-+            if (!cnctx->spspps_post_flag) {
-+                sem_post(&(cnctx->spspps_sema));
-+                cnctx->spspps_post_flag = 1;
 +            }
 +            return 0;
 +        }
@@ -4561,6 +4562,35 @@ index 0000000000..36068ff0f4
 +            av_log(cnctx->avctx, AV_LOG_INFO, "Channel:%d,frame offset:%u,flags:%u,encoded frames counts: %llu,pts:(%" PRId64 "), frame size: %u\n",
 +                   cnctx->instance_id, pStream->dataOffset, pStream->flags, cnctx->total_packet_count, pStream->pts, pStream->streamLength);
 +        }
++    }
++    return 0;
++}
++
++static int mlumpp_enc_spspps_event_cb(cncodecCbEventType eventType, void *pUserData, void *cbInfo)
++{
++    MLUMPPEncContext_t *cnctx = (MLUMPPEncContext_t *)pUserData;
++    cnvideoEncOutput *pStream = (cnvideoEncOutput *)cbInfo;
++
++    switch (eventType) {
++        case CNCODEC_CB_EVENT_NEW_FRAME:
++        if ((pStream->sliceType == CNCODEC_SLICE_H264_SPS_PPS || pStream->sliceType  == CNCODEC_SLICE_NALU_VPS ||
++            pStream->sliceType  == CNCODEC_SLICE_NALU_SPS || pStream->sliceType == CNCODEC_SLICE_HEVC_VPS_SPS_PPS)) {
++            if(process_sps_pps(pUserData, pStream) != 0) {
++                av_log(cnctx->avctx, AV_LOG_WARNING, "Process sps/pps failed new \n");
++            }
++            return 0;
++        }
++        break;
++        case CNCODEC_CB_EVENT_EOS:
++        sem_post(&(cnctx->spspps_sema));
++        if (cnctx->trace_flag > 0) {
++            av_log(cnctx->avctx, AV_LOG_INFO, "Enc get eos callback, %lu \n",
++                    (long unsigned)pthread_self());
++        }
++        break;
++        default:
++        av_log(cnctx->avctx, AV_LOG_WARNING, "Spspps Callback func get unknown event type.\n");
++        break;
 +    }
 +    return 0;
 +}
@@ -4627,29 +4657,49 @@ index 0000000000..36068ff0f4
 +    return av_fifo_size(fifo) / cnvid_fifo_item_size();
 +}
 +
-+static int get_sps_pps_header (MLUMPPEncContext_t *cnctx) {
++static int get_sps_pps_header(MLUMPPEncContext_t *cnctx, cnvideoEncCreateInfo* enc_params) {
 +    int ret = -1;
 +    int timeout = 3000;
 +    struct timespec ts;
 +    cnvideoEncInput input_probe;
++    AVCodecContext* avctx = cnctx->avctx;
 +    // for H264/H265, fill extradata
 +    cnctx->insert_spspps_to_extradata = 1;
 +    memset(&input_probe, 0, sizeof(cnvideoEncInput));
 +    if (cnctx->trace_flag > 0) {
 +        av_log(cnctx->avctx, AV_LOG_INFO, "Enc get sps/pps ..., in init func \n");
 +    }
-+    if (!cnctx->handle) {
-+       av_log(cnctx->avctx, AV_LOG_ERROR, "Encode handle is NULL, Error\n");
-+       return AVERROR(EINVAL);
++
++    ret = cnvideoEncCreate(&cnctx->handle, mlumpp_enc_spspps_event_cb, enc_params);
++    if (ret != CNCODEC_SUCCESS) {
++        av_log(cnctx->avctx, AV_LOG_ERROR, "Failed to create cnencode \n");
++        cnctx->handle = NULL;
++        sem_post(&(cnctx->eos_sema));
++        return AVERROR_EXTERNAL;
 +    }
++
++#if CNCODEC_PATCH_VERSION < 100
++    cnvideoEncVUISar vui_sar;
++    memset(&vui_sar, 0, sizeof(vui_sar));
++    if (cnctx->vuisar.sar_w > 0 || cnctx->vuisar.sar_h > 0) {
++        vui_sar.sarWidth = cnctx->vuisar.sar_w;
++        vui_sar.sarHeight = cnctx->vuisar.sar_h;
++    } else {
++        vui_sar.sarWidth = avctx->sample_aspect_ratio.num;
++        vui_sar.sarHeight = avctx->sample_aspect_ratio.den;
++    }
++    cnvideoEncSetAttributes(cnctx->handle, CNVIDEO_ENC_ATTR_VUI_SAR, &vui_sar);
++#endif
++
 +    ret = cnvideoEncWaitAvailInputBuf(cnctx->handle, &input_probe.frame, timeout);
 +    CNCODEC_ERROR_CHECK(cnctx->avctx, ret);
 +
++    input_probe.flags |= CNVIDEOENC_FLAG_EOS;
 +    ret = cnvideoEncFeedFrame(cnctx->handle, &input_probe, timeout);
 +    CNCODEC_ERROR_CHECK(cnctx->avctx, ret);
 +
 +    clock_gettime(CLOCK_REALTIME, &ts);
-+    ts.tv_sec += 3; // 5s
++    ts.tv_sec += 5; // 5s
 +    ret = sem_timedwait(&(cnctx->spspps_sema), &ts);
 +    if (ret != 0) {
 +        int semvalue = -1;
@@ -4657,11 +4707,21 @@ index 0000000000..36068ff0f4
 +        av_log(cnctx->avctx, AV_LOG_ERROR, "Enc sem_timewait error \n");
 +        av_log(cnctx->avctx, AV_LOG_ERROR, "Enc sem_timewait = -1, semvalue = %d ... \n", semvalue);
 +    }
-+    // sem_wait(&(cnctx->spspps_sema));
++    //sem_wait(&(cnctx->spspps_sema));
 +    sem_destroy(&(cnctx->spspps_sema));
 +    if (cnctx->trace_flag > 0) {
 +        av_log(cnctx->avctx, AV_LOG_INFO, "Enc get sps/pps done, in init func \n");
 +    }
++
++    ret = cnvideoEncDestroy(cnctx->handle);
++    if (ret != CNCODEC_SUCCESS) {
++        av_log(avctx, AV_LOG_ERROR, "Failed to destroy cnencode! \n");
++        cnctx->handle = NULL;
++        sem_post(&(cnctx->eos_sema));
++        return AVERROR_EXTERNAL;
++    }
++    cnctx->handle = NULL;
++
 +    return ret;
 +}
 +
@@ -5527,13 +5587,22 @@ index 0000000000..36068ff0f4
 +
 +    cnctx->eos_reached = 0;
 +    cnctx->eos_post_flag = 0;
-+    cnctx->spspps_post_flag = 0;
 +    cnctx->codec_abort_flag = 0;
 +    cnctx->encoder_flushing = 0;
 +    cnctx->total_add_ref_num = 0;
 +    cnctx->total_frame_count = 0;
 +    cnctx->total_packet_count = 0;
 +    cnctx->total_outframe_count = 0;
++
++    // get spspps data
++    if (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) {
++        ret = get_sps_pps_header(cnctx, &enc_params);
++        if (ret < 0) {
++            av_log(avctx, AV_LOG_ERROR, "Got head info failed, in init func \n");
++            sem_post(&(cnctx->eos_sema));
++            return AVERROR_EXTERNAL;
++        }
++    }
 +
 +    ret = cnvideoEncCreate(&cnctx->handle, mlumpp_enc_event_cb, &enc_params);
 +    if (ret != CNCODEC_SUCCESS) {
@@ -5561,14 +5630,6 @@ index 0000000000..36068ff0f4
 +                        vui_sar.sarWidth,  vui_sar.sarHeight);
 +    }
 +#endif
-+
-+    // get spspps data
-+    if (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) {
-+        ret = get_sps_pps_header(cnctx);
-+        if (ret < 0) {
-+            av_log(avctx, AV_LOG_ERROR, "Got head info failed, in init func \n");
-+        }
-+    }
 +
 +    cnctx->encoder_init_flag = 1;
 +    if (cnctx->trace_flag > 0) {
@@ -5675,16 +5736,16 @@ index 0000000000..36068ff0f4
 +        av_log(avctx, AV_LOG_INFO, "Encode feed data count:%llu\n", cnctx->total_frame_count);
 +    }
 +    if (cnctx->trace_flag > 0) {
-+        av_log(avctx, AV_LOG_INFO, "Cnencode close done \n");
++        av_log(avctx, AV_LOG_INFO, "Cnencode close done\n");
 +    }
 +    return 0;
 +}
 diff --git a/libavcodec/mlumpp_vid_enc.h b/libavcodec/mlumpp_vid_enc.h
 new file mode 100755
-index 0000000000..5b68f09fe3
+index 0000000000..309ebec493
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.h
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,146 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -5799,7 +5860,6 @@ index 0000000000..5b68f09fe3
 +    sem_t                               eos_sema;
 +    sem_t                               spspps_sema;
 +    int                                 eos_post_flag;
-+    int                                 spspps_post_flag;
 +    int                                 insert_spspps_idr;
 +    int                                 is_spspps_packet_flag;
 +    int                                 insert_spspps_to_extradata;
@@ -5927,10 +5987,10 @@ index 04a3df7d56..c7076cda52 100644
  extern AVFilter ff_vf_streamselect;
 diff --git a/libavfilter/vf_cvt_rgbx2yuv_mlu.c b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 new file mode 100644
-index 0000000000..3e4fb9fa4c
+index 0000000000..61e803ca46
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
-@@ -0,0 +1,547 @@
+@@ -0,0 +1,535 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6030,33 +6090,21 @@ index 0000000000..3e4fb9fa4c
 +    void *op_handle;
 +} MluCVTRGBX2YUVContext;
 +
-+static av_cold void *dlsym_prefixed(void *handle, const char *symbol,
-+                                    const char *prefix) {
-+    char buf[50];
-+    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
-+    return dlsym(handle, buf);
-+}
-+
 +static int mluop_load(MluCVTRGBX2YUVContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
-+        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
++        ctx->lib = dlopen(libname, /*RTLD_NOW | RTLD_GLOBAL*/ RTLD_LAZY);
 +        if (!ctx->lib) {
-+            av_log(logctx, AV_LOG_WARNING, "dlopen %s  failed, dlerror = %s\n", libname,dlerror());
++            av_log(logctx, AV_LOG_WARNING, "dlopen %s failed, dlerror=%s\n", libname, dlerror());
 +            return AVERROR_EXTERNAL;
 +        } else {
-+            av_log(logctx, AV_LOG_TRACE, "dlopen %s successfully\n", libname);
++            av_log(logctx, AV_LOG_VERBOSE, "dlopen %s successfully\n", libname);
 +        }
 +    }
-+    ctx->ptr_convert_rgbx2yuv_init =
-+        dlsym_prefixed(ctx->lib, "convert_rgbx2yuv_init", "mluop");
-+    ctx->ptr_convert_rgbx2yuv_exec =
-+        dlsym_prefixed(ctx->lib, "convert_rgbx2yuv_exec", "mluop");
-+    ctx->ptr_convert_rgbx2yuv_destroy =
-+        dlsym_prefixed(ctx->lib, "convert_rgbx2yuv_destroy", "mluop");
-+    if (!ctx->ptr_convert_rgbx2yuv_init || !ctx->ptr_convert_rgbx2yuv_exec ||
-+        !ctx->ptr_convert_rgbx2yuv_destroy) {
-+        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n",
-+                libname);
++    ctx->ptr_convert_rgbx2yuv_init = dlsym(ctx->lib, "mluop_convert_rgbx2yuv_init");
++    ctx->ptr_convert_rgbx2yuv_exec = dlsym(ctx->lib, "mluop_convert_rgbx2yuv_exec");
++    ctx->ptr_convert_rgbx2yuv_destroy = dlsym(ctx->lib, "mluop_convert_rgbx2yuv_destroy");
++    if (!ctx->ptr_convert_rgbx2yuv_init || !ctx->ptr_convert_rgbx2yuv_exec || !ctx->ptr_convert_rgbx2yuv_destroy) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", libname);
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +        return AVERROR_EXTERNAL;
@@ -6480,10 +6528,10 @@ index 0000000000..3e4fb9fa4c
 +};
 diff --git a/libavfilter/vf_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..fd53ad3237
+index 0000000000..bb0d709c35
 --- /dev/null
 +++ b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
-@@ -0,0 +1,541 @@
+@@ -0,0 +1,529 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6587,33 +6635,21 @@ index 0000000000..fd53ad3237
 +    void *op_handle;
 +} MluCVTYUV2RGBXContext;
 +
-+static av_cold void *dlsym_prefixed(void *handle, const char *symbol,
-+                                    const char *prefix) {
-+    char buf[50];
-+    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
-+    return dlsym(handle, buf);
-+}
-+
 +static int mluop_load(MluCVTYUV2RGBXContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
-+        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
++        ctx->lib = dlopen(libname, /*RTLD_NOW | RTLD_GLOBAL*/ RTLD_LAZY);
 +        if (!ctx->lib) {
-+            av_log(logctx, AV_LOG_WARNING, "dlopen %s  failed, dlerror = %s\n", libname,dlerror());
++            av_log(logctx, AV_LOG_WARNING, "dlopen %s failed, dlerror=%s\n", libname, dlerror());
 +            return AVERROR_EXTERNAL;
 +        } else {
-+            av_log(logctx, AV_LOG_TRACE, "dlopen %s successfully\n", libname);
++            av_log(logctx, AV_LOG_VERBOSE, "dlopen %s successfully\n", libname);
 +        }
 +    }
-+    ctx->ptr_convert_yuv2rgbx_init =
-+        dlsym_prefixed(ctx->lib, "convert_yuv2rgbx_init", "mluop");
-+    ctx->ptr_convert_yuv2rgbx_exec =
-+        dlsym_prefixed(ctx->lib, "convert_yuv2rgbx_exec", "mluop");
-+    ctx->ptr_convert_yuv2rgbx_destroy =
-+        dlsym_prefixed(ctx->lib, "convert_yuv2rgbx_destroy", "mluop");
-+    if (!ctx->ptr_convert_yuv2rgbx_init || !ctx->ptr_convert_yuv2rgbx_exec ||
-+        !ctx->ptr_convert_yuv2rgbx_destroy) {
-+        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n",
-+                libname);
++    ctx->ptr_convert_yuv2rgbx_init = dlsym(ctx->lib, "mluop_convert_yuv2rgbx_init");
++    ctx->ptr_convert_yuv2rgbx_exec = dlsym(ctx->lib, "mluop_convert_yuv2rgbx_exec");
++    ctx->ptr_convert_yuv2rgbx_destroy = dlsym(ctx->lib, "mluop_convert_yuv2rgbx_destroy");
++    if (!ctx->ptr_convert_yuv2rgbx_init || !ctx->ptr_convert_yuv2rgbx_exec || !ctx->ptr_convert_yuv2rgbx_destroy) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", libname);
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +        return AVERROR_EXTERNAL;
@@ -7448,10 +7484,10 @@ index 0000000000..c0e8b0807d
 +};
 diff --git a/libavfilter/vf_scale_rgbx2rgbx_mlu.c b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..1aa32e768a
+index 0000000000..676de20d8c
 --- /dev/null
 +++ b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
-@@ -0,0 +1,495 @@
+@@ -0,0 +1,483 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -7548,33 +7584,21 @@ index 0000000000..1aa32e768a
 +    void *op_handle;
 +} MluScaleRGBXContext;
 +
-+static av_cold void *dlsym_prefixed(void *handle, const char *symbol,
-+                                    const char *prefix) {
-+    char buf[50];
-+    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
-+    return dlsym(handle, buf);
-+}
-+
 +static int mluop_load(MluScaleRGBXContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
-+        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
++        ctx->lib = dlopen(libname, /*RTLD_NOW | RTLD_GLOBAL*/ RTLD_LAZY);
 +        if (!ctx->lib) {
-+            av_log(logctx, AV_LOG_WARNING, "dlopen %s  failed, dlerror = %s\n", libname,dlerror());
++            av_log(logctx, AV_LOG_WARNING, "dlopen %s failed, dlerror=%s\n", libname, dlerror());
 +            return AVERROR_EXTERNAL;
 +        } else {
-+            av_log(logctx, AV_LOG_TRACE, "dlopen %s successfully\n", libname);
++            av_log(logctx, AV_LOG_VERBOSE, "dlopen %s successfully\n", libname);
 +        }
 +    }
-+    ctx->ptr_resize_rgbx_init =
-+        dlsym_prefixed(ctx->lib, "resize_rgbx_init", "mluop");
-+    ctx->ptr_resize_rgbx_exec =
-+        dlsym_prefixed(ctx->lib, "resize_rgbx_exec", "mluop");
-+    ctx->ptr_resize_rgbx_destroy =
-+        dlsym_prefixed(ctx->lib, "resize_rgbx_destroy", "mluop");
-+    if (!ctx->ptr_resize_rgbx_init || !ctx->ptr_resize_rgbx_exec ||
-+        !ctx->ptr_resize_rgbx_destroy) {
-+        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n",
-+                libname);
++    ctx->ptr_resize_rgbx_init = dlsym(ctx->lib, "mluop_resize_rgbx_init");
++    ctx->ptr_resize_rgbx_exec = dlsym(ctx->lib, "mluop_resize_rgbx_exec");
++    ctx->ptr_resize_rgbx_destroy = dlsym(ctx->lib, "mluop_resize_rgbx_destroy");
++    if (!ctx->ptr_resize_rgbx_init || !ctx->ptr_resize_rgbx_exec || !ctx->ptr_resize_rgbx_destroy) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", libname);
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +        return AVERROR_EXTERNAL;
@@ -7949,10 +7973,10 @@ index 0000000000..1aa32e768a
 +};
 diff --git a/libavfilter/vf_scale_yuv2yuv_mlu.c b/libavfilter/vf_scale_yuv2yuv_mlu.c
 new file mode 100644
-index 0000000000..48020ed252
+index 0000000000..844a62ce35
 --- /dev/null
 +++ b/libavfilter/vf_scale_yuv2yuv_mlu.c
-@@ -0,0 +1,502 @@
+@@ -0,0 +1,490 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -8052,33 +8076,21 @@ index 0000000000..48020ed252
 +    void *op_handle;
 +} MluScaleContext;
 +
-+static av_cold void *dlsym_prefixed(void *handle, const char *symbol,
-+                                    const char *prefix) {
-+    char buf[50];
-+    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
-+    return dlsym(handle, buf);
-+}
-+
 +static int mluop_load(MluScaleContext *ctx,const char *libname, void *logctx) {
 +    if (libname) {
-+        ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
++        ctx->lib = dlopen(libname, /*RTLD_NOW | RTLD_GLOBAL*/ RTLD_LAZY);
 +        if (!ctx->lib) {
-+            av_log(logctx, AV_LOG_WARNING, "dlopen %s  failed, dlerror = %s\n", libname,dlerror());
++            av_log(logctx, AV_LOG_WARNING, "dlopen %s failed, dlerror=%s\n", libname, dlerror());
 +            return AVERROR_EXTERNAL;
 +        } else {
-+            av_log(logctx, AV_LOG_TRACE, "dlopen %s successfully\n", libname);
++            av_log(logctx, AV_LOG_VERBOSE, "dlopen %s successfully\n", libname);
 +        }
 +    }
-+    ctx->ptr_resize_yuv_init =
-+        dlsym_prefixed(ctx->lib, "resize_yuv_init", "mluop");
-+    ctx->ptr_resize_yuv_exec =
-+        dlsym_prefixed(ctx->lib, "resize_yuv_exec", "mluop");
-+    ctx->ptr_resize_yuv_destroy =
-+        dlsym_prefixed(ctx->lib, "resize_yuv_destroy", "mluop");
-+    if (!ctx->ptr_resize_yuv_init || !ctx->ptr_resize_yuv_exec ||
-+        !ctx->ptr_resize_yuv_destroy) {
-+        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n",
-+                libname);
++    ctx->ptr_resize_yuv_init = dlsym(ctx->lib, "mluop_resize_yuv_init");
++    ctx->ptr_resize_yuv_exec = dlsym(ctx->lib, "mluop_resize_yuv_exec");
++    ctx->ptr_resize_yuv_destroy = dlsym(ctx->lib, "mluop_resize_yuv_destroy");
++    if (!ctx->ptr_resize_yuv_init || !ctx->ptr_resize_yuv_exec || !ctx->ptr_resize_yuv_destroy) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", libname);
 +        dlclose(ctx->lib);
 +        ctx->lib = NULL;
 +        return AVERROR_EXTERNAL;
@@ -8457,10 +8469,10 @@ index 0000000000..48020ed252
 +};
 diff --git a/libavfilter/vf_sr_mlu.c b/libavfilter/vf_sr_mlu.c
 new file mode 100644
-index 0000000000..0c074d001b
+index 0000000000..76edf87f18
 --- /dev/null
 +++ b/libavfilter/vf_sr_mlu.c
-@@ -0,0 +1,271 @@
+@@ -0,0 +1,264 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -8546,13 +8558,6 @@ index 0000000000..0c074d001b
 +  void* handle;
 +} MLUSRContext;
 +
-+static av_cold void *dlsym_prefixed(void *handle, const char *symbol,
-+                                    const char *prefix) {
-+    char buf[50];
-+    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
-+    return dlsym(handle, buf);
-+}
-+
 +static int sr_lib_load(MLUSRContext *ctx, const char *lib_dir, void *logctx)
 +{
 +  if (lib_dir) {
@@ -8561,12 +8566,12 @@ index 0000000000..0c074d001b
 +      av_log(logctx, AV_LOG_WARNING, "dlopen %s  failed, dlerror = %s\n", lib_dir, dlerror());
 +      return AVERROR_EXTERNAL;
 +    } else {
-+      av_log(logctx, AV_LOG_TRACE, "dlopen %s successfully\n", lib_dir);
++      av_log(logctx, AV_LOG_VERBOSE, "dlopen %s successfully\n", lib_dir);
 +    }
 +  }
-+  ctx->ptr_sr_model_init = dlsym_prefixed(ctx->lib, "infer_sr_init", "mluop");
-+  ctx->ptr_sr_model_exec = dlsym_prefixed(ctx->lib, "infer_sr_exec", "mluop");
-+  ctx->ptr_sr_model_destroy = dlsym_prefixed(ctx->lib, "infer_sr_destroy", "mluop");
++  ctx->ptr_sr_model_init = dlsym(ctx->lib, "mluop_infer_sr_init");
++  ctx->ptr_sr_model_exec = dlsym(ctx->lib, "mluop_infer_sr_exec");
++  ctx->ptr_sr_model_destroy = dlsym(ctx->lib, "mluop_infer_sr_destroy");
 +  if (!ctx->ptr_sr_model_init || !ctx->ptr_sr_model_exec || !ctx->ptr_sr_model_destroy) {
 +    av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", lib_dir);
 +    dlclose(ctx->lib);
@@ -8586,7 +8591,7 @@ index 0000000000..0c074d001b
 +
 +static av_cold int mlu_sr_init(AVFilterContext *ctx) {
 +  MLUSRContext *s = ctx->priv;
-+  static const char * const mluop_libname = "/usr/local/neuware/lib64/libeasyOP.so";
++  static const char * const mluop_libname = "libeasyOP.so";
 +  int ret = sr_lib_load(s, mluop_libname, ctx);
 +  if (ret < 0) {
 +    av_log(ctx, AV_LOG_WARNING, "SR Load lib error! Error id : %d\n", ret);
@@ -8816,10 +8821,10 @@ index 77dc47ddd6..0f7bb9957f 100644
  extern const HWContextType ff_hwcontext_type_dxva2;
 diff --git a/libavutil/hwcontext_mlu.c b/libavutil/hwcontext_mlu.c
 new file mode 100644
-index 0000000000..ca84e1a393
+index 0000000000..2640b39239
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.c
-@@ -0,0 +1,448 @@
+@@ -0,0 +1,443 @@
 +/*
 + * This file is part of FFmpeg.
 + *
@@ -9085,7 +9090,7 @@ index 0000000000..ca84e1a393
 +
 +static int mlu_load_functions(AVMLUDeviceContext *hwctx, void *ctx) {
 +    const char *cnrt_path = "libcnrt.so";
-+    hwctx->mlu_cnrt_lib = dlopen(cnrt_path, RTLD_NOW | RTLD_GLOBAL);
++    hwctx->mlu_cnrt_lib = dlopen(cnrt_path, /*RTLD_NOW | RTLD_GLOBAL*/ RTLD_LAZY);
 +    if (!hwctx->mlu_cnrt_lib) {
 +        av_log(ctx, AV_LOG_ERROR, "dlopen cnrt lib failed. \n");
 +        return AVERROR_EXTERNAL;
@@ -9207,11 +9212,6 @@ index 0000000000..ca84e1a393
 +
 +    mlu_ctx = hwctx->mlu_ctx;
 +
-+    // cnrt_ret = mlu_ctx->mluInit(0);
-+    // if (cnrt_ret < 0){
-+    //     av_log(device_ctx, AV_LOG_ERROR, "mlu init failed \n");
-+    //    goto error;
-+    // }
 +    static AVOnce control = AV_ONCE_INIT;
 +    ff_thread_once(&control, mlu_hwdev_init);
 +
