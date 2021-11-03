@@ -57,8 +57,17 @@ int main(int argc, char **argv) {
     printf("|                                                                                  |\n");
     printf("|./test mluop <algo> <src_file> <width> <height> <dst_file> <src_pixfmt>           |\n"
            "| <dst_pixfmt> <frame_num> <thread_num> <save_flag> <device_id>                    |\n");
+    printf("|----------------------------------------------------------------------------------|\n");
+    printf("|[4] <--> process_convert_rgbx2rgbx                                                |\n");
+    printf("|                                                                                  |\n");
+    printf("|./test mluop <algo> <src_file> <src_width> <src_height> <dst_file>                |\n"
+           "| <src_pix_fmt> <dst_pixfmt> <frame_num> <thread_num> <save_flag> <device_id>      |\n");
+    printf("|----------------------------------------------------------------------------------|\n");
+    printf("|[5] <--> process_resize_cvt_rgbx2rgbx                                             |\n");
+    printf("|                                                                                  |\n");
+    printf("|./test mluop <algo> <src_file> <src_width> <src_height> <dst_w> <dst_h> <dst_file>|\n"
+           "| <src_pixfmt> <dst_pixfmt> <frame_num> <thread_num> <save_flag> <dev_id>          |\n");
     printf(" ================================================================================== \n");
-
     return 1;
   }
 
@@ -78,6 +87,12 @@ int main(int argc, char **argv) {
   } else if (3 == ctx->algo) {
     printf("exec algo[%d]: process_convert_rgbx2yuv \n", ctx->algo);
     rgbx2yuv_convert_op(ctx, argv);
+  } else if (4 == ctx->algo) {
+    printf("exec algo[%d]: process_convert_rgbx \n", ctx->algo);
+    Rgbx2RgbxConvertOp(ctx, argv);
+  } else if (5 == ctx->algo) {
+    printf("exec algo[%d]: ProcessResizeCvtYuv2Rgbx \n", ctx->algo);
+    Yuv2RgbxResizeCvtOp(ctx, argv);
   } else {
     printf("don't support algo ...\n");
   }

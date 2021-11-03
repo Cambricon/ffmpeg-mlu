@@ -23,15 +23,16 @@
 #ifndef __MLUOP_H__
 #define __MLUOP_H__
 
-#include "cnrt.h"
-#include "cncv.h"
+#include <math.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include <pthread.h>
+
+#include "cncv.h"
+#include "cnrt.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -41,40 +42,36 @@ extern "C" {
 #define ALIGN_R_SCALE 1
 #define ALIGN_Y2R_CVT 1
 #define ALIGN_R2Y_CVT 1
+#define ALIGN_RESIZE_CVT 1
 #define PAD_UP(x, y) ((x / y + (int)((x) % y > 0)) * y)
 
 typedef void *HANDLE;
 
 typedef enum {
   CN_DEPTH_NONE = -1,
-  CN_DEPTH_8U  = 0,
-  CN_DEPTH_8S  = 1,
-  CN_DEPTH_16U  = 2,
-  CN_DEPTH_16S  = 3,
-  CN_DEPTH_32U  = 4,
-  CN_DEPTH_32S  = 5,
-  CN_DEPTH_16F  = 6,
-  CN_DEPTH_32F  = 7,
-}cnDepth_t;
+  CN_DEPTH_8U = 0,
+  CN_DEPTH_8S = 1,
+  CN_DEPTH_16U = 2,
+  CN_DEPTH_16S = 3,
+  CN_DEPTH_32U = 4,
+  CN_DEPTH_32S = 5,
+  CN_DEPTH_16F = 6,
+  CN_DEPTH_32F = 7,
+} cnDepth_t;
 
 typedef enum {
-  CN_COLOR_SPACE_BT_601  = 0,
-  CN_COLOR_SPACE_BT_709  = 1,
-}cnColorSpace;
+  CN_COLOR_SPACE_BT_601 = 0,
+  CN_COLOR_SPACE_BT_709 = 1,
+} cnColorSpace;
 
 /*------------------------resize yuv2yuv cncv----------------------*/
-int mluop_resize_yuv_init(HANDLE *h,
-                          int input_w, int input_h,
-                          int output_w, int output_h,
-                          const char *depth, const char *pix_fmt);
-int mluop_resize_yuv_exec(HANDLE h,
-                          void *input_y, void *input_uv,
+int mluop_resize_yuv_init(HANDLE *h, int input_w, int input_h, int output_w,
+                          int output_h, const char *depth, const char *pix_fmt);
+int mluop_resize_yuv_exec(HANDLE h, void *input_y, void *input_uv,
                           void *output_y, void *output_uv);
-int mluop_resize_pad_yuv_exec(HANDLE h,
-                              void *input_y, void *input_uv,
+int mluop_resize_pad_yuv_exec(HANDLE h, void *input_y, void *input_uv,
                               void *output_y, void *output_uv);
-int mluop_resize_roi_yuv_exec(HANDLE h,
-                              void *input_y, void *input_uv,
+int mluop_resize_roi_yuv_exec(HANDLE h, void *input_y, void *input_uv,
                               void *output_y, void *output_uv,
                               uint32_t src_roi_x, uint32_t src_roi_y,
                               uint32_t src_roi_w, uint32_t src_roi_h,
@@ -83,34 +80,44 @@ int mluop_resize_roi_yuv_exec(HANDLE h,
 int mluop_resize_yuv_destroy(HANDLE h);
 
 /*------------------------resize rgbx2rgbx cncv----------------------*/
-int mluop_resize_rgbx_init(HANDLE *h,
-                           int input_w, int input_h,
-                           int output_w, int output_h,
-                           const char *pix_fmt, const char *depth);
-int mluop_resize_rgbx_exec(HANDLE h,
-                           void *input, void *output);
+int mluop_resize_rgbx_init(HANDLE *h, int input_w, int input_h, int output_w,
+                           int output_h, const char *pix_fmt,
+                           const char *depth);
+int mluop_resize_rgbx_exec(HANDLE h, void *input, void *output);
+int mluop_resize_pad_rgbx_exec(HANDLE h, void *input, void *output);
 int mluop_resize_rgbx_destroy(HANDLE h);
 
 /*------------------------convert yuv2rgbx cncv----------------------*/
-int mluop_convert_yuv2rgbx_init(HANDLE *h,
-                                int width, int height,
-                                const char *src_pix_fmt, const char *dst_pix_fmt,
-                                const char *depth);
-int mluop_convert_yuv2rgbx_exec(HANDLE h,
-                                void *input_y, void *input_uv,
+int mluop_convert_yuv2rgbx_init(HANDLE *h, int width, int height,
+                                const char *src_pix_fmt,
+                                const char *dst_pix_fmt, const char *depth);
+int mluop_convert_yuv2rgbx_exec(HANDLE h, void *input_y, void *input_uv,
                                 void *output);
 int mluop_convert_yuv2rgbx_destroy(HANDLE h);
 
 /*------------------------convert rgbx2yuv cncv----------------------*/
-int mluop_convert_rgbx2yuv_init(HANDLE *h,
-                                int width, int height,
-                                const char *src_pix_fmt, const char *dst_pix_fmt,
-                                const char *depth);
-int mluop_convert_rgbx2yuv_exec(HANDLE h,
-                                void *input_rgbx,
-                                void *output_y, void *output_uv);
+int mluop_convert_rgbx2yuv_init(HANDLE *h, int width, int height,
+                                const char *src_pix_fmt,
+                                const char *dst_pix_fmt, const char *depth);
+int mluop_convert_rgbx2yuv_exec(HANDLE h, void *input_rgbx, void *output_y,
+                                void *output_uv);
 int mluop_convert_rgbx2yuv_destroy(HANDLE h);
 
+/*------------------------convert rgbx2rgbx cncv----------------------*/
+int MluopConvertRgbx2RgbxInit(HANDLE *h, int width, int height,
+                              const char *src_pix_fmt, const char *dst_pix_fmt,
+                              const char *depth);
+int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx);
+int MluopConvertRgbx2RgbxDestroy(HANDLE h);
+
+/*------------------------resize convert yuv2rgbx cncv----------------------*/
+int MluopResizeCvtInit(HANDLE *h, int src_width, int src_height,
+                       int dst_width, int dst_height,
+                       const char *src_pix_fmt, const char *dst_pix_fmt,
+                       const char *depth);
+int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv, void *output_rgbx);
+int MluopResizeCvtPadExec(HANDLE h, void *input_y, void *input_uv, void *output_rgbx);
+int MluopResizeCvtDestroy(HANDLE h);
 
 #if defined(__cplusplus)
 }

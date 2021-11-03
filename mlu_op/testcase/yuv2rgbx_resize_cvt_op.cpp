@@ -26,7 +26,6 @@
 #include "mluop_list.h"
 #include "test_mluop.h"
 
-#ifndef __OPENCV_CORE_TYPES_H__
 #define CV_8U 0
 #define CV_CN_SHIFT 3
 #define CV_DEPTH_MAX (1 << CV_CN_SHIFT)
@@ -35,27 +34,30 @@
 #define CV_MAKETYPE(depth, cn) (CV_MAT_DEPTH(depth) + (((cn)-1) << CV_CN_SHIFT))
 #define CV_8UC3 CV_MAKETYPE(CV_8U, 3)
 #define CV_8UC(n) CV_MAKETYPE(CV_8U, (n))
-#endif
 
-void rgbx2yuv_convert_op(void *ctx_, char **argv) {
+extern void BGR2YUV420P(cv::Mat src, cv::Mat &dst, const char *pix_fmt);
+
+void Yuv2RgbxResizeCvtOp(void *ctx_, char **argv) {
   param_ctx_t *ctx = (param_ctx_t *)ctx_;
   ctx->algo = atoi(argv[1]);
   ctx->input_file = argv[2];
-  ctx->width = atoi(argv[3]);
-  ctx->height = atoi(argv[4]);
-  ctx->output_file = argv[5];
-  ctx->src_pix_fmt = argv[6];
-  ctx->dst_pix_fmt = argv[7];
-  ctx->frame_num = atoi(argv[8]);
-  ctx->thread_num = atoi(argv[9]);
-  ctx->save_flag = atoi(argv[10]);
-  ctx->device_id = atoi(argv[11]);
+  ctx->src_w = atoi(argv[3]);
+  ctx->src_h = atoi(argv[4]);
+  ctx->dst_w = atoi(argv[5]);
+  ctx->dst_h = atoi(argv[6]);
+  ctx->output_file = argv[7];
+  ctx->src_pix_fmt = argv[8];
+  ctx->dst_pix_fmt = argv[9];
+  ctx->frame_num = atoi(argv[10]);
+  ctx->thread_num = atoi(argv[11]);
+  ctx->save_flag = atoi(argv[12]);
+  ctx->device_id = atoi(argv[13]);
   ctx->depth_size = 1;  // depth_size: 1->uint8, 2->f16, 4->f32
 
   char depth_[3] = "8U";
   ctx->depth = depth_;
 
-  if (ctx->algo <= 0) ctx->algo = 3;
+  if (ctx->algo <= 0) ctx->algo = 2;
   if (ctx->save_flag <= 0) ctx->save_flag = 0;
   if (ctx->frame_num <= 0) ctx->frame_num = 10;
   if (ctx->thread_num <= 0) ctx->thread_num = THREADS_NUM;
@@ -70,7 +72,7 @@ void rgbx2yuv_convert_op(void *ctx_, char **argv) {
   for (uint32_t i = 0; i < ctx->thread_num; i++) {
     printf("create thead [%d]\n", i);
     ret =
-        pthread_create(&tids[i], &attr, process_convert_rgbx2yuv, (void *)ctx);
+        pthread_create(&tids[i], &attr, ProcessResizeCvtYuv2Rgbx, (void *)ctx);
   }
 
   pthread_attr_destroy(&attr);
@@ -86,14 +88,17 @@ void rgbx2yuv_convert_op(void *ctx_, char **argv) {
   }
 }
 
-void *process_convert_rgbx2yuv(void *ctx_) {
+void *ProcessResizeCvtYuv2Rgbx(void *ctx_) {
   param_ctx_t *ctx = (param_ctx_t *)ctx_;
   bool save_flag = ctx->save_flag;
-  uint32_t width = ctx->width;
-  uint32_t height = ctx->height;
+  uint32_t src_w = ctx->src_w;
+  uint32_t src_h = ctx->src_h;
+  uint32_t dst_w = ctx->dst_w;
+  uint32_t dst_h = ctx->dst_h;
   uint32_t frame_num = ctx->frame_num;
   uint32_t device_id = ctx->device_id;
-  uint32_t src_pix_chn_num = getPixFmtChannelNum(getCNCVPixFmtFromPixindex(ctx->src_pix_fmt));
+  uint32_t dst_pix_chn_num =
+      getPixFmtChannelNum(getCNCVPixFmtFromPixindex(ctx->dst_pix_fmt));
   uint32_t depth_size = ctx->depth_size;
   const char *depth = ctx->depth;
   const char *filename = ctx->input_file;
@@ -101,32 +106,47 @@ void *process_convert_rgbx2yuv(void *ctx_) {
 
   set_cnrt_ctx(device_id, CNRT_CHANNEL_TYPE_NONE /* CNRT_CHANNEL_TYPE_0 */);
 
-  uint32_t src_stride = PAD_UP(width, ALIGN_R2Y_CVT) * src_pix_chn_num * depth_size;
-  uint32_t dst_y_stride = PAD_UP(width, ALIGN_R2Y_CVT) * depth_size;
-  uint32_t dst_uv_stride = PAD_UP(width, ALIGN_R2Y_CVT) * depth_size;
-  uint32_t dst_y_size = height * dst_y_stride;
-  uint32_t dst_uv_size = height * dst_uv_stride * 3 / 2;
-  uint32_t src_size = height * src_stride;
-  uint32_t dst_size = dst_y_size + dst_uv_size;
+  uint32_t src_y_stride = PAD_UP(src_w, ALIGN_RESIZE_CVT) * depth_size;
+  uint32_t src_uv_stride = PAD_UP(src_w, ALIGN_RESIZE_CVT) * depth_size;
+  uint32_t dst_stride =
+      PAD_UP(dst_w, ALIGN_RESIZE_CVT) * dst_pix_chn_num * depth_size;
+  uint32_t src_y_size = src_h * src_y_stride;
+  uint32_t src_uv_size = src_h * src_uv_stride * 3 / 2;
+  uint32_t src_size = src_y_size + src_uv_size;
+  uint32_t dst_size = dst_h * dst_stride;
 
   uint8_t *src_cpu = (uint8_t *)malloc(src_size);
   uint8_t *dst_cpu = (uint8_t *)malloc(dst_size);
 
   cv::Mat src_mat;
+  cv::Mat src_yuv_mat;
+  cv::Mat dst_mat;
   src_mat = cv::imread(filename, cv::IMREAD_COLOR);  // read 8U_C3 BGR
-  for (uint32_t row = 0; row < height; ++row) {
+  BGR2YUV420P(src_mat, src_yuv_mat, ctx->src_pix_fmt);
+  // plane Y
+  for (uint32_t row = 0; row < src_h; ++row) {
     memcpy(reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(src_cpu) +
-                                       row * src_stride),
-           src_mat.ptr<uint8_t>(row), src_mat.cols * src_mat.elemSize());
+                                       row * src_y_stride),
+           src_yuv_mat.ptr<uint8_t>(row),
+           src_yuv_mat.cols * src_yuv_mat.elemSize());
+  }
+  // plane UV
+  for (uint32_t row = 0; row < src_h / 2; ++row) {
+    memcpy(reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(src_cpu) +
+                                       src_y_size + row * src_uv_stride),
+           src_yuv_mat.ptr<uint8_t>(row + src_h),
+           src_yuv_mat.cols * src_yuv_mat.elemSize());
   }
 
-  void *src_rgbx_mlu;
-  void *dst_y_mlu;
-  void *dst_uv_mlu;
-  cnrtMalloc((void **)(&src_rgbx_mlu), src_size);
-  cnrtMalloc((void **)(&dst_y_mlu), dst_y_size);
-  cnrtMalloc((void **)(&dst_uv_mlu), dst_uv_size);
-  cnrtMemcpy(src_rgbx_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  void *src_y_mlu;
+  void *src_uv_mlu;
+  void *dst_mlu;
+  cnrtMalloc((void **)(&src_y_mlu), src_y_size);
+  cnrtMalloc((void **)(&src_uv_mlu), src_uv_size);
+  cnrtMalloc((void **)(&dst_mlu), dst_size);
+  cnrtMemcpy(src_y_mlu, src_cpu, src_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  cnrtMemcpy(src_uv_mlu, (src_cpu + src_y_size), src_uv_size,
+             CNRT_MEM_TRANS_DIR_HOST2DEV);
 
   HANDLE handle;
 #if PRINT_TIME
@@ -136,8 +156,8 @@ void *process_convert_rgbx2yuv(void *ctx_) {
   gettimeofday(&start, NULL);
 #endif
   /*--------init op--------*/
-  mluop_convert_rgbx2yuv_init(&handle, width, height, ctx->src_pix_fmt,
-                              ctx->dst_pix_fmt, depth);
+  MluopResizeCvtInit(&handle, src_w, src_h, dst_w, dst_h, ctx->src_pix_fmt,
+                     ctx->dst_pix_fmt, depth);
 #if PRINT_TIME
   gettimeofday(&end, NULL);
   time_use =
@@ -147,29 +167,28 @@ void *process_convert_rgbx2yuv(void *ctx_) {
 
   /*-------execute op-------*/
   for (uint32_t i = 0; i < frame_num; i++) {
-    cnrtMemcpy(src_rgbx_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+    cnrtMemcpy(src_y_mlu, src_cpu, src_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+    cnrtMemcpy(src_uv_mlu, (src_cpu + src_y_size), src_uv_size,
+               CNRT_MEM_TRANS_DIR_HOST2DEV);
 #if PRINT_TIME
     gettimeofday(&start, NULL);
 #endif
-    mluop_convert_rgbx2yuv_exec(handle, src_rgbx_mlu, dst_y_mlu, dst_uv_mlu);
+    MluopResizeCvtExec(handle, src_y_mlu, src_uv_mlu, dst_mlu);
 #if PRINT_TIME
     gettimeofday(&end, NULL);
     time_use =
         (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
     printf("[exec] time(ave.): %.3f ms, total frame: %d\n",
-           (time_use / 1000.0) / frame_num, frame_num);
+           (time_use / 1000.0) / 1.0, i);
 #endif
     /*----------D2H-----------*/
-    cnrtMemcpy(dst_cpu, dst_y_mlu, dst_y_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
-    cnrtMemcpy(dst_cpu + dst_y_size, dst_uv_mlu, dst_uv_size,
-               CNRT_MEM_TRANS_DIR_DEV2HOST);
+    cnrtMemcpy(dst_cpu, dst_mlu, dst_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
   }
-
 #if PRINT_TIME
   gettimeofday(&start, NULL);
 #endif
   /*-------destroy op-------*/
-  mluop_convert_rgbx2yuv_destroy(handle);
+  MluopResizeCvtDestroy(handle);
 #if PRINT_TIME
   gettimeofday(&end, NULL);
   time_use =
@@ -177,16 +196,21 @@ void *process_convert_rgbx2yuv(void *ctx_) {
   printf("[destroy] time: %.3f ms\n", time_use / 1000);
 #endif
   /*-------sace file-------*/
-
   if (save_flag) {
-    FILE *fp_out = fopen(output_file, "wb");
-    fwrite(dst_cpu, 1, dst_size, fp_out);
-    fclose(fp_out);
+    dst_mat.create(dst_h, dst_w, CV_8UC(dst_pix_chn_num));
+    for (uint32_t row = 0; row < dst_h; ++row) {
+      memcpy(dst_mat.ptr<uint8_t>(row),
+             reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst_cpu) +
+                                         row * dst_stride),
+             dst_mat.cols * dst_mat.elemSize());  // valid data len = pic width
+                                                  // * size of each element
+    }
+    cv::imwrite(output_file, dst_mat);
   }
   if (src_cpu) free(src_cpu);
-  if (src_rgbx_mlu) cnrtFree(src_rgbx_mlu);
+  if (src_y_mlu) cnrtFree(src_y_mlu);
+  if (src_uv_mlu) cnrtFree(src_uv_mlu);
   if (dst_cpu) free(dst_cpu);
-  if (dst_y_mlu) cnrtFree(dst_y_mlu);
-  if (dst_uv_mlu) cnrtFree(dst_uv_mlu);
+  if (dst_mlu) cnrtFree(dst_mlu);
   return NULL;
 }

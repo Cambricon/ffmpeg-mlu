@@ -1,46 +1,48 @@
-From c235bb19574ee7dc6196a41aa435dfa90eca35fc Mon Sep 17 00:00:00 2001
+From e9f9be416b9c792f5f7f1c81a7929d022535b6e0 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Tue, 12 Oct 2021 17:57:56 +0800
+Date: Wed, 3 Nov 2021 15:15:34 +0800
 Subject: [PATCH] gen new patch
 
 ---
- configure                            |   18 +
- doc/examples/Makefile                |    2 +
- doc/examples/hw_decode_mlu.c         |  256 ++++
- doc/examples/mlumpp_transcode.c      |  396 ++++++
- fftools/Makefile                     |    1 +
- fftools/ffmpeg.h                     |    2 +
- fftools/ffmpeg_mlu.c                 |   74 ++
- fftools/ffmpeg_opt.c                 |    3 +
- libavcodec/Makefile                  |    8 +
- libavcodec/allcodecs.c               |    8 +
- libavcodec/hwaccel.h                 |    2 +
- libavcodec/mlumpp_dec.c              | 1665 ++++++++++++++++++++++++++
- libavcodec/mlumpp_enc_h264.c         |  175 +++
- libavcodec/mlumpp_enc_hevc.c         |  172 +++
- libavcodec/mlumpp_enc_jpeg.c         | 1084 +++++++++++++++++
- libavcodec/mlumpp_mluop.c            |  122 ++
- libavcodec/mlumpp_mluop.h            |   33 +
- libavcodec/mlumpp_vid_enc.c          | 1362 +++++++++++++++++++++
- libavcodec/mlumpp_vid_enc.h          |  146 +++
- libavfilter/Makefile                 |   10 +
- libavfilter/allfilters.c             |   10 +
- libavfilter/vf_cvt_rgbx2yuv_mlu.c    |  535 +++++++++
- libavfilter/vf_cvt_yuv2rgbx_mlu.c    |  529 ++++++++
- libavfilter/vf_hwdownload_mlu.c      |  209 ++++
- libavfilter/vf_hwupload_mlu.c        |  200 ++++
- libavfilter/vf_scale_rgbx2rgbx_mlu.c |  483 ++++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c   |  490 ++++++++
- libavfilter/vf_sr_mlu.c              |  264 ++++
- libavutil/Makefile                   |    3 +
- libavutil/hwcontext.c                |    5 +
- libavutil/hwcontext.h                |    1 +
- libavutil/hwcontext_internal.h       |    1 +
- libavutil/hwcontext_mlu.c            |  443 +++++++
- libavutil/hwcontext_mlu.h            |   62 +
- libavutil/pixdesc.c                  |    4 +
- libavutil/pixfmt.h                   |    6 +
- 36 files changed, 8784 insertions(+)
+ configure                               |   18 +
+ doc/examples/Makefile                   |    2 +
+ doc/examples/hw_decode_mlu.c            |  256 ++++
+ doc/examples/mlumpp_transcode.c         |  396 ++++++
+ fftools/Makefile                        |    1 +
+ fftools/ffmpeg.h                        |    2 +
+ fftools/ffmpeg_mlu.c                    |   74 +
+ fftools/ffmpeg_opt.c                    |    3 +
+ libavcodec/Makefile                     |    8 +
+ libavcodec/allcodecs.c                  |    8 +
+ libavcodec/hwaccel.h                    |    2 +
+ libavcodec/mlumpp_dec.c                 | 1675 +++++++++++++++++++++++
+ libavcodec/mlumpp_enc_h264.c            |  175 +++
+ libavcodec/mlumpp_enc_hevc.c            |  172 +++
+ libavcodec/mlumpp_enc_jpeg.c            | 1084 +++++++++++++++
+ libavcodec/mlumpp_mluop.c               |  122 ++
+ libavcodec/mlumpp_mluop.h               |   33 +
+ libavcodec/mlumpp_vid_enc.c             | 1369 ++++++++++++++++++
+ libavcodec/mlumpp_vid_enc.h             |  146 ++
+ libavfilter/Makefile                    |    9 +
+ libavfilter/allfilters.c                |    9 +
+ libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  526 +++++++
+ libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  535 ++++++++
+ libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  529 +++++++
+ libavfilter/vf_hwdownload_mlu.c         |  209 +++
+ libavfilter/vf_hwupload_mlu.c           |  200 +++
+ libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  542 ++++++++
+ libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  483 +++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  490 +++++++
+ libavfilter/vf_sr_mlu.c                 |  264 ++++
+ libavutil/Makefile                      |    3 +
+ libavutil/hwcontext.c                   |    5 +
+ libavutil/hwcontext.h                   |    1 +
+ libavutil/hwcontext_internal.h          |    1 +
+ libavutil/hwcontext_mlu.c               |  443 ++++++
+ libavutil/hwcontext_mlu.h               |   62 +
+ libavutil/pixdesc.c                     |    4 +
+ libavutil/pixfmt.h                      |    6 +
+ 38 files changed, 9867 insertions(+)
  create mode 100644 doc/examples/hw_decode_mlu.c
  create mode 100755 doc/examples/mlumpp_transcode.c
  create mode 100644 fftools/ffmpeg_mlu.c
@@ -54,10 +56,12 @@ Subject: [PATCH] gen new patch
  create mode 100755 libavcodec/mlumpp_mluop.h
  create mode 100755 libavcodec/mlumpp_vid_enc.c
  create mode 100755 libavcodec/mlumpp_vid_enc.h
+ create mode 100644 libavfilter/vf_cvt_rgbx2rgbx_mlu.c
  create mode 100644 libavfilter/vf_cvt_rgbx2yuv_mlu.c
  create mode 100644 libavfilter/vf_cvt_yuv2rgbx_mlu.c
  create mode 100644 libavfilter/vf_hwdownload_mlu.c
  create mode 100644 libavfilter/vf_hwupload_mlu.c
+ create mode 100644 libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
  create mode 100644 libavfilter/vf_scale_rgbx2rgbx_mlu.c
  create mode 100644 libavfilter/vf_scale_yuv2yuv_mlu.c
  create mode 100644 libavfilter/vf_sr_mlu.c
@@ -1083,10 +1087,10 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..4ade3b1249
+index 0000000000..82ee652e18
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1665 @@
+@@ -0,0 +1,1675 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1883,31 +1887,31 @@ index 0000000000..4ade3b1249
 +    if (avctx->pix_fmt == AV_PIX_FMT_MLU && (ctx->resize.width > 0 || ctx->resize.width > 0)) {
 +        ret = av_hwframe_get_buffer(ctx->resize_hwframe, avframe, 0);
 +        if (ret < 0) {
-+            av_log(avctx, AV_LOG_ERROR, "Decode av_hwframe_get_buffer failed\n");
++            av_log(avctx, AV_LOG_ERROR, "Decode av_hwframe_get_buffer failed, ret(%d)\n", ret);
 +            return AVERROR(ENOMEM);
 +        }
 +
 +        ret = ff_decode_frame_props(avctx, avframe);
 +        if (ret < 0) {
-+            av_log(avctx, AV_LOG_ERROR, "Decode ff_decode_frame_props failed\n");
++            av_log(avctx, AV_LOG_ERROR, "Decode ff_decode_frame_props failed, ret(%d)\n", ret);
 +            return AVERROR(ENOMEM);
 +        }
 +    } else if (avctx->pix_fmt == AV_PIX_FMT_MLU) {
 +        ret = av_hwframe_get_buffer(ctx->hwframe, avframe, 0);
 +        if (ret < 0) {
-+            av_log(avctx, AV_LOG_ERROR, "Decode av_hwframe_get_buffer failed\n");
++            av_log(avctx, AV_LOG_ERROR, "Decode av_hwframe_get_buffer failed, ret(%d)\n", ret);
 +            return AVERROR(ENOMEM);
 +        }
 +
 +        ret = ff_decode_frame_props(avctx, avframe);
 +        if (ret < 0) {
-+            av_log(avctx, AV_LOG_ERROR, "Decode ff_decode_frame_props failed\n");
++            av_log(avctx, AV_LOG_ERROR, "Decode ff_decode_frame_props failed, ret(%d)\n", ret);
 +            return AVERROR(ENOMEM);
 +        }
 +    } else {
 +        ret = ff_get_buffer(avctx, avframe, 0);
 +        if (ret < 0) {
-+            av_log(avctx, AV_LOG_ERROR, "Decode ff_get_buffer failed\n");
++            av_log(avctx, AV_LOG_ERROR, "Decode ff_get_buffer failed, ret(%d)\n", ret);
 +            return AVERROR(ENOMEM);
 +        }
 +    }
@@ -2450,7 +2454,7 @@ index 0000000000..4ade3b1249
 +            hwframe_ctx->format = AV_PIX_FMT_MLU;
 +            hwframe_ctx->sw_format = avctx->sw_pix_fmt;
 +            hwframe_ctx->width  = avctx->coded_width;
-+            hwframe_ctx->height = avctx->height;
++            hwframe_ctx->height = avctx->coded_height;
 +            if ((ret = av_hwframe_ctx_init(ctx->hwframe)) < 0) {
 +                av_log(avctx, AV_LOG_ERROR, "Error, av_hwframe_ctx_init failed\n");
 +                return 0;
@@ -2478,6 +2482,16 @@ index 0000000000..4ade3b1249
 +            goto error;
 +        }
 +        hwframe_ctx = (AVHWFramesContext*)ctx->hwframe->data;
++        if (!hwframe_ctx->pool) {
++            hwframe_ctx->format = AV_PIX_FMT_MLU;
++            hwframe_ctx->sw_format = avctx->sw_pix_fmt;
++            hwframe_ctx->width  = avctx->coded_width;
++            hwframe_ctx->height = avctx->coded_height;
++            if ((ret = av_hwframe_ctx_init(ctx->hwframe)) < 0) {
++                av_log(avctx, AV_LOG_ERROR, "Error, av_hwframe_ctx_init failed, ret(%d)\n", ret);
++                return 0;
++            }
++        }
 +    }
 +
 +    ctx->hwframes_ctx = hwframe_ctx;
@@ -4374,10 +4388,10 @@ index 0000000000..45dc55ad4a
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000000..34096fe3c2
+index 0000000000..48bbbdfc8c
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1362 @@
+@@ -0,0 +1,1369 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4423,7 +4437,7 @@ index 0000000000..34096fe3c2
 +        av_log(avctx,AV_LOG_ERROR,"Error occur, func: %s, line: %d\n", __func__, __LINE__); \
 +        return -1;                                                                          \
 +    }
-+
++#define SP_VER 112
 +#define CN_VENC_FRAME_ALIGNMENT 1
 +#define OUTPUT_BUFFER_SIZE_FOR_ENCODE (1024 * 4096) // must be 4k align
 +
@@ -4678,7 +4692,7 @@ index 0000000000..34096fe3c2
 +        return AVERROR_EXTERNAL;
 +    }
 +
-+#if CNCODEC_PATCH_VERSION < 100
++#if CNCODEC_PATCH_VERSION < SP_VER
 +    cnvideoEncVUISar vui_sar;
 +    memset(&vui_sar, 0, sizeof(vui_sar));
 +    if (cnctx->vuisar.sar_w > 0 || cnctx->vuisar.sar_h > 0) {
@@ -5078,6 +5092,10 @@ index 0000000000..34096fe3c2
 +            pict_type = AV_PICTURE_TYPE_BI;
 +            break;
 +        case CNCODEC_SLICE_UNKNOWN_TYPE:
++#if CNCODEC_PATCH_VERSION >= SP_VER
++            pict_type = AV_PICTURE_TYPE_NONE;
++            break;
++#endif
 +        default:
 +            pict_type = AV_PICTURE_TYPE_NONE;
 +            ret = AVERROR_EXTERNAL;
@@ -5429,8 +5447,11 @@ index 0000000000..34096fe3c2
 +    }
 +    cnctx->fps_num = enc_params.fpsNumerator;
 +    cnctx->fps_den = enc_params.fpsDenominator;
-+    // enc_params.allocType = CNCODEC_BUF_ALLOC_LIB;
++#if CNCODEC_PATCH_VERSION < SP_VER
 +    enc_params.allocType = CNCODEC_BUF_ALLOC_LIB_USER_SPECIFY_BUF_ALIGNMENT;
++#else
++    enc_params.allocType = CNCODEC_BUF_ALLOC_LIB;
++#endif
 +    enc_params.pixelFmt = cnctx->pixelFmt;
 +    enc_params.inputBufNum = cnctx->input_buf_num;
 +    enc_params.outputBufNum = cnctx->output_buf_num;
@@ -5612,7 +5633,7 @@ index 0000000000..34096fe3c2
 +        return AVERROR_EXTERNAL;
 +    }
 +
-+#if CNCODEC_PATCH_VERSION < 100
++#if CNCODEC_PATCH_VERSION < SP_VER
 +    cnvideoEncVUISar vui_sar;
 +    memset(&vui_sar, 0, sizeof(vui_sar));
 +    if (cnctx->vuisar.sar_w > 0 || cnctx->vuisar.sar_h > 0) {
@@ -5894,16 +5915,16 @@ index 0000000000..309ebec493
 +#endif /* AVCODEC_MLUMPP_VID_ENC_H */
 \ No newline at end of file
 diff --git a/libavfilter/Makefile b/libavfilter/Makefile
-index 455c809b15..f608eed808 100644
+index 455c809b15..9aa0460639 100644
 --- a/libavfilter/Makefile
 +++ b/libavfilter/Makefile
 @@ -196,6 +196,9 @@ OBJS-$(CONFIG_CROP_FILTER)                   += vf_crop.o
  OBJS-$(CONFIG_CROPDETECT_FILTER)             += vf_cropdetect.o
  OBJS-$(CONFIG_CUE_FILTER)                    += f_cue.o
  OBJS-$(CONFIG_CURVES_FILTER)                 += vf_curves.o
-+OBJS-$(CONFIG_CVT_RGBX2YUV_MLU_FILTER)       += vf_cvt_rgbx2yuv_mlu.o
 +OBJS-$(CONFIG_CVT_YUV2RGBX_MLU_FILTER)       += vf_cvt_yuv2rgbx_mlu.o
 +OBJS-$(CONFIG_CVT_RGBX2YUV_MLU_FILTER)       += vf_cvt_rgbx2yuv_mlu.o
++OBJS-$(CONFIG_CVT_RGBX2RGBX_MLU_FILTER)      += vf_cvt_rgbx2rgbx_mlu.o
  OBJS-$(CONFIG_DATASCOPE_FILTER)              += vf_datascope.o
  OBJS-$(CONFIG_DCTDNOIZ_FILTER)               += vf_dctdnoiz.o
  OBJS-$(CONFIG_DEBAND_FILTER)                 += vf_deband.o
@@ -5918,12 +5939,11 @@ index 455c809b15..f608eed808 100644
  OBJS-$(CONFIG_HWUPLOAD_FILTER)               += vf_hwupload.o
  OBJS-$(CONFIG_HYSTERESIS_FILTER)             += vf_hysteresis.o framesync.o
  OBJS-$(CONFIG_IDET_FILTER)                   += vf_idet.o
-@@ -350,8 +355,12 @@ OBJS-$(CONFIG_ROTATE_FILTER)                 += vf_rotate.o
+@@ -350,8 +355,11 @@ OBJS-$(CONFIG_ROTATE_FILTER)                 += vf_rotate.o
  OBJS-$(CONFIG_SAB_FILTER)                    += vf_sab.o
  OBJS-$(CONFIG_SCALE_FILTER)                  += vf_scale.o scale.o
  OBJS-$(CONFIG_SCALE_CUDA_FILTER)             += vf_scale_cuda.o vf_scale_cuda.ptx.o
-+OBJS-$(CONFIG_SCALE_YUV2YUV_MLU_FILTER)      += vf_scale_yuv2yuv_mlu.o
-+OBJS-$(CONFIG_SCALE_RGBX2RGBX_MLU_FILTER)    += vf_scale_rgbx2rgbx_mlu.o
++OBJS-$(CONFIG_SCALE_CVT_YUV2RGBX_MLU_FILTER) += vf_scale_cvt_yuv2rgbx_mlu.o
  OBJS-$(CONFIG_SCALE_NPP_FILTER)              += vf_scale_npp.o scale.o
  OBJS-$(CONFIG_SCALE_QSV_FILTER)              += vf_scale_qsv.o
 +OBJS-$(CONFIG_SCALE_YUV2YUV_MLU_FILTER)      += vf_scale_yuv2yuv_mlu.o scale.o
@@ -5931,7 +5951,7 @@ index 455c809b15..f608eed808 100644
  OBJS-$(CONFIG_SCALE_VAAPI_FILTER)            += vf_scale_vaapi.o scale.o vaapi_vpp.o
  OBJS-$(CONFIG_SCALE2REF_FILTER)              += vf_scale.o scale.o
  OBJS-$(CONFIG_SELECT_FILTER)                 += f_select.o
-@@ -380,6 +389,7 @@ OBJS-$(CONFIG_SOBEL_OPENCL_FILTER)           += vf_convolution_opencl.o opencl.o
+@@ -380,6 +388,7 @@ OBJS-$(CONFIG_SOBEL_OPENCL_FILTER)           += vf_convolution_opencl.o opencl.o
  OBJS-$(CONFIG_SPLIT_FILTER)                  += split.o
  OBJS-$(CONFIG_SPP_FILTER)                    += vf_spp.o
  OBJS-$(CONFIG_SR_FILTER)                     += vf_sr.o
@@ -5940,16 +5960,16 @@ index 455c809b15..f608eed808 100644
  OBJS-$(CONFIG_STEREO3D_FILTER)               += vf_stereo3d.o
  OBJS-$(CONFIG_STREAMSELECT_FILTER)           += f_streamselect.o framesync.o
 diff --git a/libavfilter/allfilters.c b/libavfilter/allfilters.c
-index 04a3df7d56..c7076cda52 100644
+index 04a3df7d56..6fc127660c 100644
 --- a/libavfilter/allfilters.c
 +++ b/libavfilter/allfilters.c
 @@ -183,6 +183,9 @@ extern AVFilter ff_vf_crop;
  extern AVFilter ff_vf_cropdetect;
  extern AVFilter ff_vf_cue;
  extern AVFilter ff_vf_curves;
-+extern AVFilter ff_vf_cvt_rgbx2yuv_mlu;
 +extern AVFilter ff_vf_cvt_yuv2rgbx_mlu;
 +extern AVFilter ff_vf_cvt_rgbx2yuv_mlu;
++extern AVFilter ff_vf_cvt_rgbx2rgbx_mlu;
  extern AVFilter ff_vf_datascope;
  extern AVFilter ff_vf_dctdnoiz;
  extern AVFilter ff_vf_deband;
@@ -5964,12 +5984,11 @@ index 04a3df7d56..c7076cda52 100644
  extern AVFilter ff_vf_hwupload_cuda;
  extern AVFilter ff_vf_hysteresis;
  extern AVFilter ff_vf_idet;
-@@ -332,8 +337,12 @@ extern AVFilter ff_vf_rotate;
+@@ -332,8 +337,11 @@ extern AVFilter ff_vf_rotate;
  extern AVFilter ff_vf_sab;
  extern AVFilter ff_vf_scale;
  extern AVFilter ff_vf_scale_cuda;
-+extern AVFilter ff_vf_scale_yuv2yuv_mlu;
-+extern AVFilter ff_vf_scale_rgbx2rgbx_mlu;
++extern AVFilter ff_vf_scale_cvt_yuv2rgbx_mlu;
  extern AVFilter ff_vf_scale_npp;
  extern AVFilter ff_vf_scale_qsv;
 +extern AVFilter ff_vf_scale_yuv2yuv_mlu;
@@ -5977,7 +5996,7 @@ index 04a3df7d56..c7076cda52 100644
  extern AVFilter ff_vf_scale_vaapi;
  extern AVFilter ff_vf_scale2ref;
  extern AVFilter ff_vf_select;
-@@ -361,6 +370,7 @@ extern AVFilter ff_vf_sobel_opencl;
+@@ -361,6 +369,7 @@ extern AVFilter ff_vf_sobel_opencl;
  extern AVFilter ff_vf_split;
  extern AVFilter ff_vf_spp;
  extern AVFilter ff_vf_sr;
@@ -5985,6 +6004,538 @@ index 04a3df7d56..c7076cda52 100644
  extern AVFilter ff_vf_ssim;
  extern AVFilter ff_vf_stereo3d;
  extern AVFilter ff_vf_streamselect;
+diff --git a/libavfilter/vf_cvt_rgbx2rgbx_mlu.c b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
+new file mode 100644
+index 0000000000..975eaef9d2
+--- /dev/null
++++ b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
+@@ -0,0 +1,526 @@
++/*
++ * Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright no5tice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++ * DEALINGS IN THE SOFTWARE.
++ */
++#include <dlfcn.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "avfilter.h"
++#include "formats.h"
++#include "internal.h"
++#include "libavutil/avstring.h"
++#include "libavutil/common.h"
++#include "libavutil/hwcontext.h"
++#include "libavutil/hwcontext_mlu.h"
++#include "libavutil/imgutils.h"
++#include "libavutil/internal.h"
++#include "libavutil/opt.h"
++#include "libavutil/pixdesc.h"
++#include "libavutil/pixfmt.h"
++#include "scale.h"
++#include "video.h"
++
++#define CNRT_ERROR_CHECK(avctx, ret)                                                       \
++    if (ret != CNRT_RET_SUCCESS) {                                                         \
++        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__);\
++        goto fail;                                                                         \
++    }
++
++static const enum AVPixelFormat supported_formats[] = {
++    AV_PIX_FMT_RGB24,AV_PIX_FMT_BGR24,
++    AV_PIX_FMT_ARGB, AV_PIX_FMT_RGBA,
++    AV_PIX_FMT_ABGR, AV_PIX_FMT_BGRA,
++    AV_PIX_FMT_MLU,
++};
++
++typedef struct MluCvtRgbx2RgbxContext {
++    const AVClass *class;
++    enum AVPixelFormat in_fmt;
++    enum AVPixelFormat out_fmt;
++
++    struct {
++        int width;
++        int height;
++    } planes_in[3], planes_out[3];
++
++    AVFrame            *out_hw_frame;
++
++    AVBufferRef        *hw_device_ref;
++    AVBufferRef        *in_hw_frame_ref;
++    AVBufferRef        *out_hw_frame_ref;
++
++    AVMLUDeviceContext *hw_dev_ctx;
++    AVHWFramesContext  *in_hw_frame_ctx;
++    AVHWFramesContext  *out_hw_frame_ctx;
++    enum AVPixelFormat  inlink_pixfmt;
++
++    int passthrough;
++    enum AVPixelFormat format; //Output sw format. AV_PIX_FMT_NONE for no conversion.
++
++    char *n_expr;
++    char *depth;
++    char *enter_out_fmt;
++    const char *pic_pixfmt;
++
++    // buffers and op func-ptrs
++    void *input_mlu_rgbx;
++    void *output_mlu_rgbx;
++
++    int input_mlu_rgbx_size;
++    int output_mlu_rgbx_size;
++
++    int (*ptr_convert_rgbx2rgbx_init)(void **, int, int, const char *, const char *, const char *);
++    int (*ptr_convert_rgbx2rgbx_exec)(void *, void *, void *);
++    int (*ptr_convert_rgbx2rgbx_destroy)(void *);
++
++    void *lib;
++    void *op_handle;
++} MluCvtRgbx2RgbxContext;
++
++static int mluop_load(MluCvtRgbx2RgbxContext *ctx,const char *libname, void *logctx) {
++    if (libname) {
++        ctx->lib = dlopen(libname, /*RTLD_NOW | RTLD_GLOBAL*/ RTLD_LAZY);
++        if (!ctx->lib) {
++            av_log(logctx, AV_LOG_WARNING, "dlopen %s failed, dlerror=%s\n", libname, dlerror());
++            return AVERROR_EXTERNAL;
++        } else {
++            av_log(logctx, AV_LOG_VERBOSE, "dlopen %s successfully\n", libname);
++        }
++    }
++    ctx->ptr_convert_rgbx2rgbx_init = dlsym(ctx->lib, "MluopConvertRgbx2RgbxInit");
++    ctx->ptr_convert_rgbx2rgbx_exec = dlsym(ctx->lib, "MluopConvertRgbx2RgbxExec");
++    ctx->ptr_convert_rgbx2rgbx_destroy = dlsym(ctx->lib, "MluopConvertRgbx2RgbxDestroy");
++    if (!ctx->ptr_convert_rgbx2rgbx_init || !ctx->ptr_convert_rgbx2rgbx_exec
++        || !ctx->ptr_convert_rgbx2rgbx_destroy) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", libname);
++        dlclose(ctx->lib);
++        ctx->lib = NULL;
++        return AVERROR_EXTERNAL;
++    }
++    return 0;
++}
++
++static int mluop_unload(MluCvtRgbx2RgbxContext *ctx) {
++    if (ctx->lib) {
++        dlclose(ctx->lib);
++        ctx->lib = NULL;
++    }
++    return 0;
++}
++
++static uint32_t get_pixfmt_channel_num(enum AVPixelFormat pixfmt) {
++    if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV21) {
++        return 1;
++    } else if (pixfmt == AV_PIX_FMT_BGR24 || pixfmt == AV_PIX_FMT_RGB24) {
++        return 3;
++    } else if (pixfmt == AV_PIX_FMT_ABGR || pixfmt == AV_PIX_FMT_ARGB ||
++                pixfmt == AV_PIX_FMT_BGRA || pixfmt == AV_PIX_FMT_RGBA) {
++        return 4;
++    } else {
++        av_log(NULL, AV_LOG_ERROR,
++               "unsupported pixfmt for getting channel num, %s\n", av_get_pix_fmt_name(pixfmt));
++        return 0;
++    }
++}
++
++static enum AVPixelFormat get_av_pixfmt_from_idx(const char* pix_fmt) {
++    if (strcmp(pix_fmt, "NV12") == 0 || strcmp(pix_fmt, "nv12") == 0) {
++        return AV_PIX_FMT_NV12;
++    } else if (strcmp(pix_fmt, "NV21") == 0 || strcmp(pix_fmt, "nv21") == 0) {
++        return AV_PIX_FMT_NV21;
++    } else if (strcmp(pix_fmt, "RGB24") == 0 || strcmp(pix_fmt, "rgb24") == 0) {
++        return AV_PIX_FMT_RGB24;
++    } else if (strcmp(pix_fmt, "BGR24") == 0 || strcmp(pix_fmt, "bgr24") == 0) {
++        return AV_PIX_FMT_BGR24;
++    } else if (strcmp(pix_fmt, "ARGB") == 0 || strcmp(pix_fmt, "argb") == 0) {
++        return AV_PIX_FMT_ARGB;
++    } else if (strcmp(pix_fmt, "ABGR") == 0 || strcmp(pix_fmt, "abgr") == 0) {
++        return AV_PIX_FMT_ABGR;
++    } else if (strcmp(pix_fmt, "RGBA") == 0 || strcmp(pix_fmt, "rgba") == 0) {
++        return AV_PIX_FMT_RGBA;
++    } else if (strcmp(pix_fmt, "BGRA") == 0 || strcmp(pix_fmt, "bgra") == 0) {
++        return AV_PIX_FMT_BGRA;
++    } else {
++        av_log(NULL, AV_LOG_ERROR, "unsupported pixfmt, %s\n", pix_fmt);
++        return AV_PIX_FMT_NONE;
++    }
++}
++
++static void convert_av_pixfmt_to_idx(MluCvtRgbx2RgbxContext *ctx, enum AVPixelFormat fmt) {
++    switch (fmt) {
++    case AV_PIX_FMT_NV12:
++        ctx->pic_pixfmt = "nv12";  break;
++    case AV_PIX_FMT_NV21:
++        ctx->pic_pixfmt = "nv21";  break;
++    case AV_PIX_FMT_RGB24:
++        ctx->pic_pixfmt = "rgb24"; break;
++    case AV_PIX_FMT_BGR24:
++        ctx->pic_pixfmt = "bgr24"; break;
++    case AV_PIX_FMT_ARGB:
++        ctx->pic_pixfmt = "argb";  break;
++    case AV_PIX_FMT_ABGR:
++        ctx->pic_pixfmt = "abgr";  break;
++    case AV_PIX_FMT_BGRA:
++        ctx->pic_pixfmt = "bgra";  break;
++    case AV_PIX_FMT_RGBA:
++        ctx->pic_pixfmt = "rgba";  break;
++    default:
++        av_log(NULL, AV_LOG_ERROR, "Unsupported pixfmt, %s\n", av_get_pix_fmt_name(fmt));
++        ctx->pic_pixfmt = "unknow"; break;
++    }
++}
++
++static int mlurgbx2rgbx_query_formats(AVFilterContext *ctx)
++{
++    MluCvtRgbx2RgbxContext *s = ctx->priv;
++    enum AVPixelFormat out_pixfmt;
++    AVFilterFormats *pixel_formats;
++
++    int ret;
++    out_pixfmt = get_av_pixfmt_from_idx(s->enter_out_fmt);
++
++    static const enum AVPixelFormat in_pix_fmts[] = {
++        AV_PIX_FMT_ARGB, AV_PIX_FMT_RGBA,
++        AV_PIX_FMT_ABGR, AV_PIX_FMT_BGRA,
++        AV_PIX_FMT_RGB24,AV_PIX_FMT_BGR24,
++        AV_PIX_FMT_MLU,  AV_PIX_FMT_NONE,
++    };
++    static const enum AVPixelFormat out_pix_fmts[] = {
++        AV_PIX_FMT_MLU,  AV_PIX_FMT_NONE,
++    };
++
++    pixel_formats = ff_make_format_list(in_pix_fmts);
++    if (!pixel_formats)
++        return AVERROR(ENOMEM);
++    if (out_pixfmt == AV_PIX_FMT_NONE)
++        return ff_set_common_formats(ctx, pixel_formats);
++
++    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->out_formats);
++    if (ret < 0)
++        return ret;
++
++    pixel_formats = NULL;
++    pixel_formats = ff_make_format_list(out_pix_fmts);
++    if (!pixel_formats)
++        return AVERROR(ENOMEM);
++    ret = ff_add_format(&pixel_formats, out_pixfmt);
++    if (ret < 0)
++        return ret;
++    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->in_formats);
++    if (ret < 0)
++        return ret;
++
++    return 0;
++}
++
++static int format_is_supported(enum AVPixelFormat fmt)
++{
++    int i;
++    for (i = 0; i < FF_ARRAY_ELEMS(supported_formats); i++)
++        if (supported_formats[i] == fmt)
++            return 1;
++    return 0;
++}
++
++static av_cold int mlurgbx2rgbx_init(AVFilterContext *ctx)
++{
++    MluCvtRgbx2RgbxContext *s = ctx->priv;
++    static const char * const mluop_libname = "libeasyOP.so";
++    int ret = mluop_load(s, mluop_libname, ctx);
++    if (ret < 0) {
++        return ret;
++    }
++
++    s->input_mlu_rgbx = NULL;
++    s->output_mlu_rgbx = NULL;
++
++    s->op_handle = NULL;
++    return 0;
++}
++
++static av_cold void mlurgbx2rgbx_uninit(AVFilterContext *ctx)
++{
++    MluCvtRgbx2RgbxContext *s = ctx->priv;
++    MluContext *mlu_ctx = NULL;
++    mlu_ctx = s->hw_dev_ctx->mlu_ctx;
++    if (s->op_handle) {
++        s->ptr_convert_rgbx2rgbx_destroy(s->op_handle);
++    }
++    if(s->inlink_pixfmt != AV_PIX_FMT_MLU) {
++        if (s->input_mlu_rgbx)
++            mlu_ctx->mluMemFree(s->input_mlu_rgbx);
++        if (s->output_mlu_rgbx)
++            mlu_ctx->mluMemFree(s->output_mlu_rgbx);
++    }
++
++    // mluop_unload(s);
++    if (s->in_hw_frame_ref) {
++        av_buffer_unref(&s->in_hw_frame_ref);
++    }
++    if (s->out_hw_frame_ref) {
++        av_buffer_unref(&s->out_hw_frame_ref);
++    }
++    if (s->hw_device_ref) {
++        av_buffer_unref(&s->hw_device_ref);
++    }
++}
++
++static av_cold int mlurgbx2rgbx_config_props(AVFilterLink *outlink)
++{
++    AVFilterContext *ctx = outlink->src;
++    AVFilterLink *inlink = ctx->inputs[0];
++    MluCvtRgbx2RgbxContext *s  = ctx->priv;
++
++    MluContext *mlu_ctx = NULL;
++    AVMLUDeviceContext *hw_device_ctx = NULL;
++    AVHWFramesContext *in_hw_frames_ctx = NULL;
++    AVHWFramesContext *out_hw_frames_ctx = NULL;
++    int ret;
++    char device_idx[sizeof(int)];
++
++    outlink->w = inlink->w;
++    outlink->h = inlink->h;
++    s->inlink_pixfmt = inlink->format;
++    sprintf(device_idx, "%d", atoi(s->n_expr));
++    if (inlink->format == AV_PIX_FMT_MLU && inlink->hw_frames_ctx) {
++        in_hw_frames_ctx = (AVHWFramesContext*)inlink->hw_frames_ctx->data;
++        hw_device_ctx = in_hw_frames_ctx->device_ctx->hwctx;
++
++        if (!inlink->hw_frames_ctx) {
++            av_log(ctx, AV_LOG_ERROR, "Input must have a hwframe reference. \n");
++            return AVERROR(EINVAL);
++        }
++
++        s->in_hw_frame_ref = av_buffer_ref(inlink->hw_frames_ctx);
++        s->hw_device_ref = av_buffer_ref(in_hw_frames_ctx->device_ref);
++
++        s->hw_dev_ctx = hw_device_ctx;
++        s->in_hw_frame_ctx = in_hw_frames_ctx;
++
++        s->in_fmt  = in_hw_frames_ctx->sw_format;
++        s->out_fmt = get_av_pixfmt_from_idx(s->enter_out_fmt);
++
++        outlink->format = inlink->format;
++
++        av_buffer_unref(&s->out_hw_frame_ref);
++        s->out_hw_frame_ref = av_hwframe_ctx_alloc(s->hw_device_ref);
++
++        if (!s->out_hw_frame_ref) {
++            av_log(ctx, AV_LOG_ERROR, "av_hwframe_ctx_alloc failed \n");
++            ret = AVERROR(ENOMEM);
++            goto fail;
++        }
++        out_hw_frames_ctx = (AVHWFramesContext*)s->out_hw_frame_ref->data;
++        s->out_hw_frame_ctx = out_hw_frames_ctx;
++        if (!out_hw_frames_ctx->pool) {
++            out_hw_frames_ctx->format = AV_PIX_FMT_MLU;
++            out_hw_frames_ctx->sw_format = s->out_fmt;
++            out_hw_frames_ctx->width  = FFALIGN(outlink->w, 1);
++            out_hw_frames_ctx->height = outlink->h;
++            if ((ret = av_hwframe_ctx_init(s->out_hw_frame_ref)) < 0) {
++                av_log(ctx, AV_LOG_ERROR, "av_hwframe_ctx_init failed \n");
++                return 0;
++            }
++        }
++        outlink->hw_frames_ctx = av_buffer_ref(s->out_hw_frame_ref);
++
++        if (!outlink->hw_frames_ctx)
++            return AVERROR(ENOMEM);
++    } else {
++        s->in_fmt  = inlink->format;
++        s->out_fmt = get_av_pixfmt_from_idx(s->enter_out_fmt);
++        outlink->format = get_av_pixfmt_from_idx(s->enter_out_fmt);
++
++        av_buffer_unref(&s->hw_device_ref);
++        ret = av_hwdevice_ctx_create(&s->hw_device_ref, AV_HWDEVICE_TYPE_MLU, device_idx, NULL, 0);
++        if (ret < 0) {
++            goto fail;
++        }
++        s->hw_dev_ctx = ((AVHWDeviceContext*)s->hw_device_ref->data)->hwctx;
++    }
++
++    s->output_mlu_rgbx_size = outlink->w * outlink->h * get_pixfmt_channel_num(s->out_fmt);
++    s->input_mlu_rgbx_size  = inlink->w * inlink->h * get_pixfmt_channel_num(s->in_fmt);
++
++    // checkout infmt and outfmt is legal
++    if (!format_is_supported(s->in_fmt)) {
++        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n",
++               av_get_pix_fmt_name(s->in_fmt));
++        return AVERROR(ENOSYS);
++    }
++    if (!format_is_supported(s->out_fmt)) {
++        av_log(ctx, AV_LOG_ERROR, "Unsupported output format: %s\n",
++               av_get_pix_fmt_name(s->out_fmt));
++        return AVERROR(ENOSYS);
++    }
++
++    // init mlu op
++    mlu_ctx = s->hw_dev_ctx->mlu_ctx;
++    if(s->lib && !s->op_handle) {
++        char depth_[3] = "8U";
++        s->depth = depth_;
++        convert_av_pixfmt_to_idx(s, s->in_fmt);
++        s->ptr_convert_rgbx2rgbx_init(&s->op_handle, inlink->w, inlink->h,
++                                      s->pic_pixfmt, s->enter_out_fmt, s->depth);
++        if (inlink->format != AV_PIX_FMT_MLU) {
++            ret = mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_rgbx),
++                                       sizeof(char) * s->input_mlu_rgbx_size);
++            CNRT_ERROR_CHECK(ctx, ret);
++            ret = mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_rgbx),
++                                       sizeof(char) * s->output_mlu_rgbx_size);
++            CNRT_ERROR_CHECK(ctx, ret);
++        }
++    }
++
++    // set aspec ratio
++    outlink->time_base = inlink->time_base;
++    if (inlink->sample_aspect_ratio.num) {
++        outlink->sample_aspect_ratio = av_mul_q((AVRational){outlink->h*inlink->w,
++                                                             outlink->w*inlink->h},
++                                                inlink->sample_aspect_ratio);
++    } else {
++        outlink->sample_aspect_ratio = inlink->sample_aspect_ratio;
++    }
++
++    return 0;
++
++fail:
++    if (!s->in_hw_frame_ref)
++        av_buffer_unref(&s->in_hw_frame_ref);
++    if (!s->out_hw_frame_ref)
++        av_buffer_unref(&s->out_hw_frame_ref);
++    if (!s->hw_device_ref)
++        av_buffer_unref(&s->hw_device_ref);
++    return ret;
++}
++
++static int mlurgbx2rgbx_filter_frame(AVFilterLink *link, AVFrame *in)
++{
++    AVFilterContext *ctx      = link->dst;
++    MluCvtRgbx2RgbxContext *s = ctx->priv;
++    AVFilterLink *outlink     = ctx->outputs[0];
++    MluContext *mlu_ctx       = s->hw_dev_ctx->mlu_ctx;
++
++    int ret = 0;
++    AVFrame *out = NULL;
++    if (link->format == AV_PIX_FMT_MLU && !in->hw_frames_ctx) {
++        av_log(ctx, AV_LOG_ERROR, "Input frames must have hardware context.\n");
++        goto fail;
++    }
++    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
++    if (!out) {
++        ret = AVERROR(EINVAL);
++        goto fail;
++    }
++    if (s->passthrough) {
++        av_frame_free(&out);
++        return ff_filter_frame(outlink, in);
++    }
++
++    av_frame_copy_props(out, in);
++    out->width  = outlink->w;
++    out->height = outlink->h;
++    out->linesize[0] = out->width * get_pixfmt_channel_num(s->out_fmt);
++    out->linesize[1] = out->width * get_pixfmt_channel_num(s->out_fmt);
++
++    if(s->op_handle) {
++        if (link->format == AV_PIX_FMT_MLU) {
++            s->input_mlu_rgbx = in->data[0];
++            s->output_mlu_rgbx = out->data[0];
++        } else {
++            av_log(ctx, AV_LOG_WARNING, "filter frame func: cpu case, copy H2D\n");
++            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_rgbx, (void *)in->data[0],
++                                        s->input_mlu_rgbx_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++            CNRT_ERROR_CHECK(ctx, ret);
++        }
++        ret = s->ptr_convert_rgbx2rgbx_exec(s->op_handle, s->input_mlu_rgbx,
++                                            s->output_mlu_rgbx);
++        if (ret < 0) {
++            av_log(ctx, AV_LOG_ERROR, "Failed to rgbx2rgbx with mlu\n");
++            goto fail;
++        }
++        if (link->format != AV_PIX_FMT_MLU) {
++            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_rgbx,
++                                        s->output_mlu_rgbx_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++            CNRT_ERROR_CHECK(ctx, ret);
++        }
++    }
++    av_reduce(&out->sample_aspect_ratio.num, &out->sample_aspect_ratio.den,
++              (int64_t)in->sample_aspect_ratio.num * outlink->h * link->w,
++              (int64_t)in->sample_aspect_ratio.den * outlink->w * link->h,
++              INT_MAX);
++    av_frame_free(&in);
++    return ff_filter_frame(outlink, out);
++
++fail:
++    av_frame_free(&in);
++    av_frame_free(&out);
++    return ret;
++}
++
++#define OFFSET(x) offsetof(MluCvtRgbx2RgbxContext, x)
++#define FLAGS (AV_OPT_FLAG_FILTERING_PARAM|AV_OPT_FLAG_VIDEO_PARAM)
++static const AVOption options[] = {
++    { "o_fmt", "output pixfmt", OFFSET(enter_out_fmt), AV_OPT_TYPE_STRING, {.str = "of"}, .flags = FLAGS },
++    { "n",     "device index",  OFFSET(n_expr),        AV_OPT_TYPE_STRING, {.str = "in"}, .flags = FLAGS },
++    { NULL },
++};
++
++static const AVClass mlurgbx2rgbx_class = {
++    .class_name = "mlurgbx2rgbx",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++static const AVFilterPad mlurgbx2rgbx_inputs[] = {
++    {
++        .name        = "default",
++        .type        = AVMEDIA_TYPE_VIDEO,
++        .filter_frame = mlurgbx2rgbx_filter_frame,
++    },
++    { NULL }
++};
++
++static const AVFilterPad mlurgbx2rgbx_outputs[] = {
++    {
++        .name         = "default",
++        .type         = AVMEDIA_TYPE_VIDEO,
++        .config_props = mlurgbx2rgbx_config_props,
++    },
++    { NULL }
++};
++
++AVFilter ff_vf_cvt_rgbx2rgbx_mlu = {
++    .name      = "cvt_rgbx2rgbx_mlu",
++    .description = NULL_IF_CONFIG_SMALL("MLU accelerated convert rgbx to rgbx"),
++
++    .init          = mlurgbx2rgbx_init,
++    .uninit        = mlurgbx2rgbx_uninit,
++    .query_formats = mlurgbx2rgbx_query_formats,
++
++    .priv_size = sizeof(MluCvtRgbx2RgbxContext),
++    .priv_class = &mlurgbx2rgbx_class,
++
++    .inputs    = mlurgbx2rgbx_inputs,
++    .outputs   = mlurgbx2rgbx_outputs,
++    .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
++};
 diff --git a/libavfilter/vf_cvt_rgbx2yuv_mlu.c b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 new file mode 100644
 index 0000000000..61e803ca46
@@ -7480,6 +8031,554 @@ index 0000000000..c0e8b0807d
 +    .inputs    = mlu_upload_inputs,
 +    .outputs   = mlu_upload_outputs,
 +
++    .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
++};
+diff --git a/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
+new file mode 100644
+index 0000000000..d23e85e2a9
+--- /dev/null
++++ b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
+@@ -0,0 +1,542 @@
++/*
++* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
++*
++* Permission is hereby granted, free of charge, to any person obtaining a
++* copy of this software and associated documentation files (the "Software"),
++* to deal in the Software without restriction, including without limitation
++* the rights to use, copy, modify, merge, publish, distribute, sublicense,
++* and/or sell copies of the Software, and to permit persons to whom the
++* Software is furnished to do so, subject to the following conditions:
++*
++* The above copyright no5tice and this permission notice shall be included in
++* all copies or substantial portions of the Software.
++*
++* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++* DEALINGS IN THE SOFTWARE.
++*/
++#include <stdio.h>
++#include <string.h>
++#include "libavutil/avstring.h"
++#include "libavutil/common.h"
++#include "libavutil/hwcontext.h"
++#include "libavutil/hwcontext_mlu.h"
++#include "libavutil/internal.h"
++#include "libavutil/opt.h"
++#include "libavutil/pixdesc.h"
++#include "libavutil/pixfmt.h"
++#include "libavutil/imgutils.h"
++#include "avfilter.h"
++#include "formats.h"
++#include "internal.h"
++#include "scale.h"
++#include "video.h"
++#include <dlfcn.h>
++
++#define CNRT_ERROR_CHECK(avctx, ret)                                                       \
++    if (ret != CNRT_RET_SUCCESS) {                                                         \
++        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__);\
++        goto fail;                                                                         \
++    }
++
++static const enum AVPixelFormat supported_formats[] = {
++    AV_PIX_FMT_NV12,
++    AV_PIX_FMT_NV21,
++    AV_PIX_FMT_RGB24,
++    AV_PIX_FMT_BGR24,
++    AV_PIX_FMT_ARGB,
++    AV_PIX_FMT_RGBA,
++    AV_PIX_FMT_ABGR,
++    AV_PIX_FMT_BGRA,
++    AV_PIX_FMT_MLU,
++};
++
++typedef struct MluScaleCvtYUV2RGBXContext {
++    const AVClass *class;
++    enum AVPixelFormat in_fmt;
++    enum AVPixelFormat out_fmt;
++
++    struct {
++        int width;
++        int height;
++    } planes_in[3], planes_out[3];
++
++    AVFrame            *out_hw_frame;
++
++    AVBufferRef        *hw_device_ref;
++    AVBufferRef        *in_hw_frame_ref;
++    AVBufferRef        *out_hw_frame_ref;
++
++    AVMLUDeviceContext *hw_dev_ctx;
++    AVHWFramesContext  *in_hw_frame_ctx;
++    AVHWFramesContext  *out_hw_frame_ctx;
++    enum AVPixelFormat  inlink_pixfmt;
++
++    int passthrough;
++    enum AVPixelFormat format; //Output sw format. AV_PIX_FMT_NONE for no conversion.
++
++    char *w_expr;
++    char *h_expr;
++    char *n_expr;
++    char *depth;
++    char *enter_out_fmt;
++    const char *pic_pixfmt;
++
++    // buffers and op func-ptrs
++    int in_y_size;
++    int in_uv_size;
++    int out_mlu_size;
++
++    void *input_mlu_y;
++    void *input_mlu_uv;
++    void *output_mlu_rgbx;
++
++    int (*ptr_scale_cvt_yuv2rgbx_init)(void **, int, int, int, int, const char *, const char *, const char *);
++    int (*ptr_scale_cvt_yuv2rgbx_exec)(void *, void *, void *, void *);
++    int (*ptr_scale_cvt_yuv2rgbx_destroy)(void *);
++
++    void *lib;
++    void *op_handle;
++} MluScaleCvtYUV2RGBXContext;
++
++static int mluop_load(MluScaleCvtYUV2RGBXContext *ctx,const char *libname, void *logctx) {
++    if (libname) {
++        ctx->lib = dlopen(libname, /*RTLD_NOW | RTLD_GLOBAL*/ RTLD_LAZY);
++        if (!ctx->lib) {
++            av_log(logctx, AV_LOG_WARNING, "dlopen %s failed, dlerror=%s\n", libname, dlerror());
++            return AVERROR_EXTERNAL;
++        } else {
++            av_log(logctx, AV_LOG_VERBOSE, "dlopen %s successfully\n", libname);
++        }
++    }
++    ctx->ptr_scale_cvt_yuv2rgbx_init = dlsym(ctx->lib, "MluopResizeCvtInit");
++    ctx->ptr_scale_cvt_yuv2rgbx_exec = dlsym(ctx->lib, "MluopResizeCvtExec");
++    ctx->ptr_scale_cvt_yuv2rgbx_destroy = dlsym(ctx->lib, "MluopResizeCvtDestroy");
++    if (!ctx->ptr_scale_cvt_yuv2rgbx_init || !ctx->ptr_scale_cvt_yuv2rgbx_exec || !ctx->ptr_scale_cvt_yuv2rgbx_destroy) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", libname);
++        dlclose(ctx->lib);
++        ctx->lib = NULL;
++        return AVERROR_EXTERNAL;
++    }
++    return 0;
++}
++
++static int mluop_unload(MluScaleCvtYUV2RGBXContext *ctx) {
++    if (ctx->lib) {
++        dlclose(ctx->lib);
++        ctx->lib = NULL;
++    }
++    return 0;
++}
++
++static int get_pixfmt_channel_num(enum AVPixelFormat pixfmt) {
++    if (pixfmt == AV_PIX_FMT_NV12 || pixfmt == AV_PIX_FMT_NV21) {
++        return 1;
++    } else if (pixfmt == AV_PIX_FMT_BGR24 || pixfmt == AV_PIX_FMT_RGB24) {
++        return 3;
++    } else if (pixfmt == AV_PIX_FMT_ABGR || pixfmt == AV_PIX_FMT_ARGB ||
++                pixfmt == AV_PIX_FMT_BGRA || pixfmt == AV_PIX_FMT_RGBA) {
++        return 4;
++    } else {
++        av_log(NULL, AV_LOG_ERROR,
++            "unsupported pixfmt for getting channel num, %s\n", av_get_pix_fmt_name(pixfmt));
++        return 0;
++    }
++}
++
++static enum AVPixelFormat get_av_pixfmt_from_idx(const char* pix_fmt) {
++    if (strcmp(pix_fmt, "NV12") == 0 || strcmp(pix_fmt, "nv12") == 0) {
++        return AV_PIX_FMT_NV12;
++    } else if (strcmp(pix_fmt, "NV21") == 0 || strcmp(pix_fmt, "nv21") == 0) {
++        return AV_PIX_FMT_NV21;
++    } else if (strcmp(pix_fmt, "RGB24") == 0 || strcmp(pix_fmt, "rgb24") == 0) {
++        return AV_PIX_FMT_RGB24;
++    } else if (strcmp(pix_fmt, "BGR24") == 0 || strcmp(pix_fmt, "bgr24") == 0) {
++        return AV_PIX_FMT_BGR24;
++    } else if (strcmp(pix_fmt, "ARGB") == 0 || strcmp(pix_fmt, "argb") == 0) {
++        return AV_PIX_FMT_ARGB;
++    } else if (strcmp(pix_fmt, "ABGR") == 0 || strcmp(pix_fmt, "abgr") == 0) {
++        return AV_PIX_FMT_ABGR;
++    } else if (strcmp(pix_fmt, "RGBA") == 0 || strcmp(pix_fmt, "rgba") == 0) {
++        return AV_PIX_FMT_RGBA;
++    } else if (strcmp(pix_fmt, "BGRA") == 0 || strcmp(pix_fmt, "bgra") == 0) {
++        return AV_PIX_FMT_BGRA;
++    } else {
++        av_log(NULL, AV_LOG_ERROR, "unsupported pixfmt, %s\n", pix_fmt);
++        return AV_PIX_FMT_NONE;
++    }
++}
++
++static void convert_av_pixfmt_to_idx(MluScaleCvtYUV2RGBXContext *ctx, enum AVPixelFormat fmt) {
++    switch (fmt) {
++    case AV_PIX_FMT_NV12:
++        ctx->pic_pixfmt = "nv12";
++        break;
++    case AV_PIX_FMT_NV21:
++        ctx->pic_pixfmt = "nv21";
++        break;
++    default:
++        av_log(NULL, AV_LOG_ERROR, "unsupported pixfmt, %s\n", av_get_pix_fmt_name(fmt));
++        ctx->pic_pixfmt = "unknow";
++        break;
++    }
++}
++
++static int mluscale_cvt_query_formats(AVFilterContext *ctx)
++{
++    MluScaleCvtYUV2RGBXContext *s = ctx->priv;
++    enum AVPixelFormat out_pixfmt;
++    AVFilterFormats *pixel_formats;
++
++   int ret;
++   out_pixfmt = get_av_pixfmt_from_idx(s->enter_out_fmt);
++
++    static const enum AVPixelFormat in_pix_fmts[] = {
++        AV_PIX_FMT_NV12, AV_PIX_FMT_NV21,
++        AV_PIX_FMT_MLU,  AV_PIX_FMT_NONE,
++    };
++    static const enum AVPixelFormat out_pix_fmts[] = {
++        AV_PIX_FMT_MLU,  AV_PIX_FMT_NONE,
++    };
++
++    pixel_formats = ff_make_format_list(in_pix_fmts);
++    if (!pixel_formats)
++        return AVERROR(ENOMEM);
++    if (out_pixfmt == AV_PIX_FMT_NONE)
++        return ff_set_common_formats(ctx, pixel_formats);
++
++    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->out_formats);
++    if (ret < 0)
++        return ret;
++
++    pixel_formats = NULL;
++    pixel_formats = ff_make_format_list(out_pix_fmts);
++    if (!pixel_formats)
++        return AVERROR(ENOMEM);
++    ret = ff_add_format(&pixel_formats, out_pixfmt);
++    if (ret < 0)
++        return ret;
++    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->in_formats);
++    if (ret < 0)
++        return ret;
++
++    return 0;
++}
++
++static int format_is_supported(enum AVPixelFormat fmt)
++{
++    int i;
++    for (i = 0; i < FF_ARRAY_ELEMS(supported_formats); i++)
++        if (supported_formats[i] == fmt)
++            return 1;
++    return 0;
++}
++
++static av_cold int mluscale_cvt_init(AVFilterContext *ctx)
++{
++    MluScaleCvtYUV2RGBXContext *s = ctx->priv;
++    static const char * const mluop_libname = "libeasyOP.so";
++    int ret = mluop_load(s, mluop_libname, ctx);
++    if (ret < 0) {
++        return ret;
++    }
++
++    s->input_mlu_y = NULL;
++    s->input_mlu_uv = NULL;
++    s->output_mlu_rgbx = NULL;
++
++    s->op_handle = NULL;
++    return 0;
++}
++
++static av_cold void mluscale_cvt_uninit(AVFilterContext *ctx)
++{
++    MluScaleCvtYUV2RGBXContext *s = ctx->priv;
++    MluContext *mlu_ctx = NULL;
++    mlu_ctx = s->hw_dev_ctx->mlu_ctx;
++    if (s->op_handle) {
++        s->ptr_scale_cvt_yuv2rgbx_destroy(s->op_handle);
++    }
++    // mluop_unload(s);
++    if(s->inlink_pixfmt != AV_PIX_FMT_MLU) {
++        if (s->input_mlu_y)
++            mlu_ctx->mluMemFree(s->input_mlu_y);
++        if (s->input_mlu_uv)
++            mlu_ctx->mluMemFree(s->input_mlu_uv);
++        if (s->output_mlu_rgbx)
++            mlu_ctx->mluMemFree(s->output_mlu_rgbx);
++    }
++
++    if (s->in_hw_frame_ref) {
++        av_buffer_unref(&s->in_hw_frame_ref);
++    }
++    if (s->out_hw_frame_ref) {
++        av_buffer_unref(&s->out_hw_frame_ref);
++    }
++    if (s->hw_device_ref) {
++        av_buffer_unref(&s->hw_device_ref);
++    }
++}
++
++static av_cold int mluscale_cvt_config_props(AVFilterLink *outlink)
++{
++    AVFilterContext *ctx = outlink->src;
++    AVFilterLink *inlink = ctx->inputs[0];
++    MluScaleCvtYUV2RGBXContext *s  = ctx->priv;
++
++    int w, h;
++    MluContext *mlu_ctx = NULL;
++    AVMLUDeviceContext *hw_device_ctx = NULL;
++    AVHWFramesContext *in_hw_frames_ctx = NULL;
++    AVHWFramesContext *out_hw_frames_ctx = NULL;
++
++    int ret;
++    char device_idx[sizeof(int)];
++
++    if ((ret = ff_scale_eval_dimensions(s, s->w_expr, s->h_expr, inlink, outlink,  &w, &h)) < 0)
++        goto fail;
++
++    if (((int64_t)h * inlink->w) > INT_MAX  || ((int64_t)w * inlink->h) > INT_MAX)
++        av_log(ctx, AV_LOG_ERROR, "Rescaled value for width or height is too big.\n");
++
++    outlink->w = w;
++    outlink->h = h;
++    s->inlink_pixfmt = inlink->format;
++    s->in_y_size    = inlink->w * inlink->h;
++    s->in_uv_size   = inlink->w * inlink->h / 2;
++    s->out_mlu_size = outlink->w * outlink->h *
++                    get_pixfmt_channel_num(get_av_pixfmt_from_idx(s->enter_out_fmt));
++    sprintf(device_idx, "%d", atoi(s->n_expr));
++    if (inlink->format == AV_PIX_FMT_MLU && inlink->hw_frames_ctx) {
++        in_hw_frames_ctx = (AVHWFramesContext*)inlink->hw_frames_ctx->data;
++        hw_device_ctx = in_hw_frames_ctx->device_ctx->hwctx;
++
++        if (!inlink->hw_frames_ctx) {
++            av_log(ctx, AV_LOG_ERROR, "Input must have a hwframe reference. \n");
++            return AVERROR(EINVAL);
++        }
++
++        s->in_hw_frame_ref = av_buffer_ref(inlink->hw_frames_ctx);
++        s->hw_device_ref = av_buffer_ref(in_hw_frames_ctx->device_ref);
++
++        s->hw_dev_ctx = hw_device_ctx;
++        s->in_hw_frame_ctx = in_hw_frames_ctx;
++
++        s->in_fmt  = in_hw_frames_ctx->sw_format;
++        s->out_fmt = get_av_pixfmt_from_idx(s->enter_out_fmt);
++
++        outlink->format = inlink->format;
++
++        av_buffer_unref(&s->out_hw_frame_ref);
++        s->out_hw_frame_ref = av_hwframe_ctx_alloc(s->hw_device_ref);
++        if (!s->out_hw_frame_ref) {
++            av_log(ctx, AV_LOG_ERROR, "av_hwframe_ctx_alloc failed \n");
++            ret = AVERROR(ENOMEM);
++            goto fail;
++        }
++        out_hw_frames_ctx = (AVHWFramesContext*)s->out_hw_frame_ref->data;
++        s->out_hw_frame_ctx = out_hw_frames_ctx;
++        if (!out_hw_frames_ctx->pool) {
++            out_hw_frames_ctx->format = AV_PIX_FMT_MLU;
++            out_hw_frames_ctx->sw_format = s->out_fmt;
++            out_hw_frames_ctx->width  = FFALIGN(outlink->w, 1);
++            out_hw_frames_ctx->height = outlink->h;
++            if ((ret = av_hwframe_ctx_init(s->out_hw_frame_ref)) < 0) {
++                av_log(ctx, AV_LOG_ERROR, "av_hwframe_ctx_init failed \n");
++                return 0;
++            }
++        }
++        outlink->hw_frames_ctx = av_buffer_ref(s->out_hw_frame_ref);
++
++        if (!outlink->hw_frames_ctx)
++            return AVERROR(ENOMEM);
++    } else {
++        s->in_fmt  = inlink->format;
++        s->out_fmt = get_av_pixfmt_from_idx(s->enter_out_fmt);
++        outlink->format = get_av_pixfmt_from_idx(s->enter_out_fmt);
++
++        av_buffer_unref(&s->hw_device_ref);
++        ret = av_hwdevice_ctx_create(&s->hw_device_ref, AV_HWDEVICE_TYPE_MLU, device_idx, NULL, 0);
++        if (ret < 0) {
++            goto fail;
++        }
++        s->hw_dev_ctx = ((AVHWDeviceContext*)s->hw_device_ref->data)->hwctx;
++    }
++
++    // check infmt and outfmt is legal
++    if (!format_is_supported(s->in_fmt)) {
++        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n",
++               av_get_pix_fmt_name(s->in_fmt));
++        return AVERROR(ENOSYS);
++    }
++    if (!format_is_supported(s->out_fmt)) {
++        av_log(ctx, AV_LOG_ERROR, "Unsupported output format: %s\n",
++               av_get_pix_fmt_name(s->out_fmt));
++        return AVERROR(ENOSYS);
++    }
++
++    // init mlu
++    mlu_ctx = s->hw_dev_ctx->mlu_ctx;
++    if(s->lib && !s->op_handle) {
++        char depth_[3] = "8U";
++        s->depth = depth_;
++
++        convert_av_pixfmt_to_idx(s, s->in_fmt);
++        s->ptr_scale_cvt_yuv2rgbx_init(&s->op_handle,
++                                       inlink->w, inlink->h,
++                                       outlink->w, outlink->h,
++                                       s->pic_pixfmt, s->enter_out_fmt,
++                                       s->depth);
++        if (inlink->format != AV_PIX_FMT_MLU) {
++            ret = mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_y), sizeof(char) * s->in_y_size);
++            CNRT_ERROR_CHECK(ctx, ret);
++            ret = mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_uv), sizeof(char) * s->in_uv_size);
++            CNRT_ERROR_CHECK(ctx, ret);
++            ret = mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_rgbx), sizeof(char) * s->out_mlu_size);
++            CNRT_ERROR_CHECK(ctx, ret);
++        }
++    }
++
++    // set aspec ratio
++    outlink->time_base = inlink->time_base;
++    if (inlink->sample_aspect_ratio.num) {
++        outlink->sample_aspect_ratio = av_mul_q((AVRational){outlink->h*inlink->w,
++                                                             outlink->w*inlink->h},
++                                                inlink->sample_aspect_ratio);
++    } else {
++        outlink->sample_aspect_ratio = inlink->sample_aspect_ratio;
++    }
++
++    return 0;
++
++fail:
++    if (!s->in_hw_frame_ref)
++        av_buffer_unref(&s->in_hw_frame_ref);
++    if (!s->out_hw_frame_ref)
++        av_buffer_unref(&s->out_hw_frame_ref);
++    if (!s->hw_device_ref)
++        av_buffer_unref(&s->hw_device_ref);
++    return ret;
++}
++
++static int mluscale_cvt_filter_frame(AVFilterLink *link, AVFrame *in)
++{
++    AVFilterContext*ctx      = link->dst;
++    MluScaleCvtYUV2RGBXContext *s = ctx->priv;
++    AVFilterLink*outlink     = ctx->outputs[0];
++    MluContext *mlu_ctx      = s->hw_dev_ctx->mlu_ctx;
++
++    int ret = 0;
++    AVFrame *out = NULL;
++    if (link->format == AV_PIX_FMT_MLU && !in->hw_frames_ctx) {
++        av_log(ctx, AV_LOG_ERROR, "input frames must have hardware context.\n");
++        goto fail;
++    }
++
++    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
++    if (!out) {
++        ret = AVERROR(EINVAL);
++        goto fail;
++    }
++    if (s->passthrough) {
++        av_frame_free(&out);
++        return ff_filter_frame(outlink, in);
++    }
++
++    av_frame_copy_props(out, in);
++    out->width  = outlink->w;
++    out->height = outlink->h;
++    out->linesize[0] = out->width * get_pixfmt_channel_num(s->out_fmt);
++
++    if(s->op_handle) {
++        if (link->format == AV_PIX_FMT_MLU) {
++            s->input_mlu_y = in->data[0];
++            s->input_mlu_uv = in->data[1];
++            s->output_mlu_rgbx = out->data[0];
++        } else {
++            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_y, (void *)in->data[0],
++                                  s->in_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++            CNRT_ERROR_CHECK(ctx, ret);
++            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_uv, (void *)in->data[1],
++                                  s->in_uv_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++            CNRT_ERROR_CHECK(ctx, ret);
++        }
++        ret = s->ptr_scale_cvt_yuv2rgbx_exec(s->op_handle, s->input_mlu_y,
++                                             s->input_mlu_uv, s->output_mlu_rgbx);
++        if (ret < 0) {
++            av_log(ctx, AV_LOG_ERROR, "Failed to yuv2rgbx filter with mluop\n");
++            goto fail;
++        }
++        if (link->format != AV_PIX_FMT_MLU) {
++            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_rgbx,
++                            s->out_mlu_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++            CNRT_ERROR_CHECK(ctx, ret);
++        }
++    }
++    av_reduce(&out->sample_aspect_ratio.num, &out->sample_aspect_ratio.den,
++              (int64_t)in->sample_aspect_ratio.num * outlink->h * link->w,
++              (int64_t)in->sample_aspect_ratio.den * outlink->w * link->h,
++              INT_MAX);
++    av_frame_free(&in);
++    return ff_filter_frame(outlink, out);
++
++fail:
++    av_frame_free(&in);
++    av_frame_free(&out);
++    return ret;
++}
++
++#define OFFSET(x) offsetof(MluScaleCvtYUV2RGBXContext, x)
++#define FLAGS (AV_OPT_FLAG_FILTERING_PARAM|AV_OPT_FLAG_VIDEO_PARAM)
++static const AVOption options[] = {
++    { "w", "Output video width",  OFFSET(w_expr), AV_OPT_TYPE_STRING, {.str = "iw"}, .flags = FLAGS },
++    { "h", "Output video height", OFFSET(h_expr), AV_OPT_TYPE_STRING, {.str = "ih"}, .flags = FLAGS },
++    { "o_fmt", "output pixfmt",   OFFSET(enter_out_fmt), AV_OPT_TYPE_STRING, {.str = "of"}, .flags = FLAGS},
++    { "n",     "device index",    OFFSET(n_expr),        AV_OPT_TYPE_STRING, {.str = "in"}, .flags = FLAGS},
++    { NULL },
++};
++
++static const AVClass mluscale_cvt_class = {
++    .class_name = "mluscale_cvt",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++static const AVFilterPad mluscale_cvt_inputs[] = {
++    {
++        .name        = "default",
++        .type        = AVMEDIA_TYPE_VIDEO,
++        .filter_frame = mluscale_cvt_filter_frame,
++    },
++    { NULL }
++};
++
++static const AVFilterPad mluscale_cvt_outputs[] = {
++    {
++        .name         = "default",
++        .type         = AVMEDIA_TYPE_VIDEO,
++        .config_props = mluscale_cvt_config_props,
++    },
++    { NULL }
++};
++
++AVFilter ff_vf_scale_cvt_yuv2rgbx_mlu = {
++    .name      = "scale_cvt_yuv2rgbx_mlu",
++    .description = NULL_IF_CONFIG_SMALL("MLU accelerated resize and convert yuv to rgbx"),
++
++    .init          = mluscale_cvt_init,
++    .uninit        = mluscale_cvt_uninit,
++    .query_formats = mluscale_cvt_query_formats,
++
++    .priv_size = sizeof(MluScaleCvtYUV2RGBXContext),
++    .priv_class = &mluscale_cvt_class,
++
++    .inputs    = mluscale_cvt_inputs,
++    .outputs   = mluscale_cvt_outputs,
 +    .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
 +};
 diff --git a/libavfilter/vf_scale_rgbx2rgbx_mlu.c b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
