@@ -43,6 +43,14 @@ void *process_convert_yuv2rgbx(void *ctx_);
 void rgbx2yuv_convert_op(void *ctx_, char **argv);
 void *process_convert_rgbx2yuv(void *ctx_);
 
+/*------------- rgbx2rgbx convert cncv--------------*/
+void Rgbx2RgbxConvertOp(void *ctx_, char **argv);
+void *ProcessConvertRgbx2Rgbx(void *ctx_);
+
+/*------------- yuv2rgbx resize convert cncv--------------*/
+void Yuv2RgbxResizeCvtOp(void *ctx_, char **argv);
+void *ProcessResizeCvtYuv2Rgbx(void *ctx_);
+
 #if defined(__cplusplus)
 }
 #endif /* __cplusplus */

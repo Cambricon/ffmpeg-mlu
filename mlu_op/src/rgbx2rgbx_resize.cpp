@@ -227,17 +227,13 @@ int mluop_resize_rgbx_exec(HANDLE h,
                            void *input, void *output) {
   CVResizeRgbxPrivate *d_ptr_ = static_cast<CVResizeRgbxPrivate *>(h);
   if (nullptr == d_ptr_->queue_) {
-     printf("cnrt queue is nlll.");
+     printf("Sync queue is null.");
      return -1;
   }
   // input is mlu src ptr, ..._ptrs_cache_ is cpu ptr for batch address
-  d_ptr_->src_rgbx_ptrs_cache_.push_back(input);
-  d_ptr_->dst_rgbx_ptrs_cache_.push_back(output);
   for (uint32_t bi = 0; bi < d_ptr_->batch_size; ++bi) {
-    d_ptr_->src_rgbx_ptrs_cpu_[bi] = d_ptr_->src_rgbx_ptrs_cache_.front();
-    d_ptr_->dst_rgbx_ptrs_cpu_[bi] = d_ptr_->dst_rgbx_ptrs_cache_.front();
-    d_ptr_->src_rgbx_ptrs_cache_.pop_front();
-    d_ptr_->dst_rgbx_ptrs_cache_.pop_front();
+    d_ptr_->src_rgbx_ptrs_cpu_[bi] = input;
+    d_ptr_->dst_rgbx_ptrs_cpu_[bi] = output;
   }
 
   cnrtRet_t cnret;
@@ -274,12 +270,105 @@ int mluop_resize_rgbx_exec(HANDLE h,
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR);
   if(cncv_ret != CNCV_STATUS_SUCCESS) {
-    printf("Exec cncvResizeRgbx failed, error code:%d\n", cncv_ret);
+    printf("Exec ResizeRgbx func failed, error code:%d\n", cncv_ret);
     return -1;
   }
   cncv_ret = cncvSyncQueue(d_ptr_->handle);
   if(cncv_ret != CNCV_STATUS_SUCCESS) {
-    printf("Exec cncvSyncQueue failed,  error code:%d\n", cncv_ret);
+    printf("Exec SyncQueue func failed,  error code:%d\n", cncv_ret);
+    return -1;
+  }
+  #if PRINT_TIME
+  gettimeofday(&end, NULL);
+  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+  printf("[cncv-kernel] time: %.3f ms\n", time_use/1000);
+  #endif
+  return 0;
+}
+
+
+int mluop_resize_pad_rgbx_exec(HANDLE h,
+                               void *input, void *output) {
+  CVResizeRgbxPrivate *d_ptr_ = static_cast<CVResizeRgbxPrivate *>(h);
+  const float EPSINON = 0.00001f;
+
+  if (nullptr == d_ptr_->queue_) {
+     printf("Sync queue is null.");
+     return -1;
+  }
+
+  for (uint32_t bi = 0; bi < d_ptr_->batch_size; ++bi) {
+    d_ptr_->src_rgbx_ptrs_cpu_[bi] = input;
+    d_ptr_->dst_rgbx_ptrs_cpu_[bi] = output;
+  }
+
+  cnrtRet_t cnret;
+  cnret = cnrtMemcpy(d_ptr_->src_rgbx_ptrs_mlu_,
+              reinterpret_cast<void**>(d_ptr_->src_rgbx_ptrs_cpu_),
+              sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  if (cnret != CNRT_RET_SUCCESS) {
+    printf("Memcpy host to device failed. Error code:%d\n", cnret);
+    return -1;
+  }
+  cnret = cnrtMemcpy(d_ptr_->dst_rgbx_ptrs_mlu_,
+              reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_cpu_),
+              sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  if (cnret != CNRT_RET_SUCCESS) {
+    printf("Memcpy host to device failed. Error code:%d\n", cnret);
+    return -1;
+  }
+  cnret = cnrtMemset(output, 0, d_ptr_->dst_desc.stride[0] * d_ptr_->dst_desc.height);
+  if (cnret != CNRT_RET_SUCCESS) {
+    printf("Memset device value failed. Error code:%d\n", cnret);
+    return -1;
+  }
+
+  int low_bound_p, low_bound_len;
+  float src_scale = (float) d_ptr_->src_desc.width / d_ptr_->src_desc.height;
+  float dst_scale = (float) d_ptr_->dst_desc.width / d_ptr_->dst_desc.height;
+  float dis = fabs(src_scale - dst_scale);
+  if (dis > EPSINON) {
+    if(src_scale < dst_scale) {
+      d_ptr_->dst_rois.y = 0;
+      d_ptr_->dst_rois.h = d_ptr_->dst_desc.height;
+      low_bound_len = (d_ptr_->dst_desc.height * d_ptr_->src_desc.width / d_ptr_->src_desc.height) / 2;
+      d_ptr_->dst_rois.w = low_bound_len * 2;
+      low_bound_p = (d_ptr_->dst_desc.width - d_ptr_->dst_rois.w) / 4;
+      d_ptr_->dst_rois.x = low_bound_p * 2;
+    } else {
+      d_ptr_->dst_rois.x = 0;
+      d_ptr_->dst_rois.w = d_ptr_->dst_desc.width;
+      low_bound_len = (d_ptr_->dst_desc.width * d_ptr_->src_desc.height / d_ptr_->src_desc.width) / 2;
+      d_ptr_->dst_rois.h = low_bound_len * 2;
+      low_bound_p = (d_ptr_->dst_desc.height - d_ptr_->dst_rois.h) / 4;
+      d_ptr_->dst_rois.y = low_bound_p * 2;
+    }
+  }
+  #if PRINT_TIME
+  float time_use = 0;
+  struct timeval end;
+  struct timeval start;
+  gettimeofday(&start, NULL);
+  #endif
+  cncvStatus_t cncv_ret;
+  cncv_ret = cncvResizeRgbx(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<void**>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR);
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec ResizeRgbx func failed, error code:%d\n", cncv_ret);
+    return -1;
+  }
+  cncv_ret = cncvSyncQueue(d_ptr_->handle);
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec SyncQueue failed,  error code:%d\n", cncv_ret);
     return -1;
   }
   #if PRINT_TIME
@@ -301,7 +390,6 @@ int mluop_resize_rgbx_destroy(HANDLE h) {
       cnrtFree(d_ptr_->src_rgbx_ptrs_mlu_);
       d_ptr_->src_rgbx_ptrs_mlu_ = nullptr;
     }
-    d_ptr_->src_rgbx_ptrs_cache_.clear();
 
     if (d_ptr_->dst_rgbx_ptrs_cpu_) {
       free(d_ptr_->dst_rgbx_ptrs_cpu_);
@@ -329,7 +417,7 @@ int mluop_resize_rgbx_destroy(HANDLE h) {
     if (d_ptr_->handle) {
       auto ret = cncvDestroy(d_ptr_->handle);
       if (ret != CNCV_STATUS_SUCCESS) {
-        printf("Destroy cncv handle failed. Error code:%d\n", ret);
+        printf("Destroy handle failed. Error code:%d\n", ret);
         return -1;
       }
       d_ptr_->handle = nullptr;

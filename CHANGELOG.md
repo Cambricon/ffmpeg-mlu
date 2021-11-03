@@ -1,3 +1,7 @@
+# Cambricon® ffmpeg-mlu open source release v1.5.5!
+**Whats new**
+ - Added resize_and_convert mlu op.
+
 # Cambricon® ffmpeg-mlu open source release v1.5.2!
 **Whats new**
  - Modified vid&jpeg frame resolution judgment of v1.5.0 and v1.5.1 decoder.
