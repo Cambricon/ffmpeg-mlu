@@ -1,13 +1,13 @@
-From e9f9be416b9c792f5f7f1c81a7929d022535b6e0 Mon Sep 17 00:00:00 2001
+From b82bd2128548ac59f66b1509d65fc0627ea24647 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Wed, 3 Nov 2021 15:15:34 +0800
+Date: Fri, 28 Jan 2022 19:34:49 +0800
 Subject: [PATCH] gen new patch
 
 ---
  configure                               |   18 +
  doc/examples/Makefile                   |    2 +
- doc/examples/hw_decode_mlu.c            |  256 ++++
- doc/examples/mlumpp_transcode.c         |  396 ++++++
+ doc/examples/hw_decode_mlu.c            |  256 +++
+ doc/examples/mlumpp_transcode.c         |  396 +++++
  fftools/Makefile                        |    1 +
  fftools/ffmpeg.h                        |    2 +
  fftools/ffmpeg_mlu.c                    |   74 +
@@ -15,34 +15,34 @@ Subject: [PATCH] gen new patch
  libavcodec/Makefile                     |    8 +
  libavcodec/allcodecs.c                  |    8 +
  libavcodec/hwaccel.h                    |    2 +
- libavcodec/mlumpp_dec.c                 | 1675 +++++++++++++++++++++++
- libavcodec/mlumpp_enc_h264.c            |  175 +++
- libavcodec/mlumpp_enc_hevc.c            |  172 +++
- libavcodec/mlumpp_enc_jpeg.c            | 1084 +++++++++++++++
- libavcodec/mlumpp_mluop.c               |  122 ++
- libavcodec/mlumpp_mluop.h               |   33 +
- libavcodec/mlumpp_vid_enc.c             | 1369 ++++++++++++++++++
- libavcodec/mlumpp_vid_enc.h             |  146 ++
+ libavcodec/mlumpp_dec.c                 | 2141 +++++++++++++++++++++++
+ libavcodec/mlumpp_enc_h264.c            |  177 ++
+ libavcodec/mlumpp_enc_hevc.c            |  174 ++
+ libavcodec/mlumpp_enc_jpeg.c            | 1084 ++++++++++++
+ libavcodec/mlumpp_mluop.c               |  501 ++++++
+ libavcodec/mlumpp_mluop.h               |  234 +++
+ libavcodec/mlumpp_vid_enc.c             | 1505 ++++++++++++++++
+ libavcodec/mlumpp_vid_enc.h             |  161 ++
  libavfilter/Makefile                    |    9 +
  libavfilter/allfilters.c                |    9 +
- libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  526 +++++++
- libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  535 ++++++++
- libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  529 +++++++
+ libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  526 ++++++
+ libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  535 ++++++
+ libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  529 ++++++
  libavfilter/vf_hwdownload_mlu.c         |  209 +++
  libavfilter/vf_hwupload_mlu.c           |  200 +++
- libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  542 ++++++++
- libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  483 +++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c      |  490 +++++++
- libavfilter/vf_sr_mlu.c                 |  264 ++++
+ libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  542 ++++++
+ libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  483 +++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  490 ++++++
+ libavfilter/vf_sr_mlu.c                 |  264 +++
  libavutil/Makefile                      |    3 +
  libavutil/hwcontext.c                   |    5 +
  libavutil/hwcontext.h                   |    1 +
  libavutil/hwcontext_internal.h          |    1 +
- libavutil/hwcontext_mlu.c               |  443 ++++++
+ libavutil/hwcontext_mlu.c               |  443 +++++
  libavutil/hwcontext_mlu.h               |   62 +
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 38 files changed, 9867 insertions(+)
+ 38 files changed, 11068 insertions(+)
  create mode 100644 doc/examples/hw_decode_mlu.c
  create mode 100755 doc/examples/mlumpp_transcode.c
  create mode 100644 fftools/ffmpeg_mlu.c
@@ -1087,10 +1087,10 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..82ee652e18
+index 0000000000..c3b765a095
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1675 @@
+@@ -0,0 +1,2141 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1128,6 +1128,7 @@ index 0000000000..82ee652e18
 +#include "libavutil/time.h"
 +#include "libavutil/pixdesc.h"
 +#include "libavutil/thread.h"
++#include "libavutil/intreadwrite.h"
 +#include "libavutil/version.h"
 +#include "libavutil/pixfmt.h"
 +#include "avcodec.h"
@@ -1160,10 +1161,10 @@ index 0000000000..82ee652e18
 +                                           CNCODEC_PATCH_VERSION)
 +#endif
 +#define FF_MLU_MAJPR_VERSION 1
-+#define FF_MLU_MINOR_VERSION 5
-+#define FF_MLU_PATCH_VERSION 4
++#define FF_MLU_MINOR_VERSION 6
++#define FF_MLU_PATCH_VERSION 0
 +
-+static av_cold void mlumpp_empty_frame_queue(AVCodecContext *avctx);
++static int ctx_num = 0;
 +typedef struct MLUMPPContext
 +{
 +    AVClass *avclass;
@@ -1176,7 +1177,8 @@ index 0000000000..82ee652e18
 +    int trace_flag;
 +    int cnrt_init_flag;
 +    int async_queue_depth;
-+    char *output_pixfmt;
++    const char *output_pixfmt;
++    const char *post_pixfmt;
 +    struct
 +    {
 +        int left;
@@ -1189,6 +1191,7 @@ index 0000000000..82ee652e18
 +        int width;
 +        int height;
 +    } resize;
++    P_PROC dec_pp;
 +    int progressive;
 +    void *handle;
 +
@@ -1221,6 +1224,10 @@ index 0000000000..82ee652e18
 +    volatile int decoder_init_flag;
 +    HANDLE_MLU_OP mluop_handle;
 +
++    int frame_extract;
++    PtsHashList_t *pts_hash;
++    hevcStreamHeader_t hevc_sps_head;
++
 +    // AVMutex count_mutex;
 +    unsigned long long total_frame_count;
 +    unsigned long long total_packet_count;
@@ -1234,28 +1241,177 @@ index 0000000000..82ee652e18
 +    cnjpegDecOutput outframe;
 +} MLUJpegFrameInfo_t;
 +
++int pts_hash_count(int64_t key_pts) {
++    return (key_pts % HASH_LEN);
++};
++
++PtsHashList_t* pts_hash_init(void) {
++    PtsHashList_t *h = NULL;
++    int i = 0;
++    int prev_i = 0;
++    h = malloc(sizeof(PtsHashList_t));
++    if (!h) {
++        return NULL;
++    }
++    for(i = 0; i < HASH_LEN; ++i) {
++        h->list_head[i] = NULL;
++        h->list_head[i] = malloc(sizeof(PtsListHead_t));
++        if(!h->list_head[i]) {
++            goto failed_malloc;
++        }
++        h->list_head[i]->list_size = 0;
++        h->list_head[i]->first = NULL;
++        h->list_head[i]->end = NULL;
++        ff_mutex_init(&(h->list_head[i]->list_mutex), NULL);
++    }
++    return h;
++failed_malloc:
++    for (prev_i = 0; prev_i < i; ++prev_i) {
++        if (h->list_head[prev_i]) {
++            free(h->list_head[prev_i]);
++            h->list_head[prev_i] = NULL;
++        }
++    }
++    free(h);
++    h = NULL;
++    return h;
++}
++
++int pts_hash_find_remove(PtsHashList_t* h, int64_t pts) {
++    PtsList_t *f = NULL;
++    int pic_type = -1;
++    int hash_pts = pts_hash_count(pts);
++    PtsListHead_t *head = h->list_head[hash_pts];
++    if(!head) {
++        return -1;
++    }
++    ff_mutex_lock(&head->list_mutex);
++    f = head->first;
++    while (f != NULL && f->key_pts != pts) {
++        f = f->next;
++    }
++    if (f==NULL) {
++        ff_mutex_unlock(&head->list_mutex);
++        return pic_type;
++    }
++    pic_type = f->val_pic_type;
++    if (f->prev)
++        f->prev->next = f->next;
++    if (f->next)
++        f->next->prev = f->prev;
++    if (f == head->first)
++        head->first = f->next;
++    if (f == head->end)
++        head->end = f->prev;
++    free(f);
++    f = NULL;
++    head->list_size--;
++    ff_mutex_unlock(&head->list_mutex);
++    return pic_type;
++}
++
++int pts_hash_insert(PtsHashList_t* h, int64_t pts, int pic_type) {
++    PtsList_t *f = NULL;
++    int hash_pts = pts_hash_count(pts);
++    PtsListHead_t *head = h->list_head[hash_pts];
++    if (!head) {
++        return -1;
++    }
++    ff_mutex_lock(&head->list_mutex);
++    if (head->list_size <=0) {
++        f = malloc(sizeof(PtsList_t));
++        if (f == NULL)
++            goto failed_malloc;
++        f->key_pts = pts;
++        f->val_pic_type = pic_type;
++        f->prev = NULL;
++        f->next = NULL;
++        head->first = f;
++        head->end = f;
++    } else {
++        f = malloc(sizeof(PtsList_t));
++        if (f == NULL)
++            goto failed_malloc;
++        f->key_pts = pts;
++        f->val_pic_type = pic_type;
++        head->end->next = f;
++        f->prev = head->end;
++        f->next = NULL;
++        head->end = f;
++    }
++    head->list_size++;
++    ff_mutex_unlock(&head->list_mutex);
++    return 0;
++failed_malloc:
++    ff_mutex_unlock(&head->list_mutex);
++    return -1;
++}
++
++void pts_hash_destroy(PtsHashList_t** h) {
++    int i = 0;
++    PtsList_t *node;
++    PtsListHead_t *head;
++    if (*h) {
++        for(i = 0; i < HASH_LEN; ++i) {
++            head = (*h)->list_head[i];
++            if (head) {
++                while(head->first!=head->end && head->first != NULL) {
++                    node = head->first;
++                    head->first = node->next;
++                    free(node);
++                    node = NULL;
++                }
++                node = head->first;
++                if (node) {
++                    free(node);
++                    node = NULL;
++                }
++                ff_mutex_destroy(&head->list_mutex);
++                free(head);
++                head = NULL;
++            }
++        }
++        free(*h);
++    }
++    *h = NULL;
++    return;
++}
++
 +static inline void mlumpp_get_version(void) {
-+    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2021/10/12\n");
++    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2022/01/20\n");
 +    av_log(NULL, AV_LOG_INFO, "CNCODEC: %d.%d.%d \n",
 +            CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION);
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",
 +            FF_MLU_MAJPR_VERSION, FF_MLU_MINOR_VERSION, FF_MLU_PATCH_VERSION);
 +}
-+static inline int mlumpp_adapt_resolution(AVCodecContext* avctx) {
++static inline int mlumpp_adapt_resolution(MLUMPPContext_t *ctx) {
++    int ret = 0;
++    AVCodecContext* avctx = ctx->avctx;
 +    if (avctx->codec->id == AV_CODEC_ID_MJPEG) {
 +        if (avctx->width < 64 ||  avctx->width > 8192 || avctx->height < 64 || avctx->height > 4320) {
 +            av_log(avctx, AV_LOG_ERROR, "Unsupport resoution: %dx%d\n", avctx->width, avctx->height);
-+            av_log(avctx, AV_LOG_ERROR, "MLU jpeg decoder only support resolution: 64x64~8192x4320\n");
-+            return -1;
++            ret = -1;
 +        }
++        if ((ctx->resize.width < 64 || ctx->resize.width > 8192 || ctx->resize.height < 64 || ctx->resize.height > 8192)
++             && ctx->dec_pp != P_NONE) {
++            av_log(avctx, AV_LOG_ERROR, "Unsupport resoution: %dx%d\n", ctx->resize.width, ctx->resize.height);
++            ret = -1;
++        }
++        if (ret) av_log(avctx, AV_LOG_ERROR, "MLU jpeg decoder only support resolution: 64x64~8192x4320\n");
++        return ret;
 +    } else {
 +        if (avctx->width < 64 ||  avctx->width > 4096 || avctx->height < 64 || avctx->height > 4096) {
 +            av_log(avctx, AV_LOG_ERROR, "Unsupport resoution: %dx%d\n", avctx->width, avctx->height);
-+            av_log(avctx, AV_LOG_ERROR, "MLU video decoder only support resolution: 64x64~4096x4096\n");
-+            return -1;
++            ret = -1;
 +        }
++        if ((ctx->resize.width < 64 || ctx->resize.width > 8192 || ctx->resize.height < 64 && ctx->resize.height > 8192)
++             && ctx->dec_pp != P_NONE) {
++            av_log(avctx, AV_LOG_ERROR, "Unsupport resoution: %dx%d\n", ctx->resize.width, ctx->resize.height);
++            ret = -1;
++        }
++        if (ret) av_log(avctx, AV_LOG_ERROR, "MLU video decoder only support resolution: 64x64~4096x4096\n");
++        return ret;
 +    }
-+    return 0;
 +}
 +static inline  enum AVPixelFormat mlumpp_dec_map_ff_pixfmt(cncodecPixelFormat pixfmt)
 +{
@@ -1292,22 +1448,36 @@ index 0000000000..82ee652e18
 +    default:  return CNJPEGDEC_INSTANCE_INVALID;
 +    }
 +}
-+static inline cncodecPixelFormat mlumpp_dec_map_cn_pixfmt(char *pixfmt)
++static int check_post_proc(MLUMPPContext_t *ctx)
 +{
-+    if (!strcmp("nv12", pixfmt) || !strcmp("NV12", pixfmt)) {
-+        return CNCODEC_PIX_FMT_NV12;
-+    } else if (!strcmp("nv21", pixfmt) || !strcmp("NV21", pixfmt)) {
-+        return CNCODEC_PIX_FMT_NV21;
-+    } else if (!strcmp("yuv420p", pixfmt) || !strcmp("YUV420P", pixfmt)) {
-+        return CNCODEC_PIX_FMT_I420;
-+    } else if (!strcmp("p010", pixfmt) || !strcmp("P010", pixfmt) ||
-+               !strcmp("p010le", pixfmt) || !strcmp("P010LE", pixfmt) ||
-+               !strcmp("p010be", pixfmt) || !strcmp("P010BE", pixfmt)) {
-+        return CNCODEC_PIX_FMT_P010;
-+    } else {
-+        av_log(NULL, AV_LOG_ERROR, "Unsupported pixfmt: %s, only suport nv12/nv21/yuv420p/p010 \n", pixfmt);
-+        return -1;
++    const char* pixfmt;
++    if (ctx->dec_pp == P_SCVT) {
++        pixfmt = ctx->post_pixfmt;
++        if ((!strcmp("rgb24", pixfmt) || !strcmp("bgr24", pixfmt) ||
++             !strcmp("bgra", pixfmt)  || !strcmp("abgr", pixfmt)  ||
++             !strcmp("argb", pixfmt)  || !strcmp("rgba", pixfmt)) &&
++            (!strcmp("nv12", ctx->output_pixfmt) || !strcmp("nv21", ctx->output_pixfmt))) {
++            return 0;
++        } else {
++            av_log(NULL, AV_LOG_ERROR,
++                "dec scvt only support nv12/nv21 to rgbx, unsupport:%s to %s\n",
++                ctx->output_pixfmt, pixfmt);
++            return -1;
++        }
++    } else if (ctx->dec_pp == P_SCALE) {
++        pixfmt = ctx->output_pixfmt;
++        if ((ctx->resize.width != ctx->avctx->width / 2 || ctx->resize.height != ctx->avctx->height / 2) &&
++            (ctx->resize.width != ctx->avctx->width / 4 || ctx->resize.height != ctx->avctx->height / 4)) {
++            if (!strcmp("nv12", pixfmt) || !strcmp("nv21", pixfmt)) {
++                return 0;
++            } else {
++                av_log(NULL, AV_LOG_ERROR,
++                    "dec resize(except 1/2, 1/4) only support pixfmt as nv12/nv21, unsupport:%s \n", pixfmt);
++                return -1;
++            }
++        }
 +    }
++    return 0;
 +}
 +
 +static int mlumpp_device_binding(MLUMPPContext_t *ctx) {
@@ -1517,6 +1687,7 @@ index 0000000000..82ee652e18
 +            av_log(avctx, AV_LOG_INFO, "[%lu]data: %p, length: %u, pts: (%3" PRId64 ")\n", (long unsigned)pthread_self(),
 +                   input.streamBuf, input.streamLength, input.pts);
 +        }
++
 +        if (ctx->handle) {
 +            ret = cnvideoDecFeedData(ctx->handle, &input, feed_timeout);
 +            CNCODEC_ERROR_CHECK(avctx,ret);
@@ -1614,9 +1785,25 @@ index 0000000000..82ee652e18
 +    ctx->codec_info.height = info->height;
 +    ctx->vdec_params.codec = info->codec;
 +    if (ctx->resize.width > 0 && ctx->resize.height > 0) {
-+        // only support WxH downscaling for vid dec
-+        ctx->vdec_params.width = ctx->resize.width;
-+        ctx->vdec_params.height = ctx->resize.height;
++        if (ctx->mluop_handle) {
++            ret = ctx->dec_pp == P_SCVT ?
++            mlumpp_post_convert_init(ctx->mluop_handle, info->width, info->height,
++                                    ctx->resize.width, ctx->resize.height,
++                                    ctx->output_pixfmt, ctx->post_pixfmt) :
++            mlumpp_resize_yuv_init(ctx->mluop_handle, info->width, info->height,
++                                    ctx->resize.width, ctx->resize.height,
++                                    ctx->output_pixfmt);
++            if (ret != 0) {
++                av_log(ctx, AV_LOG_ERROR, "mlumpp init failed\n");
++                return -1;
++            }
++            ctx->vdec_params.width  = info->width;
++            ctx->vdec_params.height = info->height;
++        } else if (((ctx->resize.width == info->width / 2) && (ctx->resize.height == info->height / 2)) ||
++            ((ctx->resize.width == info->width / 4) && (ctx->resize.height == info->height / 4))) {
++            ctx->vdec_params.width = ctx->resize.width;
++            ctx->vdec_params.height = ctx->resize.height;
++        }
 +        avctx->width  = ctx->resize.width;
 +        avctx->height = ctx->resize.height;
 +    } else {
@@ -1627,13 +1814,10 @@ index 0000000000..82ee652e18
 +    }
 +    avctx->coded_width  = FFALIGN(avctx->width, ctx->stride_align);
 +    avctx->coded_height = avctx->height;
-+    if(0 != mlumpp_adapt_resolution(avctx)) {
-+        return AVERROR(EINVAL);
-+    }
 +
 +    // this is for synchronous invocation, need keep enough frames for decoder output buffer
 +    ctx->vdec_params.outputBufNum = info->minOutputBufNum + ctx->num_output_buffers;
-+    ctx->async_queue_depth = ctx->vdec_params.outputBufNum;
++    ctx->async_queue_depth = ctx->vdec_params.outputBufNum * 2;
 +    if (ctx->trace_flag > 0) {
 +        av_log(avctx, AV_LOG_INFO, "Set input buffers: %u, output buffers: %u, queue depth: %u\n",
 +                    ctx->vdec_params.inputBufNum, ctx->vdec_params.outputBufNum, ctx->async_queue_depth);
@@ -1700,6 +1884,7 @@ index 0000000000..82ee652e18
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t *)userptr;
 +    // AVCodecContext *avctx = ctx->avctx;
++    int frame_type = 0;
 +    cnjpegDecOutput *jPic  = NULL;
 +    cnvideoDecOutput *pPic = NULL;
 +    MLUJpegFrameInfo_t jpeg_frame;
@@ -1717,7 +1902,18 @@ index 0000000000..82ee652e18
 +    } else {
 +        pPic = (cnvideoDecOutput*)data;
 +        memset(&video_frame,0,sizeof(MLUVideoFrameInfo_t));
++        //av_log(ctx->avctx, AV_LOG_INFO, "callback func get frame pts: %d\n", pPic->pts);
++        if ( (ctx->codec_type == CNCODEC_H264 || ctx->codec_type == CNCODEC_HEVC) && ctx->frame_extract) {
++            frame_type = pts_hash_find_remove(ctx->pts_hash, pPic->pts);
++            if (frame_type < 0) {
++                if (ctx->trace_flag > 0) {
++                    av_log(ctx->avctx, AV_LOG_WARNING, "callback func cannot find pts: %ld\n", pPic->pts);
++                }
++                frame_type = 0;
++            }
++        }
 +        video_frame.outframe = *pPic;
++        video_frame.outframe.srcScliceType = frame_type;
 +        ff_mutex_lock(&ctx->queue_mutex);
 +        av_fifo_generic_write(ctx->frame_queue, &video_frame, sizeof(MLUVideoFrameInfo_t), NULL);
 +        if (ctx->handle) {
@@ -1755,6 +1951,7 @@ index 0000000000..82ee652e18
 +    if (ctx->trace_flag > 1) {
 +        av_log(ctx->avctx, AV_LOG_INFO, "[%lu]Decode callback event type: %d \n", (long unsigned)pthread_self(), event_type);
 +    }
++
 +    switch (event_type)
 +    {
 +        case CNCODEC_CB_EVENT_NEW_FRAME:
@@ -1870,7 +2067,77 @@ index 0000000000..82ee652e18
 +    }
 +    return 0;
 +}
++static int mlumpp_ffcopy_helper_with_mluop(AVCodecContext *avctx, AVFrame *avframe, cncodecFrame *cnframe)
++{
++    int ret = -1;
++    MLUMPPContext_t *ctx = (MLUMPPContext_t*)avctx->priv_data;
++    if (cnframe->pixelFmt != CNCODEC_PIX_FMT_NV21 && cnframe->pixelFmt != CNCODEC_PIX_FMT_NV12) {
++        av_log(avctx, AV_LOG_ERROR, "decode out pixfmt must be nv12 or nv21, now(%d)\n", cnframe->pixelFmt);
++        return -1;
++    }
 +
++    if (avctx->pix_fmt == AV_PIX_FMT_MLU) {
++        ret = ctx->dec_pp == P_SCVT ?
++        mlumpp_post_convert_exec(ctx->mluop_handle,
++                                (void *)cnframe->plane[0].addr,
++                                (void *)cnframe->plane[1].addr,
++                                (void *)avframe->data[0]) :
++        mlumpp_resize_yuv_exec(ctx->mluop_handle,
++                                (void *)cnframe->plane[0].addr,
++                                (void *)cnframe->plane[1].addr,
++                                (void *)avframe->data[0],
++                                (void *)avframe->data[1]);
++        if (ret < 0) {
++            av_log(avctx, AV_LOG_ERROR, "mlumpp compute failed \n");
++            return -1;
++        }
++        // avframe->linesize[0] = ctx->resize.width * 3;
++        // avframe->linesize[1] = ctx->resize.width * 3;
++    } else {
++        AVFrame *tmp_frame = av_frame_alloc();
++        if (!tmp_frame) {
++            av_log(avctx, AV_LOG_ERROR, "av_frame_alloc failed\n");
++            return AVERROR(ENOMEM);
++        }
++        ret = av_hwframe_get_buffer(ctx->resize_hwframe, tmp_frame, 0);
++        if (ret < 0) {
++            av_log(avctx, AV_LOG_ERROR, "av_hwframe_get_buffer failed\n");
++            return AVERROR(ENOMEM);
++        }
++
++        ret = ff_decode_frame_props(avctx, tmp_frame);
++        if (ret < 0) {
++            av_log(avctx, AV_LOG_ERROR, "ff_decode_frame_props failed\n");
++            return AVERROR(ENOMEM);
++        }
++
++        avframe->linesize[0] = tmp_frame->linesize[0];
++        avframe->linesize[1] = tmp_frame->linesize[1];
++        ret = ctx->dec_pp == P_SCVT ?
++        mlumpp_post_convert_exec(ctx->mluop_handle,
++                                (void *)cnframe->plane[0].addr,
++                                (void *)cnframe->plane[1].addr,
++                                (void *)tmp_frame->data[0]) :
++        mlumpp_resize_yuv_exec(ctx->mluop_handle,
++                                (void *)cnframe->plane[0].addr,
++                                (void *)cnframe->plane[1].addr,
++                                (void *)tmp_frame->data[0],
++                                (void *)tmp_frame->data[1]);
++        if (ret < 0) {
++            av_log(avctx, AV_LOG_ERROR, "mlumpp exect failed\n");
++            return -1;
++        }
++
++        ret = av_hwframe_transfer_data(avframe, tmp_frame, 0);
++        if (ret) {
++            av_log(avctx, AV_LOG_ERROR, "av_hwframe_transfer_data failed\n");
++            av_frame_free(&tmp_frame);
++            return ret;
++        }
++        av_frame_free(&tmp_frame);
++    }
++    return 0;
++}
 +static int mlumpp_ffcopy_helper(AVCodecContext *avctx, AVFrame *avframe, cncodecFrame *cnframe)
 +{
 +    MLUMPPContext_t *ctx             = (MLUMPPContext_t*)avctx->priv_data;
@@ -1919,6 +2186,14 @@ index 0000000000..82ee652e18
 +    switch (cnframe->pixelFmt) {
 +    case CNCODEC_PIX_FMT_NV21:
 +    case CNCODEC_PIX_FMT_NV12:
++        if ((ctx->mluop_handle != NULL) && (ctx->resize.width > 0 || ctx->resize.width > 0)) {
++            ret = mlumpp_ffcopy_helper_with_mluop(avctx, avframe, cnframe);
++            if (ret != 0) {
++                av_log(avctx, AV_LOG_ERROR, "Mluop copy failed, ret(%d)\n", ret);
++                return AVERROR_EXTERNAL;
++            }
++            break;
++        }
 +        for (i = 0; i < cnframe->planeNum; ++i) {
 +            factor = (i == 0) ? 1 : 2;
 +            avframe->linesize[i] = cnframe->stride[i];
@@ -2060,12 +2335,15 @@ index 0000000000..82ee652e18
 +        } else {
 +            av_fifo_generic_read(ctx->frame_queue, &out_vframe, sizeof(MLUVideoFrameInfo_t), NULL);
 +            video_info = &out_vframe.outframe;
++
 +            ret = mlumpp_ffcopy_helper(avctx, frame, &video_info->frame);
++
 +            frame->pkt_pos = -1;
 +            frame->pkt_duration = 0;
 +            frame->pkt_size = -1;
 +            frame->interlaced_frame = ctx->progressive ? 0 : 1;
 +            frame->pts = video_info->pts;
++            frame->pict_type = video_info->srcScliceType;
 +            //frame->pkt_dts = AV_NOPTS_VALUE;
 +#if FF_API_PKT_PTS
 +FF_DISABLE_DEPRECATION_WARNINGS
@@ -2079,11 +2357,104 @@ index 0000000000..82ee652e18
 +            }
 +        }
 +    } else {
-+        av_usleep(1000);
++        av_usleep(10);
 +        ret = AVERROR(EAGAIN);
 +    }
 +    ff_mutex_unlock(&ctx->queue_mutex);
 +    return ret;
++}
++
++static int h264_judge_pkt_type(const AVPacket* pkt) {
++    NALU_t nal;
++    bs_t nalu_header;
++    int frametype;
++    int probed_size = 0;
++    bs_t nalu_len_reader;
++    if (pkt->size <= 4) {
++        return AVERROR_EOF;
++    }
++    memset(&nal, 0, sizeof(NALU_t));
++    while (nal.nal_unit_type != NAL_SLICE_IDR &&
++           nal.nal_unit_type != NAL_SLICE_NOIDR &&
++           probed_size < pkt->size) {
++        nal.prefix_len = 4;
++        nal.buf = pkt->data + probed_size;
++        bs_init(&nalu_len_reader, nal.buf, 4);
++        nal.len = bs_read(&nalu_len_reader, 32) + 4;
++        bs_init(&nalu_header, nal.buf + 4, 1);
++        nal.forbidden_bit = bs_read1(&nalu_header);
++        nal.nal_reference_idc = bs_read(&nalu_header, 2);
++        nal.nal_unit_type = bs_read(&nalu_header, 5);
++        probed_size += nal.len;
++        if(nal.nal_unit_type >= 9) {
++            return -1;
++        }
++        //av_log(NULL, AV_LOG_WARNING, "nal unit type: %d, len: %d\n", nal.nal_unit_type, nal.len);
++        //av_log(NULL, AV_LOG_WARNING, "probed size: %d, pkt size: %d\n", probed_size, pkt->size);
++    }
++    if (probed_size > pkt->size) {
++        return -1;
++    }
++    frametype = get_h264_slice_type(&nal);
++    return frametype;
++}
++
++static int hevc_judge_pkt_type(hevcStreamHeader_t* h, const AVPacket* pkt) {
++    NALU_t nal;
++    bs_t nalu_header;
++    int frametype;
++    int probed_size = 0;
++    bs_t nalu_len_reader;
++    if (pkt->size <= 4) {
++        return AVERROR_EOF;
++    }
++    memset(&nal, 0, sizeof(NALU_t));
++    nal.nal_unit_type = 32;
++    while ((nal.nal_unit_type > 9 && nal.nal_unit_type < 16 && probed_size < pkt->size) ||
++           (nal.nal_unit_type > 21 && probed_size < pkt->size)) {
++        nal.prefix_len = 4;
++        nal.buf = pkt->data + probed_size;
++        bs_init(&nalu_len_reader, nal.buf, 4);
++        nal.len = bs_read(&nalu_len_reader, 32) + 4;
++        bs_init(&nalu_header, nal.buf + 4, 2);
++        nal.forbidden_bit = bs_read1(&nalu_header);
++        nal.nal_unit_type = bs_read(&nalu_header, 6);
++        probed_size += nal.len;
++    }
++    //av_log(NULL, AV_LOG_WARNING, "probed size: %d, pkt size: %d\n", probed_size, pkt->size);
++    if (probed_size > pkt->size) {
++        return -1;
++    }
++    frametype = get_hevc_slice_type(h, &nal);
++    return frametype;
++}
++
++
++static void sps_pps_parse(MLUMPPContext_t *ctx, uint8_t* data, int data_size) {
++    int sps_pos = find_next_nalu_header(data, 4, data_size);
++    int pps_pos = find_next_nalu_header(data, sps_pos + 1, data_size);
++    int sps_rbsp_len = pps_pos - sps_pos;
++    int pps_rbsp_len = data_size - pps_pos;
++    uint8_t* sps_info = malloc(pps_pos - sps_pos);
++    uint8_t* pps_info = malloc(data_size - pps_pos);
++    nal_to_rbsp(4, data + sps_pos, pps_pos - sps_pos, sps_info, &sps_rbsp_len);
++    nal_to_rbsp(4, data + pps_pos, data_size - pps_pos, pps_info, &pps_rbsp_len);
++    bs_t sps_reader;
++    bs_t pps_reader;
++    bs_init(&sps_reader, sps_info, sps_rbsp_len);
++    bs_init(&pps_reader, pps_info, pps_rbsp_len);
++    h265_read_sps(&ctx->hevc_sps_head, &sps_reader);
++    h265_read_pps(&ctx->hevc_sps_head, &pps_reader);
++
++    if (sps_info) {
++        free(sps_info);
++        sps_info = NULL;
++    }
++    if (pps_info) {
++        free(pps_info);
++        pps_info = NULL;
++    }
++    return;
 +}
 +
 +static int mlumpp_receive_frame(AVCodecContext *avctx, AVFrame *frame)
@@ -2094,6 +2465,8 @@ index 0000000000..82ee652e18
 +    // MluContext *mlu_ctx = device_hwctx->mlu_ctx;
 +
 +    int ret = 0;
++    int pkt_type = -1;
++    int pts_ret = -1;
 +    if (NULL == avctx || NULL == avctx->priv_data) {
 +        av_log(avctx, AV_LOG_ERROR, "Early error in mlumpp_receive_frame\n");
 +        return AVERROR_BUG;
@@ -2118,6 +2491,35 @@ index 0000000000..82ee652e18
 +            if (ret < 0 && ret != AVERROR_EOF) {
 +                return ret;
 +            }
++            if (ctx->first_packet && ctx->frame_extract && ctx->codec_type == CNCODEC_HEVC) {
++                sps_pps_parse(ctx, ctx->bsf->par_out->extradata, ctx->bsf->par_out->extradata_size);
++            }
++            if (ctx->frame_extract && ctx->codec_type == CNCODEC_H264) {
++                pkt_type = h264_judge_pkt_type(&pkt);
++                if (pkt_type < 0 && pkt_type != AVERROR_EOF) {
++                    av_log(avctx, AV_LOG_WARNING, "get unknown NALU type(maybe AUD), frame extract failed!\n");
++                    ctx->frame_extract = 0;
++                } else if (pkt_type != AVERROR_EOF) {
++                    pts_ret = pts_hash_insert(ctx->pts_hash, pkt.pts, pkt_type);
++                    if (pts_ret < 0) {
++                        av_log(avctx, AV_LOG_ERROR, "hash map insert failed! \n");
++                        return AVERROR_EXTERNAL;
++                    }
++                }
++            } else if (ctx->frame_extract && ctx->codec_type == CNCODEC_HEVC) {
++                pkt_type = hevc_judge_pkt_type(&ctx->hevc_sps_head, &pkt);
++                if (pkt_type < 0 && pkt_type != AVERROR_EOF) {
++                    av_log(avctx, AV_LOG_WARNING, "get unknown NALU type(maybe AUD), frame extract failed!\n");
++                    ctx->frame_extract = 0;
++                } else if (pkt_type != AVERROR_EOF) {
++                    pts_ret = pts_hash_insert(ctx->pts_hash, pkt.pts, pkt_type);
++                    if (pts_ret < 0) {
++                        av_log(avctx, AV_LOG_ERROR, "hash map insert failed! \n");
++                        return AVERROR_EXTERNAL;
++                    }
++                }
++            }
++            //av_log(avctx, AV_LOG_INFO, "send pkt pts: %d\n", pkt.pts);
 +            ret = mlumpp_decode_packet(avctx, &pkt);
 +            av_packet_unref(&pkt);
 +            if (ret == AVERROR(EAGAIN))
@@ -2237,7 +2639,7 @@ index 0000000000..82ee652e18
 +            }
 +        } else {
 +            if (!time_flag) {
-+                av_log(avctx, AV_LOG_WARNING, "Decode had feed EOS data, waited eos call back \n");
++                av_log(avctx, AV_LOG_VERBOSE, "Decode had feed EOS data, waited eos call back \n");
 +                time_flag = 1;
 +            }
 +        }
@@ -2318,6 +2720,13 @@ index 0000000000..82ee652e18
 +        if (ctx->trace_flag > 0) {
 +            av_log(avctx, AV_LOG_INFO, "Vid dec destroy done \n");
 +        }
++        if (ctx->mluop_handle) {
++            ret = ctx->dec_pp == P_SCVT ?
++            mlumpp_post_convert_destroy(ctx->mluop_handle) :
++            mlumpp_resize_yuv_destroy(ctx->mluop_handle);
++            mlumpp_mluop_unload(ctx->mluop_handle);
++            ctx->mluop_handle = NULL;
++        }
 +    } else {
 +        if (ctx->trace_flag > 0) {
 +            av_log(avctx, AV_LOG_INFO, "Jpeg dec destroy ... \n");
@@ -2341,10 +2750,29 @@ index 0000000000..82ee652e18
 +        ctx->bsf = NULL;
 +    }
 +
++    if (ctx->pts_hash) {
++        pts_hash_destroy(&ctx->pts_hash);
++    }
++    if (ctx->pts_hash) {
++        av_log(avctx, AV_LOG_WARNING, "hash func destroy failed! \n");
++    }
++    for(int i = 0 ; i < 32; ++i) {
++        if (ctx->hevc_sps_head.sps_table[i]) {
++            free(ctx->hevc_sps_head.sps_table[i]);
++            ctx->hevc_sps_head.sps_table[i] = NULL;
++        }
++    }
++    for(int i = 0; i < 256; ++i) {
++        if (ctx->hevc_sps_head.pps_table[i]) {
++            free(ctx->hevc_sps_head.sps_table[i]);
++            ctx->hevc_sps_head.sps_table[i] = NULL;
++        }
++    }
++
 +    ctx->mlu_ctx = NULL;
-+    av_buffer_unref(&ctx->hwframe);
-+    av_buffer_unref(&ctx->hwdevice);
-+    av_buffer_unref(&ctx->resize_hwframe);
++    if (ctx->hwframe)  av_buffer_unref(&ctx->hwframe);
++    if (ctx->resize_hwframe) av_buffer_unref(&ctx->resize_hwframe);
++    if (ctx->hwdevice) av_buffer_unref(&ctx->hwdevice);
 +
 +    ctx->decoder_init_flag = 0;
 +    if (ctx->trace_flag > 1) {
@@ -2377,11 +2805,8 @@ index 0000000000..82ee652e18
 +
 +    const AVBitStreamFilter *bsf;
 +    cnjpegDecCreateInfo jdec_params;
-+    enum AVPixelFormat dec_pix_format = mlumpp_dec_map_ff_pixfmt(
-+                                        mlumpp_dec_map_cn_pixfmt(ctx->output_pixfmt));
-+    enum AVPixelFormat pix_fmts[3] = { AV_PIX_FMT_MLU, dec_pix_format,
-+                                       AV_PIX_FMT_NONE };
 +
++    ctx->avctx = avctx;
 +    if (NULL == avctx || NULL == avctx->priv_data) {
 +        av_log(avctx, AV_LOG_ERROR, "Early error in mlumpp_decode_init func.\n");
 +        return AVERROR_BUG;
@@ -2398,37 +2823,56 @@ index 0000000000..82ee652e18
 +        av_log(avctx, AV_LOG_ERROR, "Invalid resize string\n");
 +        return AVERROR(EINVAL);
 +    }
-+    if (ctx->resize_str && avctx->codec->id == AV_CODEC_ID_MJPEG) {
++    if ((ctx->resize_str || ctx->post_pixfmt) && avctx->codec->id == AV_CODEC_ID_MJPEG) {
 +        av_log(avctx, AV_LOG_ERROR, "Jpeg decode unsuported resize feature\n");
 +        return AVERROR(EINVAL);
 +    }
 +
-+    avctx->sw_pix_fmt = mlumpp_dec_map_ff_pixfmt(
-+                        mlumpp_dec_map_cn_pixfmt(ctx->output_pixfmt));
-+    ret = ff_get_format(avctx, pix_fmts);
-+    if (ret < 0) {
-+        av_log(avctx, AV_LOG_ERROR, "Error, ff_get_format failed: %d\n", ret);
-+        return ret;
-+    }
-+    avctx->pix_fmt = ret;
-+
-+    ctx->avctx = avctx;
-+    ctx->frame_queue = NULL;
 +    probed_width  = avctx->coded_width ? avctx->coded_width : 1920;
 +    probed_height = avctx->coded_height ? avctx->coded_height : 1080;
 +    if (avctx->codec->id == AV_CODEC_ID_MJPEG) {
 +        ctx->stride_align  = CN_JFRAME_ALIGNMENT_W;
 +        avctx->coded_width = FFALIGN(avctx->coded_width, CN_JFRAME_ALIGNMENT_W);
 +        avctx->coded_height= FFALIGN(avctx->coded_height,CN_JFRAME_ALIGNMENT_H);
-+        if(0 != mlumpp_adapt_resolution(avctx)) {
-+            return AVERROR(EINVAL);
-+        }
 +    } else {
 +        // ctx->stride_align  = CN_VFRAME_ALIGNMENT;
 +        avctx->coded_width = FFALIGN(avctx->coded_width, ctx->stride_align);
 +    }
 +
++    ctx->dec_pp = ctx->post_pixfmt ? P_SCVT : (ctx->resize_str ? P_SCALE : P_NONE);
++    if(check_post_proc(ctx)) {
++        av_log(ctx, AV_LOG_ERROR, "check postproc failed, func: %s, line: %d\n",
++            __func__, __LINE__);
++        return AVERROR(EINVAL);
++    }
++    if (ctx->dec_pp == P_SCVT) {
++        // ctx->post_pixfmt = ctx->post_pixfmt ? ctx->post_pixfmt : "bgr24";
++        avctx->sw_pix_fmt = av_get_pix_fmt(ctx->post_pixfmt);
++        ctx->resize.width = ctx->resize.width ? ctx->resize.width : avctx->coded_width;
++        ctx->resize.height= ctx->resize.height? ctx->resize.height: avctx->coded_height;
++    } else if (ctx->dec_pp == P_SCALE) {
++        avctx->sw_pix_fmt = av_get_pix_fmt(ctx->output_pixfmt);
++        ctx->resize.width = ctx->resize.width ? ctx->resize.width : avctx->coded_width;
++        ctx->resize.height= ctx->resize.height? ctx->resize.height: avctx->coded_height;
++    } else {
++        avctx->sw_pix_fmt = av_get_pix_fmt(ctx->output_pixfmt);
++    }
++
++    enum AVPixelFormat pix_fmts[3] = {AV_PIX_FMT_MLU,
++                                    avctx->sw_pix_fmt, AV_PIX_FMT_NONE};
++    ret = ff_get_format(avctx, pix_fmts);
++    if (ret < 0) {
++        av_log(avctx, AV_LOG_ERROR, "Error, ff_get_format failed: %d\n", ret);
++        return ret;
++    }
++
++    ctx->frame_queue = NULL;
++    avctx->pix_fmt = ret;
 +    mlumpp_get_version();
++    if(0 != mlumpp_adapt_resolution(ctx)) {
++        return AVERROR(EINVAL);
++    }
++
 +    sprintf(device_idx, "%d", ctx->device_id);
 +    if (avctx->hw_frames_ctx) {
 +        av_buffer_unref(&ctx->hwframe);
@@ -2568,6 +3012,10 @@ index 0000000000..82ee652e18
 +    case AV_FIELD_TB:
 +    case AV_FIELD_BT:
 +        ctx->progressive = 0;
++        if (ctx->frame_extract) {
++            av_log(avctx, AV_LOG_ERROR, "Get field stream. frame extract is unavailable!\n");
++            ctx->frame_extract = 0;
++        }
 +        break;
 +    case AV_FIELD_PROGRESSIVE: // fall through
 +    default:
@@ -2587,8 +3035,9 @@ index 0000000000..82ee652e18
 +        ctx->vdec_params.inputBufNum = ctx->num_input_buffers;
 +        ctx->vdec_params.outputBufNum = ctx->num_output_buffers;
 +        ctx->vdec_params.allocType = CNCODEC_BUF_ALLOC_LIB;
-+        ctx->vdec_params.instance = ctx->instance_id;
-+        ctx->vdec_params.pixelFmt = mlumpp_dec_map_mlu_pixfmt(avctx->sw_pix_fmt);
++        // ctx->vdec_params.instance = ctx->instance_id;
++        ctx->vdec_params.instance = ctx->instance_id == 7 ? (ctx_num++%6) : ctx->instance_id;
++        ctx->vdec_params.pixelFmt = mlumpp_dec_map_mlu_pixfmt(av_get_pix_fmt(ctx->output_pixfmt));
 +        ctx->vdec_params.suggestedLibAllocBitStrmBufSize = FFALIGN(bitstream_size, 4096);
 +        ctx->vdec_params.userContext = (void*) ctx;
 +
@@ -2643,13 +3092,28 @@ index 0000000000..82ee652e18
 +            goto error;
 +        }
 +    }
++    ctx->pts_hash = pts_hash_init();
++    if (!ctx->pts_hash) {
++        av_log(avctx, AV_LOG_ERROR, "Pts hash: hash init failed!\n");
++        ret = -1;
++        goto error;
++    }
++    if (ctx->frame_extract && ctx->codec_type == CNCODEC_HEVC) {
++        memset(&ctx->hevc_sps_head, 0, sizeof(hevcStreamHeader_t));
++    }
 +
 +    // only vid decoder has post proc
-+    if (ctx->resize.width > 0 && ctx->resize.height > 0) {
-+        if ((ctx->resize.width != avctx->width / 2 || ctx->resize.height != avctx->height / 2) &&
-+            (ctx->resize.width != avctx->width / 4 || ctx->resize.height != avctx->height / 4)) {
-+            av_log(avctx, AV_LOG_ERROR, "Reisze params error, only supported 1/2 or 1/4 downscale\n");
-+            return AVERROR(EINVAL);
++    if (ctx->dec_pp != P_NONE) {
++        if (((ctx->resize.width != avctx->width / 2 || ctx->resize.height != avctx->height / 2) &&
++             (ctx->resize.width != avctx->width / 4 || ctx->resize.height != avctx->height / 4)) ||
++            ctx->dec_pp == P_SCVT) {
++            ret = mlumpp_mluop_load(&ctx->mluop_handle, mluop_libname, avctx);
++            if (ret < 0) {
++                mlumpp_mluop_unload(ctx->mluop_handle);
++                ctx->mluop_handle = NULL;
++            }
++        } else {
++            ctx->mluop_handle = NULL;
 +        }
 +        ctx->resize_hwframe = av_hwframe_ctx_alloc(ctx->hwdevice);
 +        if (!ctx->resize_hwframe) {
@@ -2663,11 +3127,11 @@ index 0000000000..82ee652e18
 +        if (!resize_frame_ctx->pool) {
 +            resize_frame_ctx->format = AV_PIX_FMT_MLU;
 +            resize_frame_ctx->sw_format = avctx->sw_pix_fmt;
-+            resize_frame_ctx->width = ctx->resize.width;
++            resize_frame_ctx->width  = ctx->resize.width;
 +            resize_frame_ctx->height = ctx->resize.height;
 +            if ((ret = av_hwframe_ctx_init(ctx->resize_hwframe)) < 0) {
 +                av_log(avctx, AV_LOG_ERROR, "Resize frame: av_hwframe_ctx_init failed\n");
-+                return 0;
++                return AVERROR(EINVAL);
 +            }
 +        }
 +    }
@@ -2696,10 +3160,12 @@ index 0000000000..82ee652e18
 +    { "device_id",     "use to choose the accelerator card",     OFFSET(device_id),       AV_OPT_TYPE_INT, { .i64 = 0 },0, INT_MAX, VD },\
 +    { "instance_id",   "use to choose which vpu instance",       OFFSET(instance_id),     AV_OPT_TYPE_INT, { .i64 =-1 },-1, INT_MAX, VD },\
 +    { "cnrt_init_flag", "init/destory cnrt device in ffmpeg",    OFFSET(cnrt_init_flag),  AV_OPT_TYPE_INT, { .i64 = 1 },0, 1, VD },\
-+    { "input_buf_num",  "Number of input buffers for decoder",   OFFSET(num_input_buffers),   AV_OPT_TYPE_INT, { .i64 = 4}, 1, 18, VD },\
-+    { "output_buf_num","Number of output buffers for decoder",   OFFSET(num_output_buffers),  AV_OPT_TYPE_INT, { .i64 = 4}, 1, 18, VD },\
-+    { "stride_align","stride align of output buffers for decoder",OFFSET(stride_align),   AV_OPT_TYPE_INT, { .i64 = 1 },0, 128, VD },\
-+    { "output_pixfmt",        "output pix fmt",                   OFFSET(output_pixfmt),   AV_OPT_TYPE_STRING, { .str = "nv12" },0, 0, VD }, /*NV12, NV21, YUV420P, P010*/
++    { "input_buf_num",  "number of in buffers for decoder",      OFFSET(num_input_buffers),   AV_OPT_TYPE_INT, { .i64 = 4}, 1, 18, VD },\
++    { "output_buf_num","mumber of out buffers for decoder",      OFFSET(num_output_buffers),  AV_OPT_TYPE_INT, { .i64 = 4}, 1, 18, VD },\
++    { "stride_align","stride align of out buffers for decoder",  OFFSET(stride_align),   AV_OPT_TYPE_INT, { .i64 = 1 },0, 128, VD },\
++    { "output_pixfmt", "decoder output pixfmt",                  OFFSET(output_pixfmt),   AV_OPT_TYPE_STRING, { .str = "nv12" },0, 0, VD },\
++    { "post_pixfmt",   "decode post process out pixfmt",         OFFSET(post_pixfmt),   AV_OPT_TYPE_STRING, { .str = NULL },0, 0, VD },\
++    { "frame_extract",   "switch of the IBP frame extract",      OFFSET(frame_extract),   AV_OPT_TYPE_INT, { .i64 = 0 }, 0, 1, VD },\
 +
 +static const AVOption options[] = {
 +    MLU2XX_COMMON_OPTS
@@ -2741,12 +3207,12 @@ index 0000000000..82ee652e18
 +        .receive_frame  = mlumpp_receive_frame, \
 +        .flush          = mlumpp_flush,  \
 +        .capabilities   = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_AVOID_PROBING | AV_CODEC_CAP_HARDWARE, \
-+        .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_MLU, \
-+                                                        AV_PIX_FMT_NV12, \
-+                                                        AV_PIX_FMT_NV21, \
-+                                                        AV_PIX_FMT_YUV420P, \
-+                                                        AV_PIX_FMT_P010, \
-+                                                        AV_PIX_FMT_NONE }, \
++        .pix_fmts       = (const enum AVPixelFormat[]){AV_PIX_FMT_NV12,    AV_PIX_FMT_NV21,  \
++                                                        AV_PIX_FMT_YUV420P,AV_PIX_FMT_P010,  \
++                                                        AV_PIX_FMT_ABGR,   AV_PIX_FMT_ARGB,  \
++                                                        AV_PIX_FMT_BGRA,   AV_PIX_FMT_RGBA,  \
++                                                        AV_PIX_FMT_BGR24,  AV_PIX_FMT_RGB24, \
++                                                        AV_PIX_FMT_MLU,    AV_PIX_FMT_NONE },\
 +        .hw_configs     = mlu_hw_configs, \
 +        .wrapper_name   = "mludec", \
 +    };
@@ -2769,10 +3235,10 @@ index 0000000000..82ee652e18
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_enc_h264.c b/libavcodec/mlumpp_enc_h264.c
 new file mode 100755
-index 0000000000..d23d6b88c6
+index 0000000000..b4a83f498a
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_h264.c
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,177 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2827,10 +3293,10 @@ index 0000000000..d23d6b88c6
 +
 +static const AVCodecDefault h264_defaults[] = {
 +    { "b",                "0" },
-+    { "bf",               "0" },
-+    { "g",                "200" },
-+    { "qmin",             "-1" },
-+    { "qmax",             "-1" },
++    { "bf",               "0"  },
++    { "g",                "30" },
++    { "qmin",             "0"  },
++    { "qmax",             "51" },
 +    { "refs",             "-1" },
 +    { NULL },
 +};
@@ -2871,7 +3337,7 @@ index 0000000000..d23d6b88c6
 +    { "main",      "", 0, AV_OPT_TYPE_CONST, { .i64 = CNVIDEOENC_PROFILE_H264_MAIN },      0, 0, VE, "profile" },
 +    { "high",      "", 0, AV_OPT_TYPE_CONST, { .i64 = CNVIDEOENC_PROFILE_H264_HIGH },      0, 0, VE, "profile" },
 +    { "high444p",  "", 0, AV_OPT_TYPE_CONST, { .i64 = CNVIDEOENC_PROFILE_H264_HIGH_10 }, 0, 0, VE, "profile" },
-+    { "level",  "Set the encoding level restriction",  OFFSET(cnvid.level),  AV_OPT_TYPE_INT,   { .i64 = CNVIDEOENC_LEVEL_H264_42 }, CNVIDEOENC_LEVEL_H264_1, CNVIDEOENC_LEVEL_H264_51, VE, "level" },
++    { "level",  "Set the encoding level restriction",  OFFSET(cnvid.level),  AV_OPT_TYPE_INT,   { .i64 = CNVIDEOENC_LEVEL_H264_41 }, CNVIDEOENC_LEVEL_H264_1, CNVIDEOENC_LEVEL_H264_51, VE, "level" },
 +    { "auto",  "",     0,      AV_OPT_TYPE_CONST, { .i64 = CNVIDEOENC_LEVEL_H264_13 },       0, 0, VE, "level" },
 +    { "1",     "",     0,      AV_OPT_TYPE_CONST, { .i64 = CNVIDEOENC_LEVEL_H264_1 },        0, 0, VE, "level" },
 +    { "1.0",   "",     0,      AV_OPT_TYPE_CONST, { .i64 = CNVIDEOENC_LEVEL_H264_1 },        0, 0, VE, "level" },
@@ -2943,6 +3409,8 @@ index 0000000000..d23d6b88c6
 +                                             AV_PIX_FMT_ABGR,
 +                                             AV_PIX_FMT_BGRA,
 +                                             AV_PIX_FMT_RGBA,
++                                             AV_PIX_FMT_RGB24,
++                                             AV_PIX_FMT_BGR24,
 +                                             AV_PIX_FMT_MLU,
 +                                             AV_PIX_FMT_NONE},
 +    .wrapper_name = "mluenc",
@@ -2951,10 +3419,10 @@ index 0000000000..d23d6b88c6
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_enc_hevc.c b/libavcodec/mlumpp_enc_hevc.c
 new file mode 100755
-index 0000000000..f9e6a8c7a0
+index 0000000000..8a7f477c26
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_hevc.c
-@@ -0,0 +1,172 @@
+@@ -0,0 +1,174 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -3009,11 +3477,11 @@ index 0000000000..f9e6a8c7a0
 +
 +static const AVCodecDefault hevc_defaults[] = {
 +    { "b",                "0" },
-+    { "bf",               "0" },
-+    { "g",                "200" },
-+    { "qmin",             "-1" },
-+    { "qmax",             "-1" },
-+    { "refs",             "0" },
++    { "bf",               "0"  },
++    { "g",                "30" },
++    { "qmin",             "0"  },
++    { "qmax",             "51" },
++    { "refs",             "0"  },
 +#if FF_API_CODER_TYPE
 +    { "coder",            "-1" },
 +#endif
@@ -3122,6 +3590,8 @@ index 0000000000..f9e6a8c7a0
 +                                             AV_PIX_FMT_ABGR,
 +                                             AV_PIX_FMT_BGRA,
 +                                             AV_PIX_FMT_RGBA,
++                                             AV_PIX_FMT_RGB24,
++                                             AV_PIX_FMT_BGR24,
 +                                             AV_PIX_FMT_MLU,
 +                                             AV_PIX_FMT_NONE},
 +    .wrapper_name = "mluenc",
@@ -4221,10 +4691,10 @@ index 0000000000..9302525d0e
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_mluop.c b/libavcodec/mlumpp_mluop.c
 new file mode 100755
-index 0000000000..1c04a416d3
+index 0000000000..41344d8267
 --- /dev/null
 +++ b/libavcodec/mlumpp_mluop.c
-@@ -0,0 +1,122 @@
+@@ -0,0 +1,501 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4250,109 +4720,489 @@ index 0000000000..1c04a416d3
 +#include "libavutil/log.h"
 +#include "cnrt.h"
 +#include <dlfcn.h>
-+#define CNRT_ERROR_CHECK(avctx, ret)                                                       \
-+    if (ret != CNRT_RET_SUCCESS) {                                                         \
-+        av_log(avctx,AV_LOG_ERROR,"error occur, func: %s, line: %d\n", __func__, __LINE__);\
-+        return -1;                                                                         \
-+    }
++
 +typedef struct mlumpp_mluop_ctx {
 +    void *lib;
-+    HANDLE_MLU_OP mlu_handle;
-+    void *logctx;
-+    int (*ptr_resize_yuv_init)(void **, int, int, int, int, int, int,int);
++    HANDLE_MLU_OP cn_hdl;
++    void *ctx;
++
++    /* yuv resize */
++    int (*ptr_resize_yuv_init)(void **, int, int, int, int, const char *, const char *);
 +    int (*ptr_resize_yuv_exec)(void *, void *, void *, void *, void *);
 +    int (*ptr_resize_yuv_destroy)(void *);
++
++    /* resize and convert */
++    int (*ptr_resize_cvt_init)(void **, int, int, int, int, const char *, const char *, const char *);
++    int (*ptr_resize_cvt_exec)(void *, void *, void *, void *);
++    int (*ptr_resize_cvt_destroy)(void *);
++
++    /* convert rgbx*/
++    int (*ptr_convert_rgbx2rgbx_init)(void **, int, int, const char *, const char *, const char *);
++    int (*ptr_convert_rgbx2rgbx_exec)(void *, void *, void *);
++    int (*ptr_convert_rgbx2rgbx_destroy)(void *);
++
 +} mlumpp_mluop_ctx_t;
 +
-+static av_cold void *dlsym_prefixed(void *handle, const char *symbol,
-+                                    const char *prefix) {
-+    char buf[50];
-+    snprintf(buf, sizeof(buf), "%s_%s", prefix ? prefix : "", symbol);
-+    return dlsym(handle, buf);
-+}
-+
-+int mlumpp_mluop_load(HANDLE_MLU_OP *h, const char *libname, void *logctx) {
++int mlumpp_mluop_load(HANDLE_MLU_OP *h, const char *libname, void *ctx) {
 +    mlumpp_mluop_ctx_t *mluop_ctx;
 +    mluop_ctx = av_mallocz(sizeof(*mluop_ctx));
 +    if (mluop_ctx == NULL) {
 +        return AVERROR(ENOMEM);
 +    }
-+    if (libname) {
-+        mluop_ctx->lib = dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
-+        if (!mluop_ctx->lib) {
-+            // av_log(logctx, AV_LOG_WARNING, "%s not found\n", libname);
-+            av_free(mluop_ctx);
-+            return AVERROR_EXTERNAL;
-+        } else {
-+            av_log(logctx, AV_LOG_TRACE, "%s found\n", libname);
-+        }
++    mluop_ctx->lib = dlopen(libname, RTLD_LAZY);
++    if (!mluop_ctx->lib) {
++        av_log(ctx, AV_LOG_WARNING, "load %s failed\n", libname);
++        av_free(mluop_ctx);
++        return AVERROR_EXTERNAL;
++    } else {
++        av_log(ctx, AV_LOG_TRACE, "loaded %s\n", libname);
 +    }
-+    mluop_ctx->ptr_resize_yuv_init =
-+        dlsym_prefixed(mluop_ctx->lib, "resize_yuv_invoke_init", "mluop");
-+    mluop_ctx->ptr_resize_yuv_exec =
-+        dlsym_prefixed(mluop_ctx->lib, "resize_yuv_invoke_exec", "mluop");
-+    mluop_ctx->ptr_resize_yuv_destroy =
-+        dlsym_prefixed(mluop_ctx->lib, "resize_yuv_invoke_destroy", "mluop");
-+    if (!mluop_ctx->ptr_resize_yuv_init || !mluop_ctx->ptr_resize_yuv_exec ||
-+        !mluop_ctx->ptr_resize_yuv_destroy) {
-+        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n",
-+                libname);
-+        dlclose(mluop_ctx->lib);
++
++    mluop_ctx->ptr_resize_yuv_init    = dlsym(mluop_ctx->lib, "mluop_resize_yuv_init");
++    mluop_ctx->ptr_resize_yuv_exec    = dlsym(mluop_ctx->lib, "mluop_resize_yuv_exec");
++    mluop_ctx->ptr_resize_yuv_destroy = dlsym(mluop_ctx->lib, "mluop_resize_yuv_destroy");
++
++    mluop_ctx->ptr_resize_cvt_init    = dlsym(mluop_ctx->lib, "MluopResizeCvtInit");
++    mluop_ctx->ptr_resize_cvt_exec    = dlsym(mluop_ctx->lib, "MluopResizeCvtExec");
++    mluop_ctx->ptr_resize_cvt_destroy = dlsym(mluop_ctx->lib, "MluopResizeCvtDestroy");
++
++    mluop_ctx->ptr_convert_rgbx2rgbx_init    = dlsym(mluop_ctx->lib, "MluopConvertRgbx2RgbxInit");
++    mluop_ctx->ptr_convert_rgbx2rgbx_exec    = dlsym(mluop_ctx->lib, "MluopConvertRgbx2RgbxExec");
++    mluop_ctx->ptr_convert_rgbx2rgbx_destroy = dlsym(mluop_ctx->lib, "MluopConvertRgbx2RgbxDestroy");
++
++    if (!mluop_ctx->ptr_resize_cvt_init || !mluop_ctx->ptr_resize_cvt_exec || !mluop_ctx->ptr_resize_cvt_destroy ||
++        !mluop_ctx->ptr_resize_yuv_init || !mluop_ctx->ptr_resize_yuv_exec || !mluop_ctx->ptr_resize_yuv_destroy ||
++        !mluop_ctx->ptr_convert_rgbx2rgbx_init || !mluop_ctx->ptr_convert_rgbx2rgbx_exec || !mluop_ctx->ptr_convert_rgbx2rgbx_destroy
++       ) {
++        av_log(ctx, AV_LOG_WARNING, "Not all functions found in %s\n", libname);
++        // dlclose(mluop_ctx->lib);
 +        mluop_ctx->lib = NULL;
 +        av_free(mluop_ctx);
 +        return AVERROR_EXTERNAL;
 +    }
-+    mluop_ctx->logctx = logctx;
-+    *h = (void *)mluop_ctx;
-+    return 0;
-+}
-+int mlumpp_mluop_resize_yuv_init(HANDLE_MLU_OP h, int src_w, int src_h, int dst_w,
-+                                 int dst_h, int dev_id) {
-+    // cnrtRet_t cnrt_ret;
-+    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
-+    if (!mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_init) {
-+        return AVERROR_EXTERNAL;
-+    }
-+    return mluop_ctx->ptr_resize_yuv_init(&mluop_ctx->mlu_handle, src_w, src_h,
-+                                          -1, dst_w, dst_h, -1, dev_id);
-+}
-+int mlumpp_mluop_resize_yuv_exec(HANDLE_MLU_OP h, void *src_y, void *src_uv,
-+                                 void *dst_y, void *dst_uv) {
++    mluop_ctx->ctx = ctx;
 +
-+    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
-+    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_exec) {
-+        return AVERROR_EXTERNAL;
-+    }
-+    return mluop_ctx->ptr_resize_yuv_exec(mluop_ctx->mlu_handle, src_y, src_uv, dst_y, dst_uv);
-+}
-+int mlumpp_mluop_resize_yuv_destroy(HANDLE_MLU_OP h) {
-+    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
-+    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_destroy) {
-+        return AVERROR_EXTERNAL;
-+    }
-+    return mluop_ctx->ptr_resize_yuv_destroy(mluop_ctx->mlu_handle);
++    *h = (void *)mluop_ctx;
++
++    return 0;
 +}
 +
 +int mlumpp_mluop_unload(HANDLE_MLU_OP h) {
-+    // cnrtRet_t cnrt_ret;
 +    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
 +    if (!mluop_ctx) {
 +        return -1;
 +    }
 +    if (mluop_ctx->lib) {
-+        dlclose(mluop_ctx->lib);
++        // dlclose(mluop_ctx->lib);
 +        mluop_ctx->lib = NULL;
 +    }
 +    av_free(mluop_ctx);
 +    mluop_ctx = NULL;
 +    return 0;
 +}
++
++int mlumpp_post_convert_init(HANDLE_MLU_OP h, int src_w, int src_h, int dst_w,
++                                int dst_h, const char *in_pixfmt, const char *out_pixfmt) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx->lib || !mluop_ctx->ptr_resize_cvt_init) {
++        return AVERROR_EXTERNAL;
++    }
++    return mluop_ctx->ptr_resize_cvt_init(&mluop_ctx->cn_hdl, src_w, src_h,
++                    dst_w, dst_h, in_pixfmt, out_pixfmt, "8U");
++}
++
++int mlumpp_post_convert_exec(HANDLE_MLU_OP h, void *src_y, void *src_uv,
++                                 void *dst_rgbx) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_cvt_exec) {
++        return AVERROR_EXTERNAL;
++    }
++    return mluop_ctx->ptr_resize_cvt_exec(mluop_ctx->cn_hdl, src_y, src_uv, dst_rgbx);
++}
++
++int mlumpp_post_convert_destroy(HANDLE_MLU_OP h) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_cvt_destroy) {
++        return AVERROR_EXTERNAL;
++    }
++    return mluop_ctx->ptr_resize_cvt_destroy(mluop_ctx->cn_hdl);
++}
++
++int mlumpp_resize_yuv_init(HANDLE_MLU_OP h, int src_w, int src_h,
++                                int dst_w, int dst_h, const char *pixfmt) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_init) {
++        return AVERROR_EXTERNAL;
++    }
++    return mluop_ctx->ptr_resize_yuv_init(&mluop_ctx->cn_hdl, src_w, src_h,
++                                          dst_w, dst_h, "8U", pixfmt);
++}
++
++int mlumpp_resize_yuv_exec(HANDLE_MLU_OP h, void *src_y, void *src_uv,
++                                 void *dst_y, void *dst_uv) {
++
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_exec) {
++        return AVERROR_EXTERNAL;
++    }
++    return mluop_ctx->ptr_resize_yuv_exec(mluop_ctx->cn_hdl, src_y, src_uv, dst_y, dst_uv);
++}
++
++int mlumpp_resize_yuv_destroy(HANDLE_MLU_OP h) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_destroy) {
++        return AVERROR_EXTERNAL;
++    }
++    return mluop_ctx->ptr_resize_yuv_destroy(mluop_ctx->cn_hdl);
++}
++
++int mlumpp_convert_rgb_init(HANDLE_MLU_OP h, int width, int height,
++                            const char *src_pixfmt, const char *dst_pixfmt) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_init) {
++        return AVERROR_EXTERNAL;
++    }
++
++    return mluop_ctx->ptr_convert_rgbx2rgbx_init(&mluop_ctx->cn_hdl,
++            width, height, src_pixfmt, dst_pixfmt, "8U");
++}
++
++int mlumpp_convert_rgb_exec(HANDLE_MLU_OP h, void *src, void *dst) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_exec) {
++        return AVERROR_EXTERNAL;
++    }
++
++    return mluop_ctx->ptr_convert_rgbx2rgbx_exec(mluop_ctx->cn_hdl, src, dst);
++}
++
++int mlumpp_convert_rgb_destroy(HANDLE_MLU_OP h) {
++    mlumpp_mluop_ctx_t *mluop_ctx = (mlumpp_mluop_ctx_t *)h;
++    if (!mluop_ctx || !mluop_ctx->lib || !mluop_ctx->ptr_resize_yuv_destroy) {
++        return AVERROR_EXTERNAL;
++    }
++
++    return mluop_ctx->ptr_convert_rgbx2rgbx_destroy(mluop_ctx->cn_hdl);
++}
++
++void bs_init(bs_t *s, void *p_data, int i_data) {
++    s->p_start = (unsigned char *)p_data;
++    s->p       = (unsigned char *)p_data;
++    s->p_end   = (unsigned char *)s->p + i_data;
++    s->i_left  = 8;
++}
++
++int bs_read(bs_t *s, int i_count) {
++    static int i_mask[33] = {0x00, 0x01,        0x03,       0x07,       0x0f,
++                                   0x1f,        0x3f,       0x7f,       0xff,
++                                   0x1ff,       0x3ff,      0x7ff,      0xfff,
++                                   0x1fff,      0x3fff,     0x7fff,     0xffff,
++                                   0x1ffff,     0x3ffff,    0x7ffff,    0xfffff,
++                                   0x1fffff,    0x3fffff,   0x7fffff,   0xffffff,
++                                   0x1ffffff,   0x3ffffff,  0x7ffffff,  0xfffffff,
++                                   0x1fffffff,  0x3fffffff, 0x7fffffff, 0xffffffff};
++    int i_shr;
++    int i_result = 0;
++    while(i_count > 0) {
++        if (s->p >= s->p_end) {
++            break;
++        }
++        if((i_shr = s->i_left - i_count) >= 0) {
++            i_result |= (*s->p >> i_shr)&i_mask[i_count];
++            s->i_left -= i_count;
++            if(s->i_left == 0) {
++                s->p++;
++                s->i_left = 8;
++            }
++            return (i_result);
++        } else {
++            i_result |= (*s->p&i_mask[s->i_left]) << -i_shr;
++            i_count -= s->i_left;
++            s->p++;
++            s->i_left = 8;
++        }
++    }
++    return (i_result);
++}
++
++int bs_read1(bs_t *s) {
++    if(s->p < s->p_end) {
++        unsigned int i_result;
++        s->i_left--;
++        i_result = (*s->p >> s->i_left)&0x01;
++        if(s->i_left==0) {
++            s->p++;
++            s->i_left = 8;
++        }
++        return i_result;
++    }
++    return 0;
++}
++
++int bs_read_ue(bs_t *s) {
++    int i=0;
++    while (bs_read1(s) == 0 && s->p < s->p_end && i < 32) {
++        i++;
++    }
++    return ((1<<i) - 1 + bs_read(s, i));
++}
++
++int get_h264_slice_type(NALU_t* nal) {
++    bs_t nal_s;
++    int frametype = 0;
++    unsigned char* oneframe_h264 = NULL;
++    if ((oneframe_h264 = (unsigned char *)calloc(nal->len + 4, sizeof(unsigned char)))==NULL) {
++        av_log(NULL, AV_LOG_WARNING, "get slice buffer no space!\n");
++        return -1;
++    }
++    oneframe_h264[0] = 0x00;
++    oneframe_h264[1] = 0x00;
++    oneframe_h264[2] = 0x00;
++    oneframe_h264[3] = 0x01;
++    memcpy(oneframe_h264 + nal->prefix_len, nal->buf + nal->prefix_len, nal->len - nal->prefix_len);
++
++    bs_init(&nal_s, oneframe_h264 + nal->prefix_len + 1, nal->len - nal->prefix_len -1);
++
++    if (nal->nal_unit_type == NAL_SLICE_NOIDR || nal->nal_unit_type == NAL_SLICE_IDR) {
++        bs_read_ue(&nal_s);
++        frametype = bs_read_ue(&nal_s);
++        switch (frametype){
++        case 0: case 5:
++            nal->frame_type = AV_PICTURE_TYPE_P;
++            break;
++        case 1: case 6:
++            nal->frame_type = AV_PICTURE_TYPE_B;
++            break;
++        case 3: case 8:
++            nal->frame_type = AV_PICTURE_TYPE_SP;
++            break;
++        case 2: case 7:
++            nal->frame_type = AV_PICTURE_TYPE_I;
++            break;
++        case 4: case 9:
++            nal->frame_type = AV_PICTURE_TYPE_SI;
++            break;
++        default:
++            nal->frame_type = AV_PICTURE_TYPE_NONE;
++        }
++    } else {
++        nal->frame_type = AV_PICTURE_TYPE_NONE;
++    }
++    if (oneframe_h264) {
++        free(oneframe_h264);
++        oneframe_h264 = NULL;
++    }
++    return nal->frame_type;
++}
++
++int get_hevc_slice_type(hevcStreamHeader_t* h, NALU_t* nal) {
++    bs_t nal_s;
++    H265SPS_t* sps = NULL;
++    H265PPS_t* pps = NULL;
++    int frametype = 0;
++    int i = 0;
++    unsigned char* oneframe_hevc = NULL;
++    if ((oneframe_hevc = (unsigned char *)calloc(nal->len + 4, sizeof(unsigned char)))==NULL) {
++        av_log(NULL, AV_LOG_WARNING, "get slice buffer no space!\n");
++        return -1;
++    }
++    oneframe_hevc[0] = 0x00;
++    oneframe_hevc[1] = 0x00;
++    oneframe_hevc[2] = 0x00;
++    oneframe_hevc[3] = 0x01;
++    memcpy(oneframe_hevc + 4, nal->buf + nal->prefix_len, nal->len - nal->prefix_len);
++
++    bs_init(&nal_s, oneframe_hevc + nal->prefix_len + 2, nal->len - nal->prefix_len -2);
++
++    int first_slice_seg_input_flag = bs_read1(&nal_s);
++    if (nal->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP &&
++        nal->nal_unit_type <= NAL_UNIT_RESERVED_IRAP_VCL23) {
++        bs_read1(&nal_s);
++    }
++    int slice_pic_param_set_id = bs_read_ue(&nal_s);
++    pps = h->pps_table[slice_pic_param_set_id];
++    if (!pps) {
++        frametype = -1;
++        goto failed;
++    }
++    sps = h->sps_table[pps->pps_seq_parameter_set_id];
++    if (!sps) {
++        frametype = -1;
++        goto failed;
++    }
++    int dependent_slice_segment_flag = 0;
++    if (!first_slice_seg_input_flag) {
++        if (pps->dependent_slice_segments_enabled_flag) {
++            dependent_slice_segment_flag = bs_read1(&nal_s);
++        }
++        int maxCUWidth = 1<<(sps->log2_min_luma_coding_block_size_minus3+3 + sps->log2_diff_max_min_luma_coding_block_size);
++        int maxCUHeight = maxCUWidth;// to check
++        int numCTUs = ((sps->pic_width_in_luma_samples+maxCUWidth-1)/maxCUWidth)*((sps->pic_height_in_luma_samples+maxCUHeight-1)/maxCUHeight);
++        int bitsSliceSegmentAddress = 0;
++        while (numCTUs>(1<<bitsSliceSegmentAddress)) {
++            bitsSliceSegmentAddress++;
++        }
++        bs_read(&nal_s, bitsSliceSegmentAddress);
++    }
++    if (!dependent_slice_segment_flag) {
++        for(i = 0; i < pps->num_extra_slice_header_bits; ++i) {
++            bs_read1(&nal_s);
++        }
++        frametype = bs_read_ue(&nal_s);
++
++        if (frametype == 0)
++            frametype = AV_PICTURE_TYPE_B;
++        else if(frametype == 1)
++            frametype = AV_PICTURE_TYPE_P;
++        else if(frametype == 2)
++            frametype = AV_PICTURE_TYPE_I;
++    }
++failed:
++    if (oneframe_hevc) {
++        free(oneframe_hevc);
++        oneframe_hevc = NULL;
++    }
++    return frametype;
++}
++
++int find_next_nalu_header(uint8_t* data, int start_pos, int data_size) {
++    uint8_t* start = data + start_pos;
++    int step = 0;
++    uint8_t* header = start + step;
++    while (AV_RB32(header) != 1 && step < data_size - start_pos) {
++        step++;
++        header = start + step;
++        //av_log(NULL, AV_LOG_WARNING, "%02x ", AV_RB8(header));
++    }
++    return start_pos + step;
++}
++
++void read_ptl(bs_t* b, int sps_max_sub_layers_minus1) {
++    int i = 0;
++    int sub_layer_num[8] = {0,0,0,0,0,0,0,0};
++    int sub_layer_level[8] = {0,0,0,0,0,0,0,0};
++    bs_read(b, 96);
++    for (i = 0; i < sps_max_sub_layers_minus1; ++i) {
++        sub_layer_num[i] = bs_read1(b);
++        sub_layer_level[i] = bs_read1(b);
++    }
++    if (sps_max_sub_layers_minus1 > 0) {
++        for (i = sps_max_sub_layers_minus1; i < 8; ++i)
++            bs_read(b, 2);
++    }
++    for (i = 0; i < sps_max_sub_layers_minus1; ++i) {
++        if (sub_layer_num[i]) {
++            bs_read(b, 88);
++        }
++        if (sub_layer_level[i]) {
++            bs_read(b, 8);
++        }
++    }
++}
++
++void h265_read_pps(hevcStreamHeader_t* h, bs_t* b) {
++    bs_read(b, 16);
++    int pps_pic_parameter_set_id = bs_read_ue(b);
++
++    if (h->pps_table[pps_pic_parameter_set_id] == NULL) {
++        h->pps_table[pps_pic_parameter_set_id] = malloc(sizeof(H265PPS_t));
++        memset(h->pps_table[pps_pic_parameter_set_id], 0, sizeof(H265PPS_t));
++    }
++    H265PPS_t* pps = h->pps_table[pps_pic_parameter_set_id];
++    pps->pps_pic_parameter_set_id = pps_pic_parameter_set_id;
++    pps->pps_seq_parameter_set_id = bs_read_ue(b);
++
++    pps->dependent_slice_segments_enabled_flag = bs_read1(b);
++    pps->output_flag_present_flag = bs_read1(b);
++
++    pps->num_extra_slice_header_bits = bs_read(b, 3);
++    return;
++}
++
++void h265_read_sps(hevcStreamHeader_t* h, bs_t* b) {
++    H265SPS_t *sps;
++    int i = 0;
++    int sps_video_parameter_set_id = 0;
++    int sps_max_sub_layers_minus1 = 0;
++    int sps_temporal_id_nesting_flag = 0;
++    int sps_seq_parameter_set_id = 0;
++    bs_read(b, 16);
++    sps_video_parameter_set_id = bs_read(b ,4);
++    sps_max_sub_layers_minus1 = bs_read(b, 3);
++    sps_temporal_id_nesting_flag = bs_read1(b);
++    read_ptl(b, sps_max_sub_layers_minus1);
++
++    sps_seq_parameter_set_id = bs_read_ue(b);
++    //sps = h->sps_table[sps_seq_parameter_set_id];
++    if (h->sps_table[sps_seq_parameter_set_id] == NULL) {
++        h->sps_table[sps_seq_parameter_set_id] = malloc(sizeof(H265SPS_t));
++        memset(h->sps_table[sps_seq_parameter_set_id], 0, sizeof(H265SPS_t));
++    }
++    sps = h->sps_table[sps_seq_parameter_set_id];
++
++    sps->sps_video_parameter_set_id   = sps_video_parameter_set_id;
++    sps->sps_max_sub_layers_minus1    = sps_max_sub_layers_minus1;
++    sps->sps_temporal_id_nesting_flag = sps_temporal_id_nesting_flag;
++    sps->sps_seq_parameter_set_id     = sps_seq_parameter_set_id;
++    sps->chroma_format_idc = bs_read_ue(b);
++    if (sps->chroma_format_idc == 3)
++        bs_read1(b);
++    sps->pic_width_in_luma_samples  = bs_read_ue(b);
++    sps->pic_height_in_luma_samples = bs_read_ue(b);
++    sps->conformance_window_flag = bs_read1(b);
++    if (sps->conformance_window_flag) {
++        bs_read_ue(b);
++        bs_read_ue(b);
++        bs_read_ue(b);
++        bs_read_ue(b);
++    }
++    bs_read_ue(b);
++    bs_read_ue(b);
++    bs_read_ue(b);
++    sps->sps_sub_layer_ordering_info_present_flag = bs_read1(b);
++    for(i = (sps->sps_sub_layer_ordering_info_present_flag ? 0 : sps_max_sub_layers_minus1);
++        i <= sps_max_sub_layers_minus1; ++i) {
++        bs_read_ue(b);
++        bs_read_ue(b);
++        bs_read_ue(b);
++    }
++    sps->log2_min_luma_coding_block_size_minus3   = bs_read_ue(b);
++    sps->log2_diff_max_min_luma_coding_block_size = bs_read_ue(b);
++    return;
++}
++
++void nal_to_rbsp(const int nal_header_len, const uint8_t* nal_buf, int nal_size, uint8_t* rbsp_buf, int* rbsp_size) {
++    int i;
++    int j = 0;
++    int count = 0;
++    for(i=nal_header_len;i<nal_size;++i) {
++        if(count==2 && nal_buf[i]==0x03) {
++            if(i<nal_size-1 && nal_buf[i+1] > 0x03)
++                return;
++            i++;
++            count = 0;
++        }
++        if (j >= *rbsp_size)
++            return;
++        rbsp_buf[j] = nal_buf[i];
++        if(nal_buf[i]==0x00) {
++            count++;
++        }else{
++            count=0;
++        }
++        j++;
++    }
++    nal_size = i;
++    *rbsp_size = j;
++    return;
++}
+\ No newline at end of file
 diff --git a/libavcodec/mlumpp_mluop.h b/libavcodec/mlumpp_mluop.h
 new file mode 100755
-index 0000000000..45dc55ad4a
+index 0000000000..0518c3d8ee
 --- /dev/null
 +++ b/libavcodec/mlumpp_mluop.h
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,234 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4376,22 +5226,223 @@ index 0000000000..45dc55ad4a
 +#ifndef AVCODEC_MLUMPP_MLUOP_H
 +#define AVCODEC_MLUMPP_MLUOP_H
 +
++#include "libavcodec/avcodec.h"
++#include "libavutil/intreadwrite.h"
++#include "libavutil/thread.h"
++
 +typedef void *HANDLE_MLU_OP;
++typedef enum{P_SCVT, P_SCALE, P_NONE}P_PROC;
++
 +int mlumpp_mluop_load(HANDLE_MLU_OP *h, const char *path, void *logctx);
-+int mlumpp_mluop_resize_yuv_init(HANDLE_MLU_OP h, int src_w, int src_h, int dst_w,
-+                                 int dst_h, int dev_id);
-+int mlumpp_mluop_resize_yuv_exec(HANDLE_MLU_OP h, void *src_y, void *src_uv,
-+                                 void *dst_y, void *dst_uv);
-+int mlumpp_mluop_resize_yuv_destroy(HANDLE_MLU_OP h);
++
 +int mlumpp_mluop_unload(HANDLE_MLU_OP h);
++
++int mlumpp_resize_yuv_init(HANDLE_MLU_OP h, int src_w, int src_h,
++                                int dst_w, int dst_h, const char *pixfmt);
++int mlumpp_resize_yuv_exec(HANDLE_MLU_OP h, void *src_y, void *src_uv,
++                                void *dst_y, void *dst_uv);
++int mlumpp_resize_yuv_destroy(HANDLE_MLU_OP h);
++
++int mlumpp_post_convert_init(HANDLE_MLU_OP h, int src_w, int src_h, int dst_w,
++                                int dst_h, const char *in_pixfmt, const char *out_pixfmt);
++int mlumpp_post_convert_exec(HANDLE_MLU_OP h, void *src_y, void *src_uv,
++                                void *dst_rgbx);
++int mlumpp_post_convert_destroy(HANDLE_MLU_OP h);
++
++int mlumpp_convert_rgb_init(HANDLE_MLU_OP h, int width, int height,
++                            const char *src_pixfmt, const char *dst_pixfmt);
++
++int mlumpp_convert_rgb_exec(HANDLE_MLU_OP h, void *src, void *dst);
++
++int mlumpp_convert_rgb_destroy(HANDLE_MLU_OP h);
++
++static const char * const mluop_libname = "libeasyOP.so";
++
++#define HASH_LEN 33
++
++typedef struct PtsList
++{
++    int64_t key_pts;
++    int val_pic_type;
++    struct PtsList *prev;
++    struct PtsList *next;
++} PtsList_t;
++
++typedef struct PtsListHead {
++    int list_size;
++    PtsList_t *first;
++    PtsList_t *end;
++    AVMutex list_mutex;
++} PtsListHead_t;
++
++typedef struct PtsHashList {
++    PtsListHead_t *list_head[HASH_LEN];
++} PtsHashList_t;
++
++int pts_hash_count(int64_t key_pts);
++PtsHashList_t* pts_hash_init(void);
++int pts_hash_find_remove(PtsHashList_t* h, int64_t pts);
++int pts_hash_insert(PtsHashList_t* h, int64_t pts, int pic_type);
++void pts_hash_destroy(PtsHashList_t** h);
++
++typedef struct TagNALU_t {
++    unsigned char forbidden_bit;
++    unsigned char nal_reference_idc;
++    unsigned char nal_unit_type;
++    unsigned int prefix_len;
++    unsigned int len;
++    unsigned int max_nal_size;
++    unsigned char *buf;
++    enum AVPictureType frame_type;
++    unsigned int lost_packets;
++} NALU_t;
++
++typedef struct TagBs_t {
++    unsigned char* p_start;
++    unsigned char* p;
++    unsigned char* p_end;
++    int i_left;
++} bs_t;
++
++enum h264_nal_unit_type {
++    NAL_UNKNOWN     = 0,
++    NAL_SLICE_NOIDR = 1,
++    NAL_SLICE_DPA   = 2,
++    NAL_SLICE_DPB   = 3,
++    NAL_SLICE_DPC   = 4,
++    NAL_SLICE_IDR   = 5,
++    NAL_SEI         = 6,
++    NAL_SPS         = 7,
++    NAL_PPS         = 8
++};
++
++enum hevc_nal_unit_type {
++    NAL_UNIT_CODED_SLICE_TRAIL_N = 0, // 0
++    NAL_UNIT_CODED_SLICE_TRAIL_R,     // 1
++
++    NAL_UNIT_CODED_SLICE_TSA_N,       // 2
++    NAL_UNIT_CODED_SLICE_TSA_R,       // 3
++
++    NAL_UNIT_CODED_SLICE_STSA_N,      // 4
++    NAL_UNIT_CODED_SLICE_STSA_R,      // 5
++
++    NAL_UNIT_CODED_SLICE_RADL_N,      // 6
++    NAL_UNIT_CODED_SLICE_RADL_R,      // 7
++
++    NAL_UNIT_CODED_SLICE_RASL_N,      // 8
++    NAL_UNIT_CODED_SLICE_RASL_R,      // 9
++
++    NAL_UNIT_RESERVED_VCL_N10,
++    NAL_UNIT_RESERVED_VCL_R11,
++    NAL_UNIT_RESERVED_VCL_N12,
++    NAL_UNIT_RESERVED_VCL_R13,
++    NAL_UNIT_RESERVED_VCL_N14,
++    NAL_UNIT_RESERVED_VCL_R15,
++
++    NAL_UNIT_CODED_SLICE_BLA_W_LP,    // 16
++    NAL_UNIT_CODED_SLICE_BLA_W_RADL,  // 17
++    NAL_UNIT_CODED_SLICE_BLA_N_LP,    // 18
++    NAL_UNIT_CODED_SLICE_IDR_W_RADL,  // 19
++    NAL_UNIT_CODED_SLICE_IDR_N_LP,    // 20
++    NAL_UNIT_CODED_SLICE_CRA,         // 21
++    NAL_UNIT_RESERVED_IRAP_VCL22,
++    NAL_UNIT_RESERVED_IRAP_VCL23,
++
++    NAL_UNIT_RESERVED_VCL24,
++    NAL_UNIT_RESERVED_VCL25,
++    NAL_UNIT_RESERVED_VCL26,
++    NAL_UNIT_RESERVED_VCL27,
++    NAL_UNIT_RESERVED_VCL28,
++    NAL_UNIT_RESERVED_VCL29,
++    NAL_UNIT_RESERVED_VCL30,
++    NAL_UNIT_RESERVED_VCL31,
++
++    // non-VCL
++    NAL_UNIT_VPS,                     // 32
++    NAL_UNIT_SPS,                     // 33
++    NAL_UNIT_PPS,                     // 34
++    NAL_UNIT_AUD,                     // 35
++    NAL_UNIT_EOS,                     // 36
++    NAL_UNIT_EOB,                     // 37
++    NAL_UNIT_FILLER_DATA,             // 38
++    NAL_UNIT_PREFIX_SEI,              // 39
++    NAL_UNIT_SUFFIX_SEI,              // 40
++
++    NAL_UNIT_RESERVED_NVCL41,
++    NAL_UNIT_RESERVED_NVCL42,
++    NAL_UNIT_RESERVED_NVCL43,
++    NAL_UNIT_RESERVED_NVCL44,
++    NAL_UNIT_RESERVED_NVCL45,
++    NAL_UNIT_RESERVED_NVCL46,
++    NAL_UNIT_RESERVED_NVCL47,
++    NAL_UNIT_UNSPECIFIED_48,
++    NAL_UNIT_UNSPECIFIED_49,
++    NAL_UNIT_UNSPECIFIED_50,
++    NAL_UNIT_UNSPECIFIED_51,
++    NAL_UNIT_UNSPECIFIED_52,
++    NAL_UNIT_UNSPECIFIED_53,
++    NAL_UNIT_UNSPECIFIED_54,
++    NAL_UNIT_UNSPECIFIED_55,
++    NAL_UNIT_UNSPECIFIED_56,
++    NAL_UNIT_UNSPECIFIED_57,
++    NAL_UNIT_UNSPECIFIED_58,
++    NAL_UNIT_UNSPECIFIED_59,
++    NAL_UNIT_UNSPECIFIED_60,
++    NAL_UNIT_UNSPECIFIED_61,
++    NAL_UNIT_UNSPECIFIED_62,
++    NAL_UNIT_UNSPECIFIED_63,
++    NAL_UNIT_INVALID,
++};
++
++typedef struct {
++    uint8_t sps_video_parameter_set_id;
++    uint8_t sps_max_sub_layers_minus1;
++    uint8_t sps_temporal_id_nesting_flag;
++    int sps_seq_parameter_set_id;
++    int chroma_format_idc;
++    int pic_width_in_luma_samples;
++    int pic_height_in_luma_samples;
++    int conformance_window_flag;
++    uint8_t sps_sub_layer_ordering_info_present_flag;
++    int log2_min_luma_coding_block_size_minus3;
++    int log2_diff_max_min_luma_coding_block_size;
++} H265SPS_t;
++
++typedef struct {
++    uint8_t pps_pic_parameter_set_id;
++    uint8_t pps_seq_parameter_set_id;
++    uint8_t dependent_slice_segments_enabled_flag;
++    uint8_t output_flag_present_flag;
++    uint8_t num_extra_slice_header_bits;
++} H265PPS_t;
++
++typedef struct {
++    H265SPS_t* sps_table[32];
++    H265PPS_t* pps_table[256];
++} hevcStreamHeader_t;
++
++void bs_init(bs_t *s, void *p_data, int i_data);
++int bs_read(bs_t *s, int i_count);
++int bs_read1(bs_t *s);
++int bs_read_ue(bs_t *s);
++int get_h264_slice_type(NALU_t* nal);
++int get_hevc_slice_type(hevcStreamHeader_t* h, NALU_t* nal);
++//int h264_judge_pkt_type(const AVPacket* pkt);
++//int hevc_judge_pkt_type(hevc_stream_header_t* h, const AVPacket* pkt);
++int find_next_nalu_header(uint8_t* data, int start_pos, int data_size);
++void read_ptl(bs_t* b, int sps_max_sub_layers_minus1);
++void h265_read_pps(hevcStreamHeader_t* h, bs_t* b);
++void h265_read_sps(hevcStreamHeader_t* h, bs_t* b);
++void nal_to_rbsp(const int nal_header_len, const uint8_t* nal_buf, int nal_size, uint8_t* rbsp_buf, int* rbsp_size);
++//void sps_pps_parse(MLUMPPContext_t *ctx, uint8_t* data, int data_size);
 +
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000000..48bbbdfc8c
+index 0000000000..4f954c025c
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1369 @@
+@@ -0,0 +1,1505 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4468,7 +5519,7 @@ index 0000000000..48bbbdfc8c
 +        tmp++;
 +    }
 +    if (cnctx->trace_flag > 0) {
-+        av_log(cnctx->avctx, AV_LOG_INFO, "Stride align is the %d power of 2.\n", tmp);
++        av_log(avctx, AV_LOG_INFO, "Stride align is the %d power of 2.\n", tmp);
 +    }
 +    return 0;
 +}
@@ -4779,9 +5830,9 @@ index 0000000000..48bbbdfc8c
 +    ret = cnvideoEncWaitAvailInputBuf(cnctx->handle, tempInput, time_out_);
 +    if (ret == CNCODEC_SUCCESS) {
 +        if (cnctx->avctx->pix_fmt == AV_PIX_FMT_MLU) {
-+            switch (cnctx->pixelFmt) {
-+            case CNCODEC_PIX_FMT_YUYV:
-+            case CNCODEC_PIX_FMT_UYVY:
++            switch (cnctx->in_sw_pixfmt) {
++            case AV_PIX_FMT_YUYV422:
++            case AV_PIX_FMT_UYVY422:
 +                if (NULL == (void *)tempInput->plane[0].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4798,10 +5849,10 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_ARGB:
-+            case CNCODEC_PIX_FMT_ABGR:
-+            case CNCODEC_PIX_FMT_BGRA:
-+            case CNCODEC_PIX_FMT_RGBA:
++            case AV_PIX_FMT_ARGB:
++            case AV_PIX_FMT_ABGR:
++            case AV_PIX_FMT_BGRA:
++            case AV_PIX_FMT_RGBA:
 +                if (NULL == (void *)tempInput->plane[0].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4818,8 +5869,8 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_NV12:
-+            case CNCODEC_PIX_FMT_NV21:
++            case AV_PIX_FMT_NV12:
++            case AV_PIX_FMT_NV21:
 +                if (NULL == (void *)tempInput->plane[0].addr || NULL == (void *)tempInput->plane[1].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4843,7 +5894,9 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_P010:
++            case AV_PIX_FMT_P010:
++            case AV_PIX_FMT_P010BE:
++            // case AV_PIX_FMT_P010LE:
 +                if (NULL == (void *)tempInput->plane[0].addr || NULL == (void *)tempInput->plane[1].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4867,7 +5920,8 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_I420:
++            case AV_PIX_FMT_YUV420P:
++            case AV_PIX_FMT_YUVJ420P:
 +                if (NULL == (void *)tempInput->plane[0].addr || NULL == (void *)tempInput->plane[1].addr
 +                    || NULL == (void *)tempInput->plane[2].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
@@ -4899,14 +5953,30 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
++            case AV_PIX_FMT_RGB24:
++            case AV_PIX_FMT_BGR24:
++                if (NULL == (void *)tempInput->plane[0].addr) {
++                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
++                    return AVERROR(EINVAL);
++                }
++                if (NULL == frame->data[0]) {
++                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input data address(CPU) is NULL \n");
++                    return AVERROR(EINVAL);
++                }
++                ret = mlumpp_convert_rgb_exec(cnctx->mluop_handle, frame->data[0], (void*)tempInput->plane[0].addr);
++                if (ret != 0) {
++                    av_log(cnctx, AV_LOG_ERROR, "convert rgb exec failed, func: %s, line: %d\n", __func__, __LINE__);
++                    return AVERROR(EINVAL);
++                }
++                break;
 +            default:
-+                av_log(cnctx->avctx, AV_LOG_ERROR, "Unsupported format:%d\n", cnctx->pixelFmt);
++                av_log(cnctx->avctx, AV_LOG_ERROR, "Unsupported format:%s\n", av_get_pix_fmt_name(cnctx->in_sw_pixfmt));
 +                break;
 +            }
 +        } else {
-+            switch (cnctx->pixelFmt) {
-+            case CNCODEC_PIX_FMT_YUYV:
-+            case CNCODEC_PIX_FMT_UYVY:
++            switch (cnctx->in_sw_pixfmt) {
++            case AV_PIX_FMT_YUYV422:
++            case AV_PIX_FMT_UYVY422:
 +                if (NULL == (void *)tempInput->plane[0].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4923,10 +5993,10 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_ARGB:
-+            case CNCODEC_PIX_FMT_ABGR:
-+            case CNCODEC_PIX_FMT_BGRA:
-+            case CNCODEC_PIX_FMT_RGBA:
++            case AV_PIX_FMT_ARGB:
++            case AV_PIX_FMT_ABGR:
++            case AV_PIX_FMT_BGRA:
++            case AV_PIX_FMT_RGBA:
 +                if (NULL == (void *)tempInput->plane[0].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4943,8 +6013,8 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_NV12:
-+            case CNCODEC_PIX_FMT_NV21:
++            case AV_PIX_FMT_NV12:
++            case AV_PIX_FMT_NV21:
 +                if (NULL == (void *)tempInput->plane[0].addr || NULL == (void *)tempInput->plane[1].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4968,7 +6038,9 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_P010:
++            case AV_PIX_FMT_P010:
++            case AV_PIX_FMT_P010BE:
++            // case AV_PIX_FMT_P010LE:
 +                if (NULL == (void *)tempInput->plane[0].addr || NULL == (void *)tempInput->plane[1].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
 +                    return AVERROR(EINVAL);
@@ -4992,7 +6064,8 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
-+            case CNCODEC_PIX_FMT_I420:
++            case AV_PIX_FMT_YUV420P:
++            case AV_PIX_FMT_YUVJ420P:
 +                if (NULL == (void *)tempInput->plane[0].addr || NULL == (void *)tempInput->plane[1].addr ||
 +                    NULL == (void *)tempInput->plane[2].addr) {
 +                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
@@ -5024,8 +6097,37 @@ index 0000000000..48bbbdfc8c
 +                    return AVERROR(EINVAL);
 +                }
 +                break;
++            case AV_PIX_FMT_RGB24:
++            case AV_PIX_FMT_BGR24:
++                if (NULL == (void *)tempInput->plane[0].addr) {
++                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input buffer address(MLU) is NULL \n");
++                    return AVERROR(EINVAL);
++                }
++                if (NULL == frame->data[0]) {
++                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder input data address(CPU) is NULL \n");
++                    return AVERROR(EINVAL);
++                }
++                if (NULL == cnctx->cn_pp_in_frame->data[0]) {
++                    av_log(cnctx->avctx, AV_LOG_ERROR, "Encoder cn_pp in address(MLU) is NULL\n");
++                    return AVERROR(EINVAL);
++                }
++
++                cnrt_ret =  cnctx->mlu_ctx->mluMemcpyH2D((void *)cnctx->cn_pp_in_frame->data[0], (void *)frame->data[0],
++                        cnctx->coded_width * cnctx->height * 3, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                if (cnrt_ret != CNRT_RET_SUCCESS) {
++                    av_log(cnctx->avctx, AV_LOG_WARNING,"Enc: h2d warning, ret(%d), func: %s, line: %d\n",
++                            cnrt_ret, __func__, __LINE__);
++                    return AVERROR(EINVAL);
++                }
++
++                ret = mlumpp_convert_rgb_exec(cnctx->mluop_handle, cnctx->cn_pp_in_frame->data[0], (void*)tempInput->plane[0].addr);
++                if (ret != 0) {
++                    av_log(cnctx, AV_LOG_ERROR, "convert rgb exec failed, func: %s, line: %d\n", __func__, __LINE__);
++                    return AVERROR(EINVAL);
++                }
++                break;
 +            default:
-+                av_log(cnctx->avctx, AV_LOG_ERROR, "Unsupported format:%d\n", cnctx->pixelFmt);
++                av_log(cnctx->avctx, AV_LOG_ERROR, "Unsupported format:%s\n", av_get_pix_fmt_name(cnctx->in_sw_pixfmt));
 +                break;
 +            }
 +        }
@@ -5323,47 +6425,59 @@ index 0000000000..48bbbdfc8c
 +    bitstream_buf_size = cnctx->coded_width * cnctx->coded_height;
 +    switch (cnctx->in_sw_pixfmt) {
 +    case AV_PIX_FMT_NV12:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_NV12;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_NV12;
 +        bitstream_buf_size += (bitstream_buf_size >> 1);
 +        break;
 +    case AV_PIX_FMT_NV21:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_NV21;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_NV21;
 +        bitstream_buf_size += (bitstream_buf_size >> 1);
 +        break;
 +    case AV_PIX_FMT_YUV420P:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_I420;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_I420;
 +        bitstream_buf_size += (bitstream_buf_size >> 1);
 +        break;
 +    case AV_PIX_FMT_P010:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_P010;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_P010;
 +        bitstream_buf_size += (bitstream_buf_size << 1);
 +        break;
 +    case AV_PIX_FMT_YUYV422:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_YUYV;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_YUYV;
 +        bitstream_buf_size = (bitstream_buf_size << 1);
 +        break;
 +    case AV_PIX_FMT_UYVY422:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_UYVY;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_UYVY;
 +        bitstream_buf_size = (bitstream_buf_size << 1);
 +        break;
 +    case AV_PIX_FMT_ARGB:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_ARGB;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_ARGB;
 +        bitstream_buf_size = (bitstream_buf_size << 2);
 +        break;
 +    case AV_PIX_FMT_ABGR:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_ABGR;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_ABGR;
 +        bitstream_buf_size = (bitstream_buf_size << 2);
 +        break;
 +    case AV_PIX_FMT_BGRA:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_BGRA;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_BGRA;
 +        bitstream_buf_size = (bitstream_buf_size << 2);
 +        break;
 +    case AV_PIX_FMT_RGBA:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_RGBA;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_RGBA;
 +        bitstream_buf_size = (bitstream_buf_size << 2);
 +        break;
++    case AV_PIX_FMT_BGR24:
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_BGRA;
++        cnctx->cn_preproc.src_pixfmt = "bgr24";
++        cnctx->cn_preproc.dst_pixfmt = "bgra";
++        bitstream_buf_size = (bitstream_buf_size << 2);
++        break;
++    case AV_PIX_FMT_RGB24:
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_RGBA;
++        bitstream_buf_size = (bitstream_buf_size << 2);;
++        cnctx->cn_preproc.src_pixfmt = "rgb24";
++        cnctx->cn_preproc.dst_pixfmt = "rgba";
++        break;
 +    default:
-+        cnctx->pixelFmt = CNCODEC_PIX_FMT_NV12;
++        cnctx->cn_pix_fmt = CNCODEC_PIX_FMT_NV12;
 +        bitstream_buf_size += (bitstream_buf_size >> 1);
 +        break;
 +    }
@@ -5452,7 +6566,7 @@ index 0000000000..48bbbdfc8c
 +#else
 +    enc_params.allocType = CNCODEC_BUF_ALLOC_LIB;
 +#endif
-+    enc_params.pixelFmt = cnctx->pixelFmt;
++    enc_params.pixelFmt = cnctx->cn_pix_fmt;
 +    enc_params.inputBufNum = cnctx->input_buf_num;
 +    enc_params.outputBufNum = cnctx->output_buf_num;
 +
@@ -5534,7 +6648,7 @@ index 0000000000..48bbbdfc8c
 +            enc_params.uCfg.h264.maxRefFramesNum = avctx->refs;
 +        }
 +        // enc_params.uCfg.h264.insertSpsPpsWhenIDR = cnctx->insert_spspps_idr;
-+        if (cnctx->pixelFmt == CNCODEC_PIX_FMT_P010) { // 10bit
++        if (cnctx->cn_pix_fmt == CNCODEC_PIX_FMT_P010) { // 10bit
 +            enc_params.uCfg.h264.bitDepth = 2;
 +        }
 +        if (cnctx->horizontal_range > 0 || cnctx->vertical_range > 0) {
@@ -5563,7 +6677,7 @@ index 0000000000..48bbbdfc8c
 +            enc_params.uCfg.h265.maxRefFramesNum = avctx->refs;
 +        }
 +        // enc_params.uCfg.h265.insertSpsPpsWhenIDR = cnctx->insert_spspps_idr;
-+        if (cnctx->pixelFmt == CNCODEC_PIX_FMT_P010) { // 10bit
++        if (cnctx->cn_pix_fmt == CNCODEC_PIX_FMT_P010) { // 10bit
 +            enc_params.uCfg.h265.bitDepth = 2;
 +        }
 +        if (cnctx->horizontal_range > 0 || cnctx->vertical_range > 0) {
@@ -5651,6 +6765,67 @@ index 0000000000..48bbbdfc8c
 +                        vui_sar.sarWidth,  vui_sar.sarHeight);
 +    }
 +#endif
++
++    if (cnctx->cn_preproc.dst_pixfmt != cnctx->cn_preproc.src_pixfmt) {
++        cnctx->mluop_handle = NULL;
++        cnctx->cn_preproc.src_w = avctx->width;
++        cnctx->cn_preproc.src_h = avctx->height;
++        cnctx->cn_preproc.dst_w = avctx->width;
++        cnctx->cn_preproc.dst_h = avctx->height;
++        if (avctx->codec->id == AV_CODEC_ID_MJPEG) {
++            av_log(avctx, AV_LOG_ERROR, "cn preproc only support video codec\n");
++            return AVERROR(EINVAL);
++        }
++
++        ret = mlumpp_mluop_load(&cnctx->mluop_handle, mluop_libname, avctx);
++        if (ret < 0) {
++            av_log(avctx, AV_LOG_ERROR, "mlumpp load %s failed\n", mluop_libname);
++            mlumpp_mluop_unload(cnctx->mluop_handle);
++            cnctx->mluop_handle = NULL;
++            return AVERROR(EINVAL);
++        }
++
++        ret = mlumpp_convert_rgb_init(cnctx->mluop_handle,
++                                    cnctx->cn_preproc.src_w,
++                                    cnctx->cn_preproc.src_h,
++                                    cnctx->cn_preproc.src_pixfmt,
++                                    cnctx->cn_preproc.dst_pixfmt);
++        if (ret != 0) {
++            av_log(avctx, AV_LOG_ERROR, "mlumpp convert rrg init failed\n");
++            return AVERROR(EINVAL);
++        }
++
++        if (avctx->pix_fmt != AV_PIX_FMT_MLU) {
++            cnctx->hw_pp_frame_ref = av_hwframe_ctx_alloc(cnctx->hw_device_ref);
++            if (!cnctx->hw_pp_frame_ref) {
++                av_log(avctx, AV_LOG_ERROR, "pp hwframe av_hwframe_ctx_alloc failed\n");
++                return AVERROR(EINVAL);
++            }
++
++            cnctx->hw_pp_frame_ctx = (AVHWFramesContext*)cnctx->hw_pp_frame_ref->data;
++            if (!cnctx->hw_pp_frame_ctx->pool) {
++                cnctx->hw_pp_frame_ctx->format = AV_PIX_FMT_MLU;
++                cnctx->hw_pp_frame_ctx->sw_format = cnctx->in_sw_pixfmt;
++                cnctx->hw_pp_frame_ctx->width  = cnctx->cn_preproc.src_w;
++                cnctx->hw_pp_frame_ctx->height = cnctx->cn_preproc.src_h;
++                if ((ret = av_hwframe_ctx_init(cnctx->hw_pp_frame_ref)) < 0) {
++                    av_log(avctx, AV_LOG_ERROR, "pp hwframe av_hwframe_ctx_init failed\n");
++                    return 0;
++                }
++            }
++            cnctx->cn_pp_in_frame = av_frame_alloc();
++            ret = av_hwframe_get_buffer(cnctx->hw_pp_frame_ref, cnctx->cn_pp_in_frame, 0);
++            if (ret < 0) {
++                av_log(avctx, AV_LOG_ERROR, "get hw pp frame failed\n");
++                return AVERROR(EINVAL);
++            }
++            ret = ff_decode_frame_props(avctx, cnctx->cn_pp_in_frame);
++            if (ret < 0) {
++                av_log(avctx, AV_LOG_ERROR, "get pp frame props falied \n");
++                return AVERROR(EINVAL);
++            }
++        }
++    }
 +
 +    cnctx->encoder_init_flag = 1;
 +    if (cnctx->trace_flag > 0) {
@@ -5740,11 +6915,23 @@ index 0000000000..48bbbdfc8c
 +        avctx->extradata = NULL;
 +    }
 +    sem_destroy(&(cnctx->eos_sema));
++    if (cnctx->cn_pp_in_frame) {
++        av_frame_free(&cnctx->cn_pp_in_frame);
++    }
 +    if (cnctx->hw_frame_ref) {
 +        av_buffer_unref(&cnctx->hw_frame_ref);
 +    }
++    if (cnctx->hw_pp_frame_ref) {
++        av_buffer_unref(&cnctx->hw_pp_frame_ref);
++    }
 +    if (cnctx->hw_device_ref) {
 +        av_buffer_unref(&cnctx->hw_device_ref);
++    }
++
++    if (cnctx->mluop_handle) {
++        mlumpp_convert_rgb_destroy(cnctx->mluop_handle);
++        mlumpp_mluop_unload(cnctx->mluop_handle);
++        cnctx->mluop_handle = NULL;
 +    }
 +
 +    cnctx->encoder_init_flag = 0;
@@ -5763,10 +6950,10 @@ index 0000000000..48bbbdfc8c
 +}
 diff --git a/libavcodec/mlumpp_vid_enc.h b/libavcodec/mlumpp_vid_enc.h
 new file mode 100755
-index 0000000000..309ebec493
+index 0000000000..5ae0549104
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.h
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,161 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -5804,6 +6991,27 @@ index 0000000000..309ebec493
 +// Cambricon runtime header file
 +#include "cnrt.h"
 +#include "mlumpp_mluop.h"
++
++typedef struct cncrop {
++    int x;
++    int y;
++    int w;
++    int h;
++} cncrop_t;
++
++typedef struct cn_preproc {
++    int                             src_w;
++    int                             src_h;
++    const char                      *src_pixfmt;
++    int                             src_stride[8];
++    int                             dst_w;         // out w
++    int                             dst_h;         // out h
++    const char                     *dst_pixfmt;
++    int                             dst_stride[8];
++    uint8_t                         *plane[8];      // max plane is 6
++    cncrop_t                        crop_des[8];
++} cn_preproc_t;
++
 +typedef struct MLUMPPEncContext{
 +    int                                 device_id;
 +    int                                 instance_id;
@@ -5836,38 +7044,30 @@ index 0000000000..309ebec493
 +    cnvideoEncEntropyMode               coder;
 +    AVCodecContext                      *avctx;
 +    cnvideoEncoder                      handle;
-+    cncodecPixelFormat                  pixelFmt;
++    cncodecPixelFormat                  cn_pix_fmt;
++    cncodecPixelFormat                  cn_pp_pixfmt;
 +    cncodecType                         codec_type;
 +    cncodecColorSpace                   color_space;
 +
 +    // hw-ctx
 +    AVBufferRef                         *hw_frame_ref;
++    AVBufferRef                         *hw_pp_frame_ref;
 +    AVBufferRef                         *hw_device_ref;
 +
++    AVFrame                             *cn_pp_in_frame;
++    AVFrame                             *cn_pp_out_frame;
 +    MluContext                          *mlu_ctx;
 +    AVMLUDeviceContext                  *hw_device_ctx;
 +    AVHWFramesContext                   *hw_frame_ctx;
++    AVHWFramesContext                   *hw_pp_frame_ctx;
 +    enum AVPixelFormat                  in_sw_pixfmt;
 +
 +    int                                 width;
 +    int                                 height;
 +    int                                 coded_width;
 +    int                                 coded_height;
-+    // for add mluop
-+    struct {
-+        int                             left;
-+        int                             top;
-+        int                             right;
-+        int                             bottom;
-+    } crop;
-+    struct {
-+        int                             width;  // out w
-+        int                             height; // out h
-+        void                            *in_y_ptr;
-+        void                            *in_uv_ptr;
-+        void                            *out_y_ptr;
-+        void                            *out_uv_ptr;
-+    } resize;
++
++    cn_preproc_t                        cn_preproc;
 +    struct {
 +        int                             sar_w;
 +        int                             sar_h;
@@ -5892,6 +7092,8 @@ index 0000000000..309ebec493
 +    int                                 codec_abort_flag;
 +    volatile int                        encode_state; // 0--get encode-headers, 1--normal encoding
 +    volatile int                        encoder_init_flag;
++
++    HANDLE_MLU_OP                       mluop_handle;
 +
 +    //the below only for debug
 +    long long                           total_add_ref_num;

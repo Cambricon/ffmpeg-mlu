@@ -233,4 +233,6 @@ ffmpeg -i src.h264  -i dst.h264  -lavfi ssim="stats_file=ssim.log" -f null -
 |scale_rgbx2rgbx_mlu|- 接收RGBX格式图像,scale到指定大小后输出<br>- 要求输入图像的宽高均不超过8192像素<br>- 支持图像像素深度为 8u|**-vf  filter=<out_w>:<out_h>:<dev_id>**<br>- <out_w>:输出图像宽度 <br>- <out_h>:输出图像高度 <br>- <dev_id>:设备号|
 |cvt_yuv2rgbx_mlu|- 接收YUV图像(NV12/NV21)<br>- 将图像颜色空间转换为指定RGBX后输出, <br>- 输入图像的宽高均不超过 8192 像素<br>- 输入图像的宽高必须为偶数<br>- 支持图像像素深度为 8u|**-vf filter=<out_fmt>:<dev_id>**<br>- <out_fmt>:输出像素格式<br>- <dev_id>:设备号|
 |cvt_rgbx2yuv_mlu|- 接收RGBX图像,<br>- 将图像色彩空间转换为指定的YUV(NV12/NV21), <br>- 输入图像的宽高不小于 2<br>- 输入图像像素格式支持 RGB24、BGR24、RGBA、BGRA、ARGB、ABGR<br>- 输出图像像素格式支持NV12和NV21<br>- 支持图像像素深度为 8U|**-vf filter=<out_fmt>:<dev_id>**<br>- <out_fmt>:输出像素格式<br>- <dev_id>:设备号|
+|cvt_rgbx2rgbx_mlu|- 接收RGB图像(ARGB/RGBA/ABGR/BGRA/RGB24/BGR24)<br>- 将一种RGB图像转换为另一种指定RGB后输出, <br>- 输入图像的宽高均不超过 8192 像素<br>- 输入图像的宽高必须为偶数，输入和输出图像RGB格式不可以相同 |**-vf filter=<out_fmt>:<dev_id>**<br>- <out_fmt>:输出像素格式<br>- <dev_id>:设备号|
+|scale_cvt_yuv2rgbx_mlu|- 接收YUV图像(NV12/NV21)<br>- 将图像颜色空间转换为指定RGBX系列，再调整到指定大小 <br>- 支持 Gray 格式图像作为输入输出，此格式当前仅实现 resize 功能输入 <br>- 输入图像格式支持 NV12 和 NV21 <br>- 输出图像格式支持 RGB、BGR、RGBA、BGRA、ARGB、ABGR <br>- 输入图像的宽高必须为偶数<br>- 支持图像像素深度为 8U，且输入与输出的数据类型必须相同|**-vf filter=<dst_width>:<dst_height>:<out_fmt>:<dev_id>**<br>- <dst_width>:输出图像宽度<br>- <dst_height>:输出图像高度<br>- <out_fmt>:输出像素格式<br>- <dev_id>:设备号|
 
