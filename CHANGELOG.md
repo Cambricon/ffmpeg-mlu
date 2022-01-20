@@ -1,3 +1,10 @@
+# Cambricon® ffmpeg-mlu open source release v1.6.0!
+**Whats new**
+ - Supported rgb2rgb convert mlu filter.
+ - Supported yuv2rgb resize and convert mlu filter.
+ - Supported decode output rgb24&bgr24 pixfmt.
+ - Supported encode input  rbg24&bgr24 pixfmt.
+
 # Cambricon® ffmpeg-mlu open source release v1.5.5!
 **Whats new**
  - Added resize_and_convert mlu op.
