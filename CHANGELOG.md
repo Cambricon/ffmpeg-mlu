@@ -1,9 +1,54 @@
+# Cambricon® ffmpeg-mlu open source release v2.2.0!
+**Whats new**
+ - Supported stream_loop ffmpeg native feature.
+ - Supported mlu codec basic codec rate control feature.
+ - Supported rgbx2rgbx convert hwaccel filter.
+ - Supported rgbx2rgbx resize and convert hwaccel filter.
+ - Supported rgbx2rgbx resize crop hwaccel filter.
+ - Supported yuv2yuv resize crop hwaccel filter.
+ - Supports for ``neuware-mlu370-driver-4.15.13``.
+ - Supports for ``cntookit-mlu370-2.6.4-1``.
+ - Supports for ``cncv-0.4.0-1 or later`` .
+
+# Cambricon® ffmpeg-mlu open source release v2.1.0!
+**Whats new**
+ - Supported mlu h264/hevc/jpeg hardware encoder.
+ - Supported mlu video decoder post-processing(crop and resize).
+ - Supported hwcontext-mlu hardware accel feature.
+ - Supported mlu hardware high-speed transcoding with zero-copy method.
+ - Supported yuv2yuv resize hwaccel filter.
+ - Supported rgbx2rgbx resize hwaccel filter.
+ - Supported yuv2rgbx convert hwaccel filter.
+ - Supported rgbx2yuv convert hwaccel filter.
+ - Supported 1 to N transcoding.
+ - Supported variable resolution decoding.
+ - Supports for ``neuware-mlu370-driver-4.15.9``.
+ - Supports for ``cntookit-mlu370-2.5.3-1``.
+ - Supports for ``cncv-0.6.0-1 or later`` .
+
+# Cambricon® ffmpeg-mlu open source release v2.0.0!
+**Whats new**
+ - Supported mlu h264/hevc/jpeg encoder.
+ - Supported mlu h264/hevc/jpeg hardware decoder.
+ - Supported hwcontext-mlu hardware accel feature.
+ - Supported hw_upload_mlu&hw_download_mlu hardware filter.
+ - Supported yuv2yuv resize hw filter.
+ - Supported rgbx2rgbx resize hw filter.
+ - Supported yuv2rgbx convert hw filter.
+ - Supported rgbx2yuv convert hw filter.
+ - Supports for ``neuware-mlu370-driver-4.15.0``.
+ - Supports for ``cntookit-mlu370-2.2.0-1``.
+ - Supports for ``cncv-0.4.0-1``.
+
 # Cambricon® ffmpeg-mlu open source release v1.6.0!
 **Whats new**
  - Supported rgb2rgb convert mlu filter.
  - Supported yuv2rgb resize and convert mlu filter.
  - Supported decode output rgb24&bgr24 pixfmt.
  - Supported encode input  rbg24&bgr24 pixfmt.
+ - Supports for ``cntookit-mlu270-1.7.5 or later``.
+ - Supports for ``cncv-0.4.702-1 or later`` .
+ - Supports for ``neuware-mlu270-driver-4.9.0``.
 
 # Cambricon® ffmpeg-mlu open source release v1.5.5!
 **Whats new**
