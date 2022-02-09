@@ -4,7 +4,7 @@ project(EasyOP C CXX)
 
 set(TARGET easyOP)
 
-option(RELEASE "build type" ON)
+option(RELEASE   "build type" ON)
 option(TEST_CASE "build type" OFF)
 option(IS_CROSS_COMPILE "option for cross compile" OFF)
 
@@ -43,8 +43,8 @@ if(RELEASE)
   set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O2 -s")
 else()
   set(CMAKE_BUILD_TYPE Debug)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -fPIC")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3 -fPIC")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -fPIC -DDEBUG")
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -g -O3 -fPIC -DDEBUG")
 endif()
 
 if(NOT DEFINED ENV{NEUWARE_HOME})

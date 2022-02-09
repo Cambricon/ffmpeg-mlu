@@ -32,8 +32,6 @@
 using std::string;
 using std::to_string;
 
-#define PRINT_TIME 0
-
 extern cncvStatus_t cncvRgbxToYuv(cncvHandle_t handle,
                                   const cncvImageDescriptor src_desc,
                                   const cncvRect src_roi,
@@ -154,6 +152,13 @@ struct CVRGBX2YUVPrivate {
   cncvColorSpace dst_color_space = CNCV_COLOR_SPACE_BT_601;
   cncvDepth_t depth;
 
+  float sw_time = 0.0;
+  float hw_time = 0.0;
+  struct timeval end;
+  struct timeval start;
+  cnrtNotifier_t event_begin = nullptr;
+  cnrtNotifier_t event_end   = nullptr;
+
   std::deque<std::pair<void*, void*>> dst_yuv_ptrs_cache_;
   void **dst_yuv_ptrs_cpu_ = nullptr;
   void **dst_yuv_ptrs_mlu_ = nullptr;
@@ -190,8 +195,17 @@ int mluop_convert_rgbx2yuv_init(HANDLE *h,
   d_ptr_->dst_stride[1] = d_ptr_->width *
                           getSizeOfDepth(getCNCVDepthFromIndex(depth));
   d_ptr_->depth = getCNCVDepthFromIndex(depth);
+  #ifdef DEBUG
+  if (CNRT_RET_SUCCESS != cnrtCreateNotifier(&d_ptr_->event_begin)) {
+    printf("cnrtCreateNotifier eventBegin failed\n");
+  }
+  if (CNRT_RET_SUCCESS != cnrtCreateNotifier(&d_ptr_->event_end)) {
+    printf("cnrtCreateNotifier eventEnd failed\n");
+  }
+  #endif
 
   *h = static_cast<void *>(d_ptr_);
+
   return 0;
 }
 
@@ -217,12 +231,6 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
     printf("Memcpy host to device failed. Error code:%d\n", cnret);
     return -1;
   }
-  #if PRINT_TIME
-  float time_use = 0;
-  struct timeval end;
-  struct timeval start;
-  gettimeofday(&start, NULL);
-  #endif
 
   const cncvImageDescriptor src_desc = {d_ptr_->width,
                                         d_ptr_->height,
@@ -239,6 +247,11 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
                                         d_ptr_->depth};
   const struct cncvRect src_rois = {0, 0, d_ptr_->width, d_ptr_->height};
   cncvStatus_t cncv_ret;
+
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->start, NULL);
+  cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_);
+  #endif
   cncv_ret = cncvRgbxToYuv(d_ptr_->handle,
                 src_desc,
                 src_rois,
@@ -249,21 +262,36 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
     printf("Exec cncvRgbxToYuv failed, error code:%d\n", cncv_ret);
     return -1;
   }
+  #ifdef DEBUG
+  cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_);
+  #endif
   cncv_ret = cncvSyncQueue(d_ptr_->handle);
   if(cncv_ret != CNCV_STATUS_SUCCESS) {
     printf("Exec cncvSyncQueue failed,  error code:%d\n", cncv_ret);
     return -1;
   }
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[cncv-kernel] time: %.3f ms\n", time_use/1000);
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->end, NULL);
+  cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end, &d_ptr_->hw_time);
+  d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
+                    + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
+  printf("hw time: %.3f ms, sw time: %.3f ms\n",
+        d_ptr_->hw_time/1000.f, d_ptr_->sw_time/1000.f);
   #endif
+
   return 0;
 }
 
 int mluop_convert_rgbx2yuv_destroy(HANDLE h) {
   CVRGBX2YUVPrivate *d_ptr_ = static_cast<CVRGBX2YUVPrivate *>(h);
+  if (!d_ptr_) {
+    printf("mluop cvt rgbx2yuv op not init\n");
+    return 0;
+  }
+  #ifdef DEBUG
+  if (d_ptr_->event_begin) cnrtDestroyNotifier(&d_ptr_->event_begin);
+  if (d_ptr_->event_end)   cnrtDestroyNotifier(&d_ptr_->event_end);
+  #endif
   if (d_ptr_->dst_yuv_ptrs_cpu_) {
     free(d_ptr_->dst_yuv_ptrs_cpu_);
     d_ptr_->dst_yuv_ptrs_cpu_ = nullptr;

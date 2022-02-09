@@ -150,12 +150,10 @@ void *process_resize_yuv(void *ctx_) {
     #if PRINT_TIME
     gettimeofday(&start, NULL);
     #endif
-    mluop_resize_yuv_exec(handle, src_y_mlu, src_uv_mlu,
-                          dst_y_mlu, dst_uv_mlu);
-    /* mluop_resize_roi_yuv_exec(handle, src_y_mlu, src_uv_mlu,
-                                 dst_y_mlu, dst_uv_mlu, 0,0,960,540,10,10,640,360); */
-    /* mluop_resize_pad_yuv_exec(handle, src_y_mlu, src_uv_mlu,
-                                 dst_y_mlu, dst_uv_mlu);*/
+    mluop_resize_yuv_exec(handle, src_y_mlu, src_uv_mlu, dst_y_mlu, dst_uv_mlu);
+    // mluop_resize_roi_yuv_exec(handle, src_y_mlu, src_uv_mlu,
+                                //  dst_y_mlu, dst_uv_mlu, 0,0,960,540,10,10,640,360);
+    // mluop_resize_pad_yuv_exec(handle, src_y_mlu, src_uv_mlu, dst_y_mlu, dst_uv_mlu);
 
     #if PRINT_TIME
     gettimeofday(&end, NULL);
