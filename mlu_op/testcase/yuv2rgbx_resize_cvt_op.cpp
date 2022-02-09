@@ -26,15 +26,6 @@
 #include "mluop_list.h"
 #include "test_mluop.h"
 
-#define CV_8U 0
-#define CV_CN_SHIFT 3
-#define CV_DEPTH_MAX (1 << CV_CN_SHIFT)
-#define CV_MAT_DEPTH_MASK (CV_DEPTH_MAX - 1)
-#define CV_MAT_DEPTH(flags) ((flags)&CV_MAT_DEPTH_MASK)
-#define CV_MAKETYPE(depth, cn) (CV_MAT_DEPTH(depth) + (((cn)-1) << CV_CN_SHIFT))
-#define CV_8UC3 CV_MAKETYPE(CV_8U, 3)
-#define CV_8UC(n) CV_MAKETYPE(CV_8U, (n))
-
 extern void BGR2YUV420P(cv::Mat src, cv::Mat &dst, const char *pix_fmt);
 
 void Yuv2RgbxResizeCvtOp(void *ctx_, char **argv) {
@@ -197,7 +188,7 @@ void *ProcessResizeCvtYuv2Rgbx(void *ctx_) {
 #endif
   /*-------sace file-------*/
   if (save_flag) {
-    dst_mat.create(dst_h, dst_w, CV_8UC(dst_pix_chn_num));
+    dst_mat.create(dst_h, dst_w, (dst_pix_chn_num == 3 ? CV_8UC3:CV_8UC4));
     for (uint32_t row = 0; row < dst_h; ++row) {
       memcpy(dst_mat.ptr<uint8_t>(row),
              reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst_cpu) +

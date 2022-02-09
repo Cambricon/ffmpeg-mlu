@@ -1,6 +1,6 @@
-From b82bd2128548ac59f66b1509d65fc0627ea24647 Mon Sep 17 00:00:00 2001
+From abe34a67f173c47b96307ec606d681189585d9f5 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Fri, 28 Jan 2022 19:34:49 +0800
+Date: Wed, 9 Feb 2022 17:46:45 +0800
 Subject: [PATCH] gen new patch
 
 ---
@@ -15,13 +15,13 @@ Subject: [PATCH] gen new patch
  libavcodec/Makefile                     |    8 +
  libavcodec/allcodecs.c                  |    8 +
  libavcodec/hwaccel.h                    |    2 +
- libavcodec/mlumpp_dec.c                 | 2141 +++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c                 | 2142 +++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c            |  177 ++
  libavcodec/mlumpp_enc_hevc.c            |  174 ++
  libavcodec/mlumpp_enc_jpeg.c            | 1084 ++++++++++++
  libavcodec/mlumpp_mluop.c               |  501 ++++++
  libavcodec/mlumpp_mluop.h               |  234 +++
- libavcodec/mlumpp_vid_enc.c             | 1505 ++++++++++++++++
+ libavcodec/mlumpp_vid_enc.c             | 1507 ++++++++++++++++
  libavcodec/mlumpp_vid_enc.h             |  161 ++
  libavfilter/Makefile                    |    9 +
  libavfilter/allfilters.c                |    9 +
@@ -38,11 +38,11 @@ Subject: [PATCH] gen new patch
  libavutil/hwcontext.c                   |    5 +
  libavutil/hwcontext.h                   |    1 +
  libavutil/hwcontext_internal.h          |    1 +
- libavutil/hwcontext_mlu.c               |  443 +++++
+ libavutil/hwcontext_mlu.c               |  454 +++++
  libavutil/hwcontext_mlu.h               |   62 +
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 38 files changed, 11068 insertions(+)
+ 38 files changed, 11082 insertions(+)
  create mode 100644 doc/examples/hw_decode_mlu.c
  create mode 100755 doc/examples/mlumpp_transcode.c
  create mode 100644 fftools/ffmpeg_mlu.c
@@ -1087,10 +1087,10 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..c3b765a095
+index 0000000000..e7337334fa
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,2141 @@
+@@ -0,0 +1,2142 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -3109,6 +3109,7 @@ index 0000000000..c3b765a095
 +            ctx->dec_pp == P_SCVT) {
 +            ret = mlumpp_mluop_load(&ctx->mluop_handle, mluop_libname, avctx);
 +            if (ret < 0) {
++                av_log(avctx, AV_LOG_ERROR, "mluop load library failed!\n");
 +                mlumpp_mluop_unload(ctx->mluop_handle);
 +                ctx->mluop_handle = NULL;
 +            }
@@ -5439,10 +5440,10 @@ index 0000000000..0518c3d8ee
 +#endif /* AVCODEC_MLUMPP_MLUOP_H */
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100755
-index 0000000000..4f954c025c
+index 0000000000..3ee464e1fe
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1505 @@
+@@ -0,0 +1,1507 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -5729,6 +5730,7 @@ index 0000000000..4f954c025c
 +    cnvideoEncInput input_probe;
 +    AVCodecContext* avctx = cnctx->avctx;
 +    // for H264/H265, fill extradata
++
 +    cnctx->insert_spspps_to_extradata = 1;
 +    memset(&input_probe, 0, sizeof(cnvideoEncInput));
 +    if (cnctx->trace_flag > 0) {
@@ -6326,9 +6328,9 @@ index 0000000000..4f954c025c
 +{
 +    AVMLUDeviceContext *device_hwctx;
 +    AVHWFramesContext *hwframe_ctx;
++    cnvideoEncCreateInfo enc_params;
 +
 +    int ret = -1;
-+    cnvideoEncCreateInfo enc_params;
 +    int bitstream_buf_size = 0;
 +    char device_idx[sizeof(int)];
 +    if (NULL == avctx || NULL == cnctx || 1 == cnctx->encoder_init_flag) {
@@ -6338,6 +6340,7 @@ index 0000000000..4f954c025c
 +    if (cnctx->trace_flag > 0) {
 +        av_log(avctx, AV_LOG_INFO, "Cnencode init ... \n");
 +    }
++
 +    // cnctx->stride_align = CN_VENC_FRAME_ALIGNMENT;
 +    ret = mlumpp_check_stride_align(avctx, cnctx);
 +    if (ret != 0) {
@@ -11122,10 +11125,10 @@ index 77dc47ddd6..0f7bb9957f 100644
  extern const HWContextType ff_hwcontext_type_dxva2;
 diff --git a/libavutil/hwcontext_mlu.c b/libavutil/hwcontext_mlu.c
 new file mode 100644
-index 0000000000..2640b39239
+index 0000000000..2003162d4d
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.c
-@@ -0,0 +1,443 @@
+@@ -0,0 +1,454 @@
 +/*
 + * This file is part of FFmpeg.
 + *
@@ -11168,6 +11171,7 @@ index 0000000000..2640b39239
 +    int shift_width, shift_height;
 +} MLUFramesContext;
 +
++static int init_cnt = 0;
 +static const enum AVPixelFormat supported_formats[] = {
 +    AV_PIX_FMT_RGB24, AV_PIX_FMT_BGR24,
 +    AV_PIX_FMT_ABGR, AV_PIX_FMT_ARGB,
@@ -11369,8 +11373,13 @@ index 0000000000..2640b39239
 +    }
 +
 +    // hwctx->mlu_ctx->mluDestroy();
-+    static AVOnce control = AV_ONCE_INIT;
-+    ff_thread_once(&control, mlu_hwdev_uinit);
++    // static AVOnce control = AV_ONCE_INIT;
++    // ff_thread_once(&control, mlu_hwdev_uinit);
++    init_cnt--;
++    if (0 == init_cnt) {
++        mlu_hwdev_uinit();
++        av_log(NULL, AV_LOG_VERBOSE, "mlu_uint(destroy), init_cnt = %d\n", init_cnt);
++    }
 +
 +    if (hwctx->mlu_ctx) {
 +        av_freep(&hwctx->mlu_ctx);
@@ -11513,8 +11522,13 @@ index 0000000000..2640b39239
 +
 +    mlu_ctx = hwctx->mlu_ctx;
 +
-+    static AVOnce control = AV_ONCE_INIT;
-+    ff_thread_once(&control, mlu_hwdev_init);
++    // static AVOnce control = AV_ONCE_INIT;
++    // ff_thread_once(&control, mlu_hwdev_init);
++    if (0 == init_cnt) {
++        mlu_hwdev_init();
++        av_log(NULL, AV_LOG_VERBOSE, "mlu_init(init), init_cnt = %d\n", init_cnt);
++    }
++    init_cnt++;
 +
 +    cnrt_ret = mlu_ctx->mluGetDeviceCount(&dev_num);
 +    if (cnrt_ret !=0 || dev_num == 0) {

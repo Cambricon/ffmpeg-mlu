@@ -85,6 +85,12 @@ int mluop_resize_rgbx_init(HANDLE *h, int input_w, int input_h, int output_w,
                            const char *depth);
 int mluop_resize_rgbx_exec(HANDLE h, void *input, void *output);
 int mluop_resize_pad_rgbx_exec(HANDLE h, void *input, void *output);
+int mluop_resize_roi_rgbx_exec(HANDLE h, void *input, void *output,
+                            uint32_t src_roi_x, uint32_t src_roi_y,
+                            uint32_t src_roi_w, uint32_t src_roi_h,
+                            uint32_t dst_roi_x, uint32_t dst_roi_y,
+                            uint32_t dst_roi_w, uint32_t dst_roi_h);
+
 int mluop_resize_rgbx_destroy(HANDLE h);
 
 /*------------------------convert yuv2rgbx cncv----------------------*/

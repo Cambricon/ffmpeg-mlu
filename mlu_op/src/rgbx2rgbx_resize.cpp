@@ -35,8 +35,6 @@
 using std::string;
 using std::to_string;
 
-#define PRINT_TIME 0
-
 #define CNRT_ERROR_CHECK(ret)                                                  \
   if (ret != CNRT_RET_SUCCESS) {                                               \
     fprintf(stderr, "error occur, func: %s, line: %d\n", __func__, __LINE__);  \
@@ -137,6 +135,13 @@ struct CVResizeRgbxPrivate {
   cncvRect src_rois;
   cncvRect dst_rois;
 
+  float sw_time = 0.0;
+  float hw_time = 0.0;
+  struct timeval end;
+  struct timeval start;
+  cnrtNotifier_t event_begin = nullptr;
+  cnrtNotifier_t event_end   = nullptr;
+
   std::deque<void*> src_rgbx_ptrs_cache_;
   void **src_rgbx_ptrs_cpu_ = nullptr;
   void **src_rgbx_ptrs_mlu_ = nullptr;
@@ -219,7 +224,17 @@ int mluop_resize_rgbx_init(HANDLE *h,
   d_ptr_->dst_desc.stride[0] = d_ptr_->output_stride_in_bytes;
   d_ptr_->dst_desc.depth = getCNCVDepthFromIndex(depth);
 
+  #ifdef DEBUG
+  if (CNRT_RET_SUCCESS != cnrtCreateNotifier(&d_ptr_->event_begin)) {
+    printf("cnrtCreateNotifier eventBegin failed\n");
+  }
+  if (CNRT_RET_SUCCESS != cnrtCreateNotifier(&d_ptr_->event_end)) {
+    printf("cnrtCreateNotifier eventEnd failed\n");
+  }
+  #endif
+
   *h = static_cast<void *>(d_ptr_);
+
   return 0;
 }
 
@@ -251,11 +266,9 @@ int mluop_resize_rgbx_exec(HANDLE h,
     printf("Memcpy host to device failed. Error code:%d\n", cnret);
     return -1;
   }
-  #if PRINT_TIME
-  float time_use = 0;
-  struct timeval end;
-  struct timeval start;
-  gettimeofday(&start, NULL);
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->start, NULL);
+  cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_);
   #endif
   cncvStatus_t cncv_ret;
   cncv_ret = cncvResizeRgbx(d_ptr_->handle,
@@ -273,19 +286,25 @@ int mluop_resize_rgbx_exec(HANDLE h,
     printf("Exec ResizeRgbx func failed, error code:%d\n", cncv_ret);
     return -1;
   }
+  #ifdef DEBUG
+  cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_);
+  #endif
   cncv_ret = cncvSyncQueue(d_ptr_->handle);
   if(cncv_ret != CNCV_STATUS_SUCCESS) {
     printf("Exec SyncQueue func failed,  error code:%d\n", cncv_ret);
     return -1;
   }
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[cncv-kernel] time: %.3f ms\n", time_use/1000);
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->end, NULL);
+  cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end, &d_ptr_->hw_time);
+  d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
+                    + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
+  printf("hw time: %.3f ms, sw time: %.3f ms\n",
+        d_ptr_->hw_time/1000.f, d_ptr_->sw_time/1000.f);
   #endif
+
   return 0;
 }
-
 
 int mluop_resize_pad_rgbx_exec(HANDLE h,
                                void *input, void *output) {
@@ -344,11 +363,9 @@ int mluop_resize_pad_rgbx_exec(HANDLE h,
       d_ptr_->dst_rois.y = low_bound_p * 2;
     }
   }
-  #if PRINT_TIME
-  float time_use = 0;
-  struct timeval end;
-  struct timeval start;
-  gettimeofday(&start, NULL);
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->start, NULL);
+  cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_);
   #endif
   cncvStatus_t cncv_ret;
   cncv_ret = cncvResizeRgbx(d_ptr_->handle,
@@ -366,64 +383,170 @@ int mluop_resize_pad_rgbx_exec(HANDLE h,
     printf("Exec ResizeRgbx func failed, error code:%d\n", cncv_ret);
     return -1;
   }
+  #ifdef DEBUG
+  cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_);
+  #endif
   cncv_ret = cncvSyncQueue(d_ptr_->handle);
   if(cncv_ret != CNCV_STATUS_SUCCESS) {
     printf("Exec SyncQueue failed,  error code:%d\n", cncv_ret);
     return -1;
   }
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[cncv-kernel] time: %.3f ms\n", time_use/1000);
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->end, NULL);
+  cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end, &d_ptr_->hw_time);
+  d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
+                    + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
+  printf("hw time: %.3f ms, sw time: %.3f ms\n",
+        d_ptr_->hw_time/1000.f, d_ptr_->sw_time/1000.f);
   #endif
+
+  return 0;
+}
+
+int mluop_resize_roi_rgbx_exec(HANDLE h,
+                            void *input, void *output,
+                            uint32_t src_roi_x, uint32_t src_roi_y,
+                            uint32_t src_roi_w, uint32_t src_roi_h,
+                            uint32_t dst_roi_x, uint32_t dst_roi_y,
+                            uint32_t dst_roi_w, uint32_t dst_roi_h) {
+  CVResizeRgbxPrivate *d_ptr_ = static_cast<CVResizeRgbxPrivate *>(h);
+  if (nullptr == d_ptr_->queue_) {
+    printf("Sync queue is null.\n");
+    return -1;
+  }
+  if (src_roi_x%2 || src_roi_y%2 || src_roi_w%2 || src_roi_h%2 ||
+      dst_roi_x%2 || dst_roi_y%2 || dst_roi_w%2 || dst_roi_h%2) {
+    printf("roi params illegal, value must be even.\n");
+    return -1;
+  }
+  if ((src_roi_x + src_roi_w > d_ptr_->src_desc.width)  ||
+      (src_roi_y + src_roi_h > d_ptr_->src_desc.height) ||
+      (dst_roi_x + dst_roi_w > d_ptr_->dst_desc.width ) ||
+      (dst_roi_y + dst_roi_h > d_ptr_->dst_desc.height)) {
+    printf("roi params illegal, the ROI area must be within the image scope.\n");
+    return -1;
+  }
+  // input is mlu src ptr, ..._ptrs_cache_ is cpu ptr for batch address
+  for (uint32_t bi = 0; bi < d_ptr_->batch_size; ++bi) {
+    d_ptr_->src_rgbx_ptrs_cpu_[bi] = input;
+    d_ptr_->dst_rgbx_ptrs_cpu_[bi] = output;
+  }
+  d_ptr_->src_rois.x = src_roi_x;
+  d_ptr_->src_rois.y = src_roi_y;
+  d_ptr_->src_rois.w = src_roi_w;
+  d_ptr_->src_rois.h = src_roi_h;
+  d_ptr_->dst_rois.x = dst_roi_x;
+  d_ptr_->dst_rois.y = dst_roi_y;
+  d_ptr_->dst_rois.w = dst_roi_w;
+  d_ptr_->dst_rois.h = dst_roi_h;
+
+  cnrtRet_t cnret;
+  cnret = cnrtMemcpy(d_ptr_->src_rgbx_ptrs_mlu_,
+              reinterpret_cast<void**>(d_ptr_->src_rgbx_ptrs_cpu_),
+              sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  if (cnret != CNRT_RET_SUCCESS) {
+    printf("Memcpy host to device failed. Error code:%d\n", cnret);
+    return -1;
+  }
+  cnret = cnrtMemcpy(d_ptr_->dst_rgbx_ptrs_mlu_,
+              reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_cpu_),
+              sizeof(char*) * d_ptr_->batch_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
+  if (cnret != CNRT_RET_SUCCESS) {
+    printf("Memcpy host to device failed. Error code:%d\n", cnret);
+    return -1;
+  }
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->start, NULL);
+  cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_);
+  #endif
+  cncvStatus_t cncv_ret;
+  cncv_ret = cncvResizeRgbx(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<void**>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR);
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec ResizeRgbx func failed, error code:%d\n", cncv_ret);
+    return -1;
+  }
+
+  #ifdef DEBUG
+  cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_);
+  #endif
+  cncv_ret = cncvSyncQueue(d_ptr_->handle);
+  if(cncv_ret != CNCV_STATUS_SUCCESS) {
+    printf("Exec SyncQueue func failed, error code:%d\n", cncv_ret);
+    return -1;
+  }
+
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->end, NULL);
+  cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end, &d_ptr_->hw_time);
+  d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
+                    + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
+  printf("hw time: %.3f ms, sw time: %.3f ms\n",
+        d_ptr_->hw_time/1000.f, d_ptr_->sw_time/1000.f);
+  #endif
+
   return 0;
 }
 
 int mluop_resize_rgbx_destroy(HANDLE h) {
   CVResizeRgbxPrivate *d_ptr_ = static_cast<CVResizeRgbxPrivate *>(h);
-  if (d_ptr_) {
-    if (d_ptr_->src_rgbx_ptrs_cpu_) {
-      free(d_ptr_->src_rgbx_ptrs_cpu_);
-      d_ptr_->src_rgbx_ptrs_cpu_ = nullptr;
-    }
-    if (d_ptr_->src_rgbx_ptrs_mlu_) {
-      cnrtFree(d_ptr_->src_rgbx_ptrs_mlu_);
-      d_ptr_->src_rgbx_ptrs_mlu_ = nullptr;
-    }
-
-    if (d_ptr_->dst_rgbx_ptrs_cpu_) {
-      free(d_ptr_->dst_rgbx_ptrs_cpu_);
-      d_ptr_->dst_rgbx_ptrs_cpu_ = nullptr;
-    }
-    if (d_ptr_->dst_rgbx_ptrs_mlu_) {
-      cnrtFree(d_ptr_->dst_rgbx_ptrs_mlu_);
-      d_ptr_->dst_rgbx_ptrs_mlu_ = nullptr;
-    }
-    d_ptr_->dst_rgbx_ptrs_cache_.clear();
-
-    if (d_ptr_->workspace) {
-      cnrtFree(d_ptr_->workspace);
-      d_ptr_->workspace = nullptr;
-    }
-
-    if (d_ptr_->queue_) {
-      auto ret = cnrtDestroyQueue(d_ptr_->queue_);
-      if (ret != CNRT_RET_SUCCESS) {
-        printf("Destroy queue failed. Error code:%d\n", ret);
-        return -1;
-      }
-      d_ptr_->queue_ = nullptr;
-    }
-    if (d_ptr_->handle) {
-      auto ret = cncvDestroy(d_ptr_->handle);
-      if (ret != CNCV_STATUS_SUCCESS) {
-        printf("Destroy handle failed. Error code:%d\n", ret);
-        return -1;
-      }
-      d_ptr_->handle = nullptr;
-    }
-    delete d_ptr_;
-    d_ptr_ = nullptr;
+  if (!d_ptr_) {
+    printf("mluop resize rgbx op not init\n");
+    return 0;
   }
+  #ifdef DEBUG
+  if (d_ptr_->event_begin) cnrtDestroyNotifier(&d_ptr_->event_begin);
+  if (d_ptr_->event_end)   cnrtDestroyNotifier(&d_ptr_->event_end);
+  #endif
+  if (d_ptr_->src_rgbx_ptrs_cpu_) {
+    free(d_ptr_->src_rgbx_ptrs_cpu_);
+    d_ptr_->src_rgbx_ptrs_cpu_ = nullptr;
+  }
+  if (d_ptr_->src_rgbx_ptrs_mlu_) {
+    cnrtFree(d_ptr_->src_rgbx_ptrs_mlu_);
+    d_ptr_->src_rgbx_ptrs_mlu_ = nullptr;
+  }
+  if (d_ptr_->dst_rgbx_ptrs_cpu_) {
+    free(d_ptr_->dst_rgbx_ptrs_cpu_);
+    d_ptr_->dst_rgbx_ptrs_cpu_ = nullptr;
+  }
+  if (d_ptr_->dst_rgbx_ptrs_mlu_) {
+    cnrtFree(d_ptr_->dst_rgbx_ptrs_mlu_);
+    d_ptr_->dst_rgbx_ptrs_mlu_ = nullptr;
+  }
+  d_ptr_->dst_rgbx_ptrs_cache_.clear();
+
+  if (d_ptr_->workspace) {
+    cnrtFree(d_ptr_->workspace);
+    d_ptr_->workspace = nullptr;
+  }
+  if (d_ptr_->queue_) {
+    auto ret = cnrtDestroyQueue(d_ptr_->queue_);
+    if (ret != CNRT_RET_SUCCESS) {
+      printf("Destroy queue failed. Error code:%d\n", ret);
+      return -1;
+    }
+    d_ptr_->queue_ = nullptr;
+  }
+  if (d_ptr_->handle) {
+    auto ret = cncvDestroy(d_ptr_->handle);
+    if (ret != CNCV_STATUS_SUCCESS) {
+      printf("Destroy handle failed. Error code:%d\n", ret);
+      return -1;
+    }
+    d_ptr_->handle = nullptr;
+  }
+  delete d_ptr_;
+  d_ptr_ = nullptr;
+
   return 0;
 }

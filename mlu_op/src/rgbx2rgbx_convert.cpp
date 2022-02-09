@@ -36,8 +36,6 @@
 using std::string;
 using std::to_string;
 
-#define PRINT_TIME 0
-
 extern cncvStatus_t cncvResizeRgbx(cncvHandle_t handle, uint32_t batch_size,
                                    const cncvImageDescriptor src_desc,
                                    const cncvRect *src_rois, void **src,
@@ -128,6 +126,13 @@ struct CvRgbx2RgbxPrivate {
   cncvRect src_rois;
   cncvRect dst_rois;
 
+  float sw_time = 0.0;
+  float hw_time = 0.0;
+  struct timeval end;
+  struct timeval start;
+  cnrtNotifier_t event_begin = nullptr;
+  cnrtNotifier_t event_end   = nullptr;
+
   void **src_ptrs_cpu;
   void **src_ptrs_mlu;
   void **dst_ptrs_cpu;
@@ -191,7 +196,18 @@ int MluopConvertRgbx2RgbxInit(HANDLE *h, int width, int height,
   d_ptr_->dst_rois.y = 0;
   d_ptr_->dst_rois.w = width;
   d_ptr_->dst_rois.h = height;
+
+  #ifdef DEBUG
+  if (CNRT_RET_SUCCESS != cnrtCreateNotifier(&d_ptr_->event_begin)) {
+    printf("cnrtCreateNotifier eventBegin failed\n");
+  }
+  if (CNRT_RET_SUCCESS != cnrtCreateNotifier(&d_ptr_->event_end)) {
+    printf("cnrtCreateNotifier eventEnd failed\n");
+  }
+  #endif
+
   *h = static_cast<void *>(d_ptr_);
+
   return 0;
 }
 
@@ -229,6 +245,10 @@ int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
   }
 
   cncvStatus_t cncv_ret;
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->start, NULL);
+  cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue);
+  #endif
   cncv_ret = cncvRgbxToRgbx(d_ptr_->handle,
                             1, d_ptr_->src_desc,
                             d_ptr_->src_rois,
@@ -240,11 +260,23 @@ int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
     printf("Exec cncvYuv420spToRgbx failed, error code:%d\n", cncv_ret);
     return -1;
   }
+  #ifdef DEBUG
+  cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue);
+  #endif
   cncv_ret = cncvSyncQueue(d_ptr_->handle);
   if (cncv_ret != CNCV_STATUS_SUCCESS) {
     printf("Exec cncvSyncQueue failed,  error code:%d\n", cncv_ret);
     return -1;
   }
+  #ifdef DEBUG
+  gettimeofday(&d_ptr_->end, NULL);
+  cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end, &d_ptr_->hw_time);
+  d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
+                    + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
+  printf("hw time: %.3f ms, sw time: %.3f ms\n",
+        d_ptr_->hw_time/1000.f, d_ptr_->sw_time/1000.f);
+  #endif
+
   return 0;
 }
 
@@ -254,6 +286,14 @@ int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
 */
 int MluopConvertRgbx2RgbxDestroy(HANDLE h) {
   CvRgbx2RgbxPrivate *d_ptr_ = static_cast<CvRgbx2RgbxPrivate *>(h);
+  if (!d_ptr_) {
+    printf("mluop cvt rgbx2rgbx op not init\n");
+    return 0;
+  }
+  #ifdef DEBUG
+  if (d_ptr_->event_begin) cnrtDestroyNotifier(&d_ptr_->event_begin);
+  if (d_ptr_->event_end)   cnrtDestroyNotifier(&d_ptr_->event_end);
+  #endif
   if (d_ptr_->src_ptrs_cpu) {
     free(d_ptr_->src_ptrs_cpu);
     d_ptr_->src_ptrs_cpu = nullptr;

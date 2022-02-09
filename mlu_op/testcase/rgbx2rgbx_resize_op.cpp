@@ -148,7 +148,11 @@ void *process_resize_rgbx(void *ctx_) {
     #if PRINT_TIME
     gettimeofday(&start, NULL);
     #endif
+
     mluop_resize_rgbx_exec(handle, src_mlu, dst_mlu);
+    // mluop_resize_pad_rgbx_exec(handle, src_mlu, dst_mlu);
+    // mluop_resize_roi_rgbx_exec(handle, src_mlu, dst_mlu, 0,0,960,960,0,0,480,480);
+
     #if PRINT_TIME
     gettimeofday(&end, NULL);
     time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);

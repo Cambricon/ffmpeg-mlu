@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     printf("|./test mluop <algo> <src_file> <src_width> <src_height> <dst_file>                |\n"
            "| <src_pix_fmt> <dst_pixfmt> <frame_num> <thread_num> <save_flag> <device_id>      |\n");
     printf("|----------------------------------------------------------------------------------|\n");
-    printf("|[5] <--> process_resize_cvt_rgbx2rgbx                                             |\n");
+    printf("|[5] <--> process_resize_cvt_yuv2rgbx                                              |\n");
     printf("|                                                                                  |\n");
     printf("|./test mluop <algo> <src_file> <src_width> <src_height> <dst_w> <dst_h> <dst_file>|\n"
            "| <src_pixfmt> <dst_pixfmt> <frame_num> <thread_num> <save_flag> <dev_id>          |\n");
