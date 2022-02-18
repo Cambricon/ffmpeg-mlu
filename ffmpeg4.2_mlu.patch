@@ -1,13 +1,13 @@
-From abe34a67f173c47b96307ec606d681189585d9f5 Mon Sep 17 00:00:00 2001
+From 0ce9aaab16e8c7051320a5da7acba297719f692a Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Wed, 9 Feb 2022 17:46:45 +0800
+Date: Fri, 18 Feb 2022 18:15:01 +0800
 Subject: [PATCH] gen new patch
 
 ---
  configure                               |   18 +
  doc/examples/Makefile                   |    2 +
  doc/examples/hw_decode_mlu.c            |  256 +++
- doc/examples/mlumpp_transcode.c         |  396 +++++
+ doc/examples/mlumpp_transcode.c         |  396 ++++
  fftools/Makefile                        |    1 +
  fftools/ffmpeg.h                        |    2 +
  fftools/ffmpeg_mlu.c                    |   74 +
@@ -15,10 +15,10 @@ Subject: [PATCH] gen new patch
  libavcodec/Makefile                     |    8 +
  libavcodec/allcodecs.c                  |    8 +
  libavcodec/hwaccel.h                    |    2 +
- libavcodec/mlumpp_dec.c                 | 2142 +++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c                 | 2195 +++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c            |  177 ++
  libavcodec/mlumpp_enc_hevc.c            |  174 ++
- libavcodec/mlumpp_enc_jpeg.c            | 1084 ++++++++++++
+ libavcodec/mlumpp_enc_jpeg.c            | 1084 +++++++++++
  libavcodec/mlumpp_mluop.c               |  501 ++++++
  libavcodec/mlumpp_mluop.h               |  234 +++
  libavcodec/mlumpp_vid_enc.c             | 1507 ++++++++++++++++
@@ -32,7 +32,7 @@ Subject: [PATCH] gen new patch
  libavfilter/vf_hwupload_mlu.c           |  200 +++
  libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  542 ++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  483 +++++
- libavfilter/vf_scale_yuv2yuv_mlu.c      |  490 ++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  490 +++++
  libavfilter/vf_sr_mlu.c                 |  264 +++
  libavutil/Makefile                      |    3 +
  libavutil/hwcontext.c                   |    5 +
@@ -42,7 +42,7 @@ Subject: [PATCH] gen new patch
  libavutil/hwcontext_mlu.h               |   62 +
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 38 files changed, 11082 insertions(+)
+ 38 files changed, 11135 insertions(+)
  create mode 100644 doc/examples/hw_decode_mlu.c
  create mode 100755 doc/examples/mlumpp_transcode.c
  create mode 100644 fftools/ffmpeg_mlu.c
@@ -1087,10 +1087,10 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..e7337334fa
+index 0000000000..4e065f416c
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,2142 @@
+@@ -0,0 +1,2195 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1242,7 +1242,7 @@ index 0000000000..e7337334fa
 +} MLUJpegFrameInfo_t;
 +
 +int pts_hash_count(int64_t key_pts) {
-+    return (key_pts % HASH_LEN);
++    return (key_pts % HASH_LEN) < 0 ? (key_pts % HASH_LEN) + HASH_LEN : (key_pts % HASH_LEN);
 +};
 +
 +PtsHashList_t* pts_hash_init(void) {
@@ -2364,9 +2364,57 @@ index 0000000000..e7337334fa
 +    return ret;
 +}
 +
++static int h264_nalu_parse(const AVPacket* pkt) {
++    uint8_t *data = pkt->data;
++    NALU_t nal;
++    int nalu_head_pos = 0;
++    int parsed_len = 0;
++    bs_t nalu_header;
++    int next_nalu_head;
++    int rbsp_len;
++    int frame_type;
++    uint8_t *rbsp_data = NULL;
++    memset(&nal, 0, sizeof(NALU_t));
++
++    while (nal.nal_unit_type != NAL_SLICE_IDR &&
++           nal.nal_unit_type != NAL_SLICE_NOIDR &&
++           parsed_len < pkt->size) {
++        next_nalu_head = find_next_nalu_header(data, nalu_head_pos + 4, pkt->size);
++        rbsp_len = next_nalu_head - nalu_head_pos;
++        rbsp_data = realloc(rbsp_data, next_nalu_head - nalu_head_pos);
++        nal_to_rbsp(4, data + nalu_head_pos, next_nalu_head - nalu_head_pos, rbsp_data, &rbsp_len);
++        bs_init(&nalu_header, rbsp_data, 1);
++        nal.len = rbsp_len;
++        nal.buf = rbsp_data;
++        nal.prefix_len = 0;
++        nal.forbidden_bit = bs_read1(&nalu_header);
++        nal.nal_reference_idc = bs_read(&nalu_header, 2);
++        nal.nal_unit_type = bs_read(&nalu_header, 5);
++        parsed_len += next_nalu_head - nalu_head_pos;
++        nalu_head_pos = next_nalu_head;
++        if(nal.nal_unit_type >= 9) {
++            frame_type = -1;
++            goto parse_error;
++        }
++    }
++    if(parsed_len > pkt->size) {
++        frame_type = -1;
++        goto parse_error;
++    }
++    frame_type = get_h264_slice_type(&nal);
++parse_error:
++    if(rbsp_data) {
++        free(rbsp_data);
++        rbsp_data = NULL;
++    }
++    return frame_type;
++}
++
 +static int h264_judge_pkt_type(const AVPacket* pkt) {
 +    NALU_t nal;
 +    bs_t nalu_header;
++    bs_t nalu_header_check;
++    int header_len_check;
 +    int frametype;
 +    int probed_size = 0;
 +    bs_t nalu_len_reader;
@@ -2374,6 +2422,11 @@ index 0000000000..e7337334fa
 +        return AVERROR_EOF;
 +    }
 +    memset(&nal, 0, sizeof(NALU_t));
++    bs_init(&nalu_header_check, pkt->data, 4);
++    header_len_check = bs_read(&nalu_header_check, 32);
++    if (header_len_check == 1 && header_len_check + 4 != pkt->size) {
++        return h264_nalu_parse(pkt);
++    }
 +    while (nal.nal_unit_type != NAL_SLICE_IDR &&
 +           nal.nal_unit_type != NAL_SLICE_NOIDR &&
 +           probed_size < pkt->size) {
@@ -2389,8 +2442,8 @@ index 0000000000..e7337334fa
 +        if(nal.nal_unit_type >= 9) {
 +            return -1;
 +        }
-+        //av_log(NULL, AV_LOG_WARNING, "nal unit type: %d, len: %d\n", nal.nal_unit_type, nal.len);
-+        //av_log(NULL, AV_LOG_WARNING, "probed size: %d, pkt size: %d\n", probed_size, pkt->size);
++       // av_log(NULL, AV_LOG_WARNING, "nal unit type: %d, len: %d\n", nal.nal_unit_type, nal.len);
++       // av_log(NULL, AV_LOG_WARNING, "probed size: %d, pkt size: %d\n", probed_size, pkt->size);
 +    }
 +    if (probed_size > pkt->size) {
 +        return -1;
