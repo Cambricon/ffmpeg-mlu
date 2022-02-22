@@ -1,6 +1,6 @@
-From 0ce9aaab16e8c7051320a5da7acba297719f692a Mon Sep 17 00:00:00 2001
+From 2cce657d40b9f4c0702b07a119ff0a573b2a8794 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Fri, 18 Feb 2022 18:15:01 +0800
+Date: Tue, 22 Feb 2022 12:16:19 +0800
 Subject: [PATCH] gen new patch
 
 ---
@@ -15,13 +15,13 @@ Subject: [PATCH] gen new patch
  libavcodec/Makefile                     |    8 +
  libavcodec/allcodecs.c                  |    8 +
  libavcodec/hwaccel.h                    |    2 +
- libavcodec/mlumpp_dec.c                 | 2195 +++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c                 | 2246 +++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c            |  177 ++
  libavcodec/mlumpp_enc_hevc.c            |  174 ++
  libavcodec/mlumpp_enc_jpeg.c            | 1084 +++++++++++
- libavcodec/mlumpp_mluop.c               |  501 ++++++
+ libavcodec/mlumpp_mluop.c               |  506 +++++
  libavcodec/mlumpp_mluop.h               |  234 +++
- libavcodec/mlumpp_vid_enc.c             | 1507 ++++++++++++++++
+ libavcodec/mlumpp_vid_enc.c             | 1507 +++++++++++++++
  libavcodec/mlumpp_vid_enc.h             |  161 ++
  libavfilter/Makefile                    |    9 +
  libavfilter/allfilters.c                |    9 +
@@ -29,7 +29,7 @@ Subject: [PATCH] gen new patch
  libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  535 ++++++
  libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  529 ++++++
  libavfilter/vf_hwdownload_mlu.c         |  209 +++
- libavfilter/vf_hwupload_mlu.c           |  200 +++
+ libavfilter/vf_hwupload_mlu.c           |  200 ++
  libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  542 ++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  483 +++++
  libavfilter/vf_scale_yuv2yuv_mlu.c      |  490 +++++
@@ -42,7 +42,7 @@ Subject: [PATCH] gen new patch
  libavutil/hwcontext_mlu.h               |   62 +
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 38 files changed, 11135 insertions(+)
+ 38 files changed, 11191 insertions(+)
  create mode 100644 doc/examples/hw_decode_mlu.c
  create mode 100755 doc/examples/mlumpp_transcode.c
  create mode 100644 fftools/ffmpeg_mlu.c
@@ -1087,10 +1087,10 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..4e065f416c
+index 0000000000..ee576d8e75
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,2195 @@
+@@ -0,0 +1,2246 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1378,7 +1378,7 @@ index 0000000000..4e065f416c
 +}
 +
 +static inline void mlumpp_get_version(void) {
-+    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2022/01/20\n");
++    av_log(NULL, AV_LOG_VERBOSE, "rel time: 2022/02/21\n");
 +    av_log(NULL, AV_LOG_INFO, "CNCODEC: %d.%d.%d \n",
 +            CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION);
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",
@@ -2374,15 +2374,17 @@ index 0000000000..4e065f416c
 +    int rbsp_len;
 +    int frame_type;
 +    uint8_t *rbsp_data = NULL;
++    int nal_prefix_len = (AV_RB32(pkt->data) == 1 ? 4 : 3);
++    int next_prefix_len = 0;
 +    memset(&nal, 0, sizeof(NALU_t));
 +
 +    while (nal.nal_unit_type != NAL_SLICE_IDR &&
 +           nal.nal_unit_type != NAL_SLICE_NOIDR &&
 +           parsed_len < pkt->size) {
-+        next_nalu_head = find_next_nalu_header(data, nalu_head_pos + 4, pkt->size);
++        next_nalu_head = find_next_nalu_header(data, nalu_head_pos + 4, pkt->size, &next_prefix_len);
 +        rbsp_len = next_nalu_head - nalu_head_pos;
 +        rbsp_data = realloc(rbsp_data, next_nalu_head - nalu_head_pos);
-+        nal_to_rbsp(4, data + nalu_head_pos, next_nalu_head - nalu_head_pos, rbsp_data, &rbsp_len);
++        nal_to_rbsp(nal_prefix_len, data + nalu_head_pos, next_nalu_head - nalu_head_pos, rbsp_data, &rbsp_len);
 +        bs_init(&nalu_header, rbsp_data, 1);
 +        nal.len = rbsp_len;
 +        nal.buf = rbsp_data;
@@ -2392,6 +2394,7 @@ index 0000000000..4e065f416c
 +        nal.nal_unit_type = bs_read(&nalu_header, 5);
 +        parsed_len += next_nalu_head - nalu_head_pos;
 +        nalu_head_pos = next_nalu_head;
++        nal_prefix_len = next_prefix_len;
 +        if(nal.nal_unit_type >= 9) {
 +            frame_type = -1;
 +            goto parse_error;
@@ -2410,10 +2413,53 @@ index 0000000000..4e065f416c
 +    return frame_type;
 +}
 +
++static int hevc_nalu_parse(hevcStreamHeader_t* h, const AVPacket* pkt) {
++    uint8_t *data = pkt->data;
++    NALU_t nal;
++    int nalu_head_pos = 0;
++    int parsed_len = 0;
++    bs_t nalu_header;
++    int next_nalu_head;
++    int rbsp_len;
++    int frame_type;
++    uint8_t *rbsp_data = NULL;
++    int nal_prefix_len = (AV_RB32(pkt->data) == 1 ? 4 : 3);
++    int next_prefix_len = 0;
++    memset(&nal, 0, sizeof(NALU_t));
++    nal.nal_unit_type = 32;
++
++    while ((nal.nal_unit_type > 9 && nal.nal_unit_type < 16 && parsed_len < pkt->size) ||
++           (nal.nal_unit_type > 21 && parsed_len < pkt->size)) {
++        next_nalu_head = find_next_nalu_header(data, nalu_head_pos + 4, pkt->size, &next_prefix_len);
++        rbsp_len = next_nalu_head - nalu_head_pos;
++        rbsp_data = realloc(rbsp_data, next_nalu_head - nalu_head_pos);
++        nal_to_rbsp(nal_prefix_len, data + nalu_head_pos, next_nalu_head - nalu_head_pos, rbsp_data, &rbsp_len);
++        bs_init(&nalu_header, rbsp_data, 2);
++        nal.len = rbsp_len;
++        nal.buf = rbsp_data;
++        nal.prefix_len = 0;
++        nal.forbidden_bit = bs_read1(&nalu_header);
++        nal.nal_unit_type = bs_read(&nalu_header, 6);
++        parsed_len += next_nalu_head - nalu_head_pos;
++        nalu_head_pos = next_nalu_head;
++        nal_prefix_len = next_prefix_len;
++    }
++    if(parsed_len > pkt->size) {
++        frame_type = -1;
++        goto parse_error;
++    }
++    frame_type = get_hevc_slice_type(h, &nal);
++parse_error:
++    if(rbsp_data) {
++        free(rbsp_data);
++        rbsp_data = NULL;
++    }
++    return frame_type;
++}
++
 +static int h264_judge_pkt_type(const AVPacket* pkt) {
 +    NALU_t nal;
 +    bs_t nalu_header;
-+    bs_t nalu_header_check;
 +    int header_len_check;
 +    int frametype;
 +    int probed_size = 0;
@@ -2422,9 +2468,8 @@ index 0000000000..4e065f416c
 +        return AVERROR_EOF;
 +    }
 +    memset(&nal, 0, sizeof(NALU_t));
-+    bs_init(&nalu_header_check, pkt->data, 4);
-+    header_len_check = bs_read(&nalu_header_check, 32);
-+    if (header_len_check == 1 && header_len_check + 4 != pkt->size) {
++    header_len_check = AV_RB32(pkt->data);
++    if (header_len_check + 4 != pkt->size && (AV_RB32(pkt->data)==1 || AV_RB24(pkt->data)==1)) {
 +        return h264_nalu_parse(pkt);
 +    }
 +    while (nal.nal_unit_type != NAL_SLICE_IDR &&
@@ -2458,10 +2503,15 @@ index 0000000000..4e065f416c
 +    int frametype;
 +    int probed_size = 0;
 +    bs_t nalu_len_reader;
++    int header_len_check;
 +    if (pkt->size <= 4) {
 +        return AVERROR_EOF;
 +    }
 +    memset(&nal, 0, sizeof(NALU_t));
++    header_len_check = AV_RB32(pkt->data);
++    if (header_len_check + 4 != pkt->size && (AV_RB32(pkt->data)==1 || AV_RB24(pkt->data)==1)) {
++        return hevc_nalu_parse(h, pkt);
++    }
 +    nal.nal_unit_type = 32;
 +    while ((nal.nal_unit_type > 9 && nal.nal_unit_type < 16 && probed_size < pkt->size) ||
 +           (nal.nal_unit_type > 21 && probed_size < pkt->size)) {
@@ -2474,7 +2524,6 @@ index 0000000000..4e065f416c
 +        nal.nal_unit_type = bs_read(&nalu_header, 6);
 +        probed_size += nal.len;
 +    }
-+    //av_log(NULL, AV_LOG_WARNING, "probed size: %d, pkt size: %d\n", probed_size, pkt->size);
 +    if (probed_size > pkt->size) {
 +        return -1;
 +    }
@@ -2484,16 +2533,18 @@ index 0000000000..4e065f416c
 +
 +
 +static void sps_pps_parse(MLUMPPContext_t *ctx, uint8_t* data, int data_size) {
-+    int sps_pos = find_next_nalu_header(data, 4, data_size);
-+    int pps_pos = find_next_nalu_header(data, sps_pos + 1, data_size);
++    int sps_prefix_len = 0;
++    int pps_prefix_len = 0;
++    bs_t sps_reader;
++    bs_t pps_reader;
++    int sps_pos = find_next_nalu_header(data, 4, data_size, &sps_prefix_len);
++    int pps_pos = find_next_nalu_header(data, sps_pos + sps_prefix_len + 1, data_size, &pps_prefix_len);
 +    int sps_rbsp_len = pps_pos - sps_pos;
 +    int pps_rbsp_len = data_size - pps_pos;
 +    uint8_t* sps_info = malloc(pps_pos - sps_pos);
 +    uint8_t* pps_info = malloc(data_size - pps_pos);
 +    nal_to_rbsp(4, data + sps_pos, pps_pos - sps_pos, sps_info, &sps_rbsp_len);
 +    nal_to_rbsp(4, data + pps_pos, data_size - pps_pos, pps_info, &pps_rbsp_len);
-+    bs_t sps_reader;
-+    bs_t pps_reader;
 +    bs_init(&sps_reader, sps_info, sps_rbsp_len);
 +    bs_init(&pps_reader, pps_info, pps_rbsp_len);
 +    h265_read_sps(&ctx->hevc_sps_head, &sps_reader);
@@ -3286,7 +3337,6 @@ index 0000000000..4e065f416c
 +#if CONFIG_VP9_MLUMPP_DECODER
 +MLUMPP_DEC_CODEC(vp9, VP9)
 +#endif
-\ No newline at end of file
 diff --git a/libavcodec/mlumpp_enc_h264.c b/libavcodec/mlumpp_enc_h264.c
 new file mode 100755
 index 0000000000..b4a83f498a
@@ -4745,10 +4795,10 @@ index 0000000000..9302525d0e
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_mluop.c b/libavcodec/mlumpp_mluop.c
 new file mode 100755
-index 0000000000..41344d8267
+index 0000000000..45b6a90774
 --- /dev/null
 +++ b/libavcodec/mlumpp_mluop.c
-@@ -0,0 +1,501 @@
+@@ -0,0 +1,506 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -5015,7 +5065,7 @@ index 0000000000..41344d8267
 +    oneframe_h264[3] = 0x01;
 +    memcpy(oneframe_h264 + nal->prefix_len, nal->buf + nal->prefix_len, nal->len - nal->prefix_len);
 +
-+    bs_init(&nal_s, oneframe_h264 + nal->prefix_len + 1, nal->len - nal->prefix_len -1);
++    bs_init(&nal_s, oneframe_h264 + 5, nal->len - 5);
 +
 +    if (nal->nal_unit_type == NAL_SLICE_NOIDR || nal->nal_unit_type == NAL_SLICE_IDR) {
 +        bs_read_ue(&nal_s);
@@ -5066,7 +5116,7 @@ index 0000000000..41344d8267
 +    oneframe_hevc[3] = 0x01;
 +    memcpy(oneframe_hevc + 4, nal->buf + nal->prefix_len, nal->len - nal->prefix_len);
 +
-+    bs_init(&nal_s, oneframe_hevc + nal->prefix_len + 2, nal->len - nal->prefix_len -2);
++    bs_init(&nal_s, oneframe_hevc + 6, nal->len - 6);
 +
 +    int first_slice_seg_input_flag = bs_read1(&nal_s);
 +    if (nal->nal_unit_type >= NAL_UNIT_CODED_SLICE_BLA_W_LP &&
@@ -5119,14 +5169,18 @@ index 0000000000..41344d8267
 +    return frametype;
 +}
 +
-+int find_next_nalu_header(uint8_t* data, int start_pos, int data_size) {
++int find_next_nalu_header(uint8_t* data, int start_pos, int data_size, int* prefix_len) {
 +    uint8_t* start = data + start_pos;
 +    int step = 0;
 +    uint8_t* header = start + step;
-+    while (AV_RB32(header) != 1 && step < data_size - start_pos) {
++    while (AV_RB24(header) != 1 && step < data_size - start_pos) {
 +        step++;
 +        header = start + step;
-+        //av_log(NULL, AV_LOG_WARNING, "%02x ", AV_RB8(header));
++    }
++    *prefix_len = 3;
++    if(AV_RB32(header - 1) == 1) {
++        step--;
++        *prefix_len = 4;
 +    }
 +    return start_pos + step;
 +}
@@ -5188,6 +5242,7 @@ index 0000000000..41344d8267
 +
 +    sps_seq_parameter_set_id = bs_read_ue(b);
 +    //sps = h->sps_table[sps_seq_parameter_set_id];
++
 +    if (h->sps_table[sps_seq_parameter_set_id] == NULL) {
 +        h->sps_table[sps_seq_parameter_set_id] = malloc(sizeof(H265SPS_t));
 +        memset(h->sps_table[sps_seq_parameter_set_id], 0, sizeof(H265SPS_t));
@@ -5253,7 +5308,7 @@ index 0000000000..41344d8267
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_mluop.h b/libavcodec/mlumpp_mluop.h
 new file mode 100755
-index 0000000000..0518c3d8ee
+index 0000000000..210b1ef0ef
 --- /dev/null
 +++ b/libavcodec/mlumpp_mluop.h
 @@ -0,0 +1,234 @@
@@ -5483,7 +5538,7 @@ index 0000000000..0518c3d8ee
 +int get_hevc_slice_type(hevcStreamHeader_t* h, NALU_t* nal);
 +//int h264_judge_pkt_type(const AVPacket* pkt);
 +//int hevc_judge_pkt_type(hevc_stream_header_t* h, const AVPacket* pkt);
-+int find_next_nalu_header(uint8_t* data, int start_pos, int data_size);
++int find_next_nalu_header(uint8_t* data, int start_pos, int data_size, int* prefix_len);
 +void read_ptl(bs_t* b, int sps_max_sub_layers_minus1);
 +void h265_read_pps(hevcStreamHeader_t* h, bs_t* b);
 +void h265_read_sps(hevcStreamHeader_t* h, bs_t* b);
