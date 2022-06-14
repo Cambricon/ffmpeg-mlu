@@ -1,14 +1,14 @@
-From 0a2454206324428c1b2ccb3926ae6fb8335b7020 Mon Sep 17 00:00:00 2001
-From: solution-sdk <solution-sdk@cambricon.com>
-Date: Mon, 9 May 2022 15:43:32 +0800
+From a1ab70a627a19e6e2c4236c16942367736568ede Mon Sep 17 00:00:00 2001
+From: solution-sdk <solution-sdk>
+Date: Tue, 14 Jun 2022 15:59:42 +0800
 Subject: [PATCH] gen new patch
 
 ---
  configure                               |   14 +-
  doc/examples/Makefile                   |    3 +
- doc/examples/decode_mlu.c               |  213 ++++
- doc/examples/encode_mlu.c               |  252 +++++
- doc/examples/hw_decode_mlu.c            |  270 +++++
+ doc/examples/decode_mlu.c               |  213 +++++
+ doc/examples/encode_mlu.c               |  252 ++++++
+ doc/examples/hw_decode_mlu.c            |  270 +++++++
  fftools/Makefile                        |    1 +
  fftools/ffmpeg.h                        |    2 +
  fftools/ffmpeg_mlu.c                    |   74 ++
@@ -16,32 +16,32 @@ Subject: [PATCH] gen new patch
  libavcodec/Makefile                     |    8 +
  libavcodec/allcodecs.c                  |    8 +
  libavcodec/hwaccel.h                    |    2 +
- libavcodec/mlumpp_codec.h               |  236 ++++
- libavcodec/mlumpp_dec.c                 | 1325 +++++++++++++++++++++++
- libavcodec/mlumpp_enc_h264.c            |  215 ++++
- libavcodec/mlumpp_enc_hevc.c            |  224 ++++
- libavcodec/mlumpp_enc_jpeg.c            |  109 ++
- libavcodec/mlumpp_vid_enc.c             |  978 +++++++++++++++++
- libavcodec/mlumpp_vid_enc.h             |  120 ++
+ libavcodec/mlumpp_codec.h               |  236 ++++++
+ libavcodec/mlumpp_dec.c                 | 1327 +++++++++++++++++++++++++++++++
+ libavcodec/mlumpp_enc_h264.c            |  215 +++++
+ libavcodec/mlumpp_enc_hevc.c            |  224 ++++++
+ libavcodec/mlumpp_enc_jpeg.c            |  109 +++
+ libavcodec/mlumpp_vid_enc.c             |  978 +++++++++++++++++++++++
+ libavcodec/mlumpp_vid_enc.h             |  120 +++
  libavfilter/Makefile                    |    8 +
  libavfilter/allfilters.c                |    9 +
- libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  526 +++++++++
- libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  580 ++++++++++
- libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  569 ++++++++++
- libavfilter/vf_hwdownload_mlu.c         |  214 ++++
- libavfilter/vf_hwupload_mlu.c           |  198 ++++
- libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  542 +++++++++
- libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  555 ++++++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c      |  567 ++++++++++
+ libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  526 ++++++++++++
+ libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  580 ++++++++++++++
+ libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  569 +++++++++++++
+ libavfilter/vf_hwdownload_mlu.c         |  214 +++++
+ libavfilter/vf_hwupload_mlu.c           |  198 +++++
+ libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  542 +++++++++++++
+ libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  555 +++++++++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  567 +++++++++++++
  libavutil/Makefile                      |    3 +
  libavutil/hwcontext.c                   |    5 +
  libavutil/hwcontext.h                   |    1 +
  libavutil/hwcontext_internal.h          |    1 +
- libavutil/hwcontext_mlu.c               |  435 ++++++++
+ libavutil/hwcontext_mlu.c               |  435 ++++++++++
  libavutil/hwcontext_mlu.h               |   63 ++
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 37 files changed, 8342 insertions(+), 1 deletion(-)
+ 37 files changed, 8344 insertions(+), 1 deletion(-)
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_mlu.c
  create mode 100644 doc/examples/hw_decode_mlu.c
@@ -67,7 +67,7 @@ Subject: [PATCH] gen new patch
  create mode 100644 libavutil/hwcontext_mlu.h
 
 diff --git a/configure b/configure
-index 34c2adb4a4..1861c2ae4e 100755
+index 34c2adb..1861c2a 100755
 --- a/configure
 +++ b/configure
 @@ -340,6 +340,7 @@ External library support:
@@ -154,7 +154,7 @@ index 34c2adb4a4..1861c2ae4e 100755
      GCRYPT_CONFIG="${cross_prefix}libgcrypt-config"
      if "${GCRYPT_CONFIG}" --version > /dev/null 2>&1; then
 diff --git a/doc/examples/Makefile b/doc/examples/Makefile
-index 2935424e54..ee14c08ffc 100644
+index 2935424..ee14c08 100644
 --- a/doc/examples/Makefile
 +++ b/doc/examples/Makefile
 @@ -21,6 +21,9 @@ EXAMPLES-$(CONFIG_TRANSCODE_AAC_EXAMPLE)     += transcode_aac
@@ -169,7 +169,7 @@ index 2935424e54..ee14c08ffc 100644
  EXAMPLES_G     := $(EXAMPLES-yes:%=doc/examples/%$(PROGSSUF)_g$(EXESUF))
 diff --git a/doc/examples/decode_mlu.c b/doc/examples/decode_mlu.c
 new file mode 100644
-index 0000000000..233bb81daf
+index 0000000..233bb81
 --- /dev/null
 +++ b/doc/examples/decode_mlu.c
 @@ -0,0 +1,213 @@
@@ -388,7 +388,7 @@ index 0000000000..233bb81daf
 +}
 diff --git a/doc/examples/encode_mlu.c b/doc/examples/encode_mlu.c
 new file mode 100644
-index 0000000000..611d5165b0
+index 0000000..611d516
 --- /dev/null
 +++ b/doc/examples/encode_mlu.c
 @@ -0,0 +1,252 @@
@@ -646,7 +646,7 @@ index 0000000000..611d5165b0
 +}
 diff --git a/doc/examples/hw_decode_mlu.c b/doc/examples/hw_decode_mlu.c
 new file mode 100644
-index 0000000000..e1e04e3d47
+index 0000000..e1e04e3
 --- /dev/null
 +++ b/doc/examples/hw_decode_mlu.c
 @@ -0,0 +1,270 @@
@@ -921,7 +921,7 @@ index 0000000000..e1e04e3d47
 +    return 0;
 +}
 diff --git a/fftools/Makefile b/fftools/Makefile
-index 6cec666dd9..ea35e26a4c 100644
+index 6cec666..ea35e26 100644
 --- a/fftools/Makefile
 +++ b/fftools/Makefile
 @@ -12,6 +12,7 @@ ALLAVPROGS_G = $(AVBASENAMES:%=%$(PROGSSUF)_g$(EXESUF))
@@ -933,7 +933,7 @@ index 6cec666dd9..ea35e26a4c 100644
  OBJS-ffmpeg-$(CONFIG_VDA)          += fftools/ffmpeg_videotoolbox.o
  endif
 diff --git a/fftools/ffmpeg.h b/fftools/ffmpeg.h
-index 7b6f802082..210ebbe01b 100644
+index 7b6f802..210ebbe 100644
 --- a/fftools/ffmpeg.h
 +++ b/fftools/ffmpeg.h
 @@ -62,6 +62,7 @@ enum HWAccelID {
@@ -954,7 +954,7 @@ index 7b6f802082..210ebbe01b 100644
  int hw_device_init_from_string(const char *arg, HWDevice **dev);
 diff --git a/fftools/ffmpeg_mlu.c b/fftools/ffmpeg_mlu.c
 new file mode 100644
-index 0000000000..68764b6173
+index 0000000..68764b6
 --- /dev/null
 +++ b/fftools/ffmpeg_mlu.c
 @@ -0,0 +1,74 @@
@@ -1033,23 +1033,23 @@ index 0000000000..68764b6173
 +    return 0;
 +}
 diff --git a/fftools/ffmpeg_opt.c b/fftools/ffmpeg_opt.c
-index f5ca18aa64..1609135935 100644
+index f5ca18a..1609135 100644
 --- a/fftools/ffmpeg_opt.c
 +++ b/fftools/ffmpeg_opt.c
-@@ -74,6 +74,9 @@ const HWAccel hwaccels[] = {
- #endif
+@@ -75,6 +75,9 @@ const HWAccel hwaccels[] = {
  #if CONFIG_CUVID
      { "cuvid", cuvid_init, HWACCEL_CUVID, AV_PIX_FMT_CUDA },
-+#endif
+ #endif
 +#if CONFIG_MLU
 +   { "mlu", mlu_init, HWACCEL_MLU, AV_PIX_FMT_MLU },
- #endif
++#endif
      { 0 },
  };
+ AVBufferRef *hw_device_ctx;
 diff --git a/libavcodec/Makefile b/libavcodec/Makefile
 old mode 100644
 new mode 100755
-index 3cd73fbcc6..b058f9d4b2
+index 3cd73fb..b058f9d
 --- a/libavcodec/Makefile
 +++ b/libavcodec/Makefile
 @@ -347,6 +347,8 @@ OBJS-$(CONFIG_H264_DECODER)            += h264dec.o h264_cabac.o h264_cavlc.o \
@@ -1102,7 +1102,7 @@ index 3cd73fbcc6..b058f9d4b2
 diff --git a/libavcodec/allcodecs.c b/libavcodec/allcodecs.c
 old mode 100644
 new mode 100755
-index d2f9a39ce5..526573f208
+index d2f9a39..526573f
 --- a/libavcodec/allcodecs.c
 +++ b/libavcodec/allcodecs.c
 @@ -143,11 +143,15 @@ extern AVCodec ff_h264_mediacodec_decoder;
@@ -1152,7 +1152,7 @@ index d2f9a39ce5..526573f208
  extern AVCodec ff_vp9_vaapi_encoder;
  
 diff --git a/libavcodec/hwaccel.h b/libavcodec/hwaccel.h
-index 3aaa92571c..6a0ea9f6f9 100644
+index 3aaa925..6a0ea9f 100644
 --- a/libavcodec/hwaccel.h
 +++ b/libavcodec/hwaccel.h
 @@ -70,6 +70,8 @@ typedef struct AVCodecHWConfigInternal {
@@ -1166,7 +1166,7 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..8900bd493f
+index 0000000..8900bd4
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
 @@ -0,0 +1,236 @@
@@ -1408,10 +1408,10 @@ index 0000000000..8900bd493f
 +#endif /* MLUMPP_CODEC_H */
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..136b8f39eb
+index 0000000..ca340c0
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1325 @@
+@@ -0,0 +1,1327 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1930,7 +1930,7 @@ index 0000000000..136b8f39eb
 +        av_log(ctx->avctx, AV_LOG_WARNING, "Decoder corrupt stream: %d \n", event_type);
 +        av_log(ctx->avctx, AV_LOG_DEBUG, "Decoder stream error pts: %lu, err num: %lu \n",
 +                            corrupt_info->pts, corrupt_info->total_num);
-+        cb_ret = CNCODEC_ERROR_BAD_STREAM;
++        cb_ret = CNCODEC_SUCCESS;
 +        break;
 +    case CNCODEC_EVENT_STREAM_NOT_SUPPORTED:
 +        av_log(ctx->avctx, AV_LOG_ERROR, "Not supported stream, event code:%d \n", event_type);
@@ -1938,7 +1938,7 @@ index 0000000000..136b8f39eb
 +            sem_post(&ctx->eos_sema);
 +            ctx->codec_abort_flag = 1;
 +        }
-+        cb_ret = CNCODEC_ERROR_BAD_STREAM;
++        cb_ret = CNCODEC_ERROR_NOT_SUPPORTED;
 +        break;
 +    case CNCODEC_EVENT_OUT_OF_MEMORY:
 +        av_log(ctx->avctx, AV_LOG_ERROR, "Out of memory, event code:%d \n", event_type);
@@ -2191,9 +2191,10 @@ index 0000000000..136b8f39eb
 +static int ff_cndec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
 +{
 +    MLUMPPContext_t *ctx = (MLUMPPContext_t*)avctx->priv_data;
-+
++    int in_ret = -1;
++    int out_ret = -1;
 +    AVPacket pkt = {0};
-+    int in_ret = -1, out_ret = -1;
++    bool inbuf_valid = false;
 +
 +    if (NULL == avctx || NULL == avctx->priv_data) {
 +        av_log(avctx, AV_LOG_ERROR, "Early error in ff_cndec_receive_frame\n");
@@ -2212,7 +2213,8 @@ index 0000000000..136b8f39eb
 +        return AVERROR_EOF;
 +    }
 +    while (!ctx->codec_abort_flag) {
-+        if (!ctx->decoder_flushing && cndec_input_buf_available(avctx)) {
++        inbuf_valid = cndec_input_buf_available(avctx);
++        if (!ctx->decoder_flushing && inbuf_valid) {
 +            in_ret = ff_decode_get_packet(avctx, &pkt);
 +            if (in_ret < 0 && in_ret != AVERROR_EOF) {
 +                return in_ret;
@@ -2235,8 +2237,8 @@ index 0000000000..136b8f39eb
 +            if (out_ret != AVERROR(EAGAIN)) {
 +                return out_ret;
 +            }
-+            if (ctx->decoder_flushing) {
-+                av_usleep(10000);
++            if (ctx->decoder_flushing || !inbuf_valid) {
++                av_usleep(2000);
 +            }
 +        } else {
 +            if (out_ret == AVERROR_EOF) {
@@ -2739,7 +2741,7 @@ index 0000000000..136b8f39eb
 +#endif
 diff --git a/libavcodec/mlumpp_enc_h264.c b/libavcodec/mlumpp_enc_h264.c
 new file mode 100644
-index 0000000000..721589b664
+index 0000000..721589b
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_h264.c
 @@ -0,0 +1,215 @@
@@ -2960,7 +2962,7 @@ index 0000000000..721589b664
 +};
 diff --git a/libavcodec/mlumpp_enc_hevc.c b/libavcodec/mlumpp_enc_hevc.c
 new file mode 100644
-index 0000000000..2444da1530
+index 0000000..2444da1
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_hevc.c
 @@ -0,0 +1,224 @@
@@ -3190,7 +3192,7 @@ index 0000000000..2444da1530
 +};
 diff --git a/libavcodec/mlumpp_enc_jpeg.c b/libavcodec/mlumpp_enc_jpeg.c
 new file mode 100644
-index 0000000000..a0c68e3eee
+index 0000000..a0c68e3
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_jpeg.c
 @@ -0,0 +1,109 @@
@@ -3306,7 +3308,7 @@ index 0000000000..a0c68e3eee
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100644
-index 0000000000..c2a078d202
+index 0000000..c2a078d
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
 @@ -0,0 +1,978 @@
@@ -4290,7 +4292,7 @@ index 0000000000..c2a078d202
 +}
 diff --git a/libavcodec/mlumpp_vid_enc.h b/libavcodec/mlumpp_vid_enc.h
 new file mode 100644
-index 0000000000..68ffdf820c
+index 0000000..68ffdf8
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.h
 @@ -0,0 +1,120 @@
@@ -4416,7 +4418,7 @@ index 0000000000..68ffdf820c
 +#endif /* AVCODEC_MLUMPP_VID_ENC_H */
 \ No newline at end of file
 diff --git a/libavfilter/Makefile b/libavfilter/Makefile
-index 455c809b15..4c321e1605 100644
+index 455c809..4c321e1 100644
 --- a/libavfilter/Makefile
 +++ b/libavfilter/Makefile
 @@ -196,6 +196,9 @@ OBJS-$(CONFIG_CROP_FILTER)                   += vf_crop.o
@@ -4453,7 +4455,7 @@ index 455c809b15..4c321e1605 100644
  OBJS-$(CONFIG_SCALE2REF_FILTER)              += vf_scale.o scale.o
  OBJS-$(CONFIG_SELECT_FILTER)                 += f_select.o
 diff --git a/libavfilter/allfilters.c b/libavfilter/allfilters.c
-index 04a3df7d56..3effe9e370 100644
+index 04a3df7..3effe9e 100644
 --- a/libavfilter/allfilters.c
 +++ b/libavfilter/allfilters.c
 @@ -183,6 +183,9 @@ extern AVFilter ff_vf_crop;
@@ -4499,7 +4501,7 @@ index 04a3df7d56..3effe9e370 100644
  extern AVFilter ff_vf_streamselect;
 diff --git a/libavfilter/vf_cvt_rgbx2rgbx_mlu.c b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..975eaef9d2
+index 0000000..975eaef
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
 @@ -0,0 +1,526 @@
@@ -5031,7 +5033,7 @@ index 0000000000..975eaef9d2
 +};
 diff --git a/libavfilter/vf_cvt_rgbx2yuv_mlu.c b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 new file mode 100644
-index 0000000000..f5adb3a682
+index 0000000..f5adb3a
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 @@ -0,0 +1,580 @@
@@ -5617,7 +5619,7 @@ index 0000000000..f5adb3a682
 +};
 diff --git a/libavfilter/vf_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..dc0e713979
+index 0000000..dc0e713
 --- /dev/null
 +++ b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 @@ -0,0 +1,569 @@
@@ -6192,7 +6194,7 @@ index 0000000000..dc0e713979
 +};
 diff --git a/libavfilter/vf_hwdownload_mlu.c b/libavfilter/vf_hwdownload_mlu.c
 new file mode 100644
-index 0000000000..91115f0bb1
+index 0000000..91115f0
 --- /dev/null
 +++ b/libavfilter/vf_hwdownload_mlu.c
 @@ -0,0 +1,214 @@
@@ -6412,7 +6414,7 @@ index 0000000000..91115f0bb1
 +};
 diff --git a/libavfilter/vf_hwupload_mlu.c b/libavfilter/vf_hwupload_mlu.c
 new file mode 100644
-index 0000000000..9602ed5a5d
+index 0000000..9602ed5
 --- /dev/null
 +++ b/libavfilter/vf_hwupload_mlu.c
 @@ -0,0 +1,198 @@
@@ -6616,7 +6618,7 @@ index 0000000000..9602ed5a5d
 +};
 diff --git a/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..d23e85e2a9
+index 0000000..d23e85e
 --- /dev/null
 +++ b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
 @@ -0,0 +1,542 @@
@@ -7164,7 +7166,7 @@ index 0000000000..d23e85e2a9
 +};
 diff --git a/libavfilter/vf_scale_rgbx2rgbx_mlu.c b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..94366107f6
+index 0000000..9436610
 --- /dev/null
 +++ b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 @@ -0,0 +1,555 @@
@@ -7725,7 +7727,7 @@ index 0000000000..94366107f6
 +};
 diff --git a/libavfilter/vf_scale_yuv2yuv_mlu.c b/libavfilter/vf_scale_yuv2yuv_mlu.c
 new file mode 100644
-index 0000000000..139bade0ca
+index 0000000..139bade
 --- /dev/null
 +++ b/libavfilter/vf_scale_yuv2yuv_mlu.c
 @@ -0,0 +1,567 @@
@@ -8297,7 +8299,7 @@ index 0000000000..139bade0ca
 +    .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
 +};
 diff --git a/libavutil/Makefile b/libavutil/Makefile
-index 8a7a44e4b5..0d80df750c 100644
+index 8a7a44e..0d80df7 100644
 --- a/libavutil/Makefile
 +++ b/libavutil/Makefile
 @@ -35,6 +35,7 @@ HEADERS = adler32.h                                                     \
@@ -8325,7 +8327,7 @@ index 8a7a44e4b5..0d80df750c 100644
  SKIPHEADERS-$(CONFIG_DXVA2)            += hwcontext_dxva2.h
  SKIPHEADERS-$(CONFIG_QSV)              += hwcontext_qsv.h
 diff --git a/libavutil/hwcontext.c b/libavutil/hwcontext.c
-index f1e404ab20..353d6eb8db 100644
+index f1e404a..353d6eb 100644
 --- a/libavutil/hwcontext.c
 +++ b/libavutil/hwcontext.c
 @@ -32,6 +32,9 @@ static const HWContextType * const hw_table[] = {
@@ -8355,7 +8357,7 @@ index f1e404ab20..353d6eb8db 100644
      if (ctx->internal->hw_type->frames_init) {
          ret = ctx->internal->hw_type->frames_init(ctx);
 diff --git a/libavutil/hwcontext.h b/libavutil/hwcontext.h
-index f5a4b62387..95ac2780c9 100644
+index f5a4b62..95ac278 100644
 --- a/libavutil/hwcontext.h
 +++ b/libavutil/hwcontext.h
 @@ -36,6 +36,7 @@ enum AVHWDeviceType {
@@ -8367,7 +8369,7 @@ index f5a4b62387..95ac2780c9 100644
  
  typedef struct AVHWDeviceInternal AVHWDeviceInternal;
 diff --git a/libavutil/hwcontext_internal.h b/libavutil/hwcontext_internal.h
-index 77dc47ddd6..0f7bb9957f 100644
+index 77dc47d..0f7bb99 100644
 --- a/libavutil/hwcontext_internal.h
 +++ b/libavutil/hwcontext_internal.h
 @@ -163,6 +163,7 @@ int ff_hwframe_map_create(AVBufferRef *hwframe_ref,
@@ -8380,7 +8382,7 @@ index 77dc47ddd6..0f7bb9957f 100644
  extern const HWContextType ff_hwcontext_type_dxva2;
 diff --git a/libavutil/hwcontext_mlu.c b/libavutil/hwcontext_mlu.c
 new file mode 100644
-index 0000000000..7726831d68
+index 0000000..7726831
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.c
 @@ -0,0 +1,435 @@
@@ -8821,7 +8823,7 @@ index 0000000000..7726831d68
 +};
 diff --git a/libavutil/hwcontext_mlu.h b/libavutil/hwcontext_mlu.h
 new file mode 100644
-index 0000000000..ecfaf4d30f
+index 0000000..ecfaf4d
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.h
 @@ -0,0 +1,63 @@
@@ -8889,7 +8891,7 @@ index 0000000000..ecfaf4d30f
 +
 +#endif /* AVUTIL_HWCONTEXT_MLU_H */
 diff --git a/libavutil/pixdesc.c b/libavutil/pixdesc.c
-index b97b0665b0..db47325536 100644
+index b97b066..db47325 100644
 --- a/libavutil/pixdesc.c
 +++ b/libavutil/pixdesc.c
 @@ -2050,6 +2050,10 @@ static const AVPixFmtDescriptor av_pix_fmt_descriptors[AV_PIX_FMT_NB] = {
@@ -8904,7 +8906,7 @@ index b97b0665b0..db47325536 100644
          .name = "ayuv64le",
          .nb_components = 4,
 diff --git a/libavutil/pixfmt.h b/libavutil/pixfmt.h
-index 8b54c9415b..ace8536389 100644
+index 8b54c94..ace8536 100644
 --- a/libavutil/pixfmt.h
 +++ b/libavutil/pixfmt.h
 @@ -234,6 +234,12 @@ enum AVPixelFormat {
@@ -8921,5 +8923,5 @@ index 8b54c9415b..ace8536389 100644
      AV_PIX_FMT_RGB0,        ///< packed RGB 8:8:8, 32bpp, RGBXRGBX...   X=unused/undefined
      AV_PIX_FMT_0BGR,        ///< packed BGR 8:8:8, 32bpp, XBGRXBGR...   X=unused/undefined
 -- 
-2.17.1
+2.7.4
 
