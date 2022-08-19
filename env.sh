@@ -1,2 +1,2 @@
 #!/bin/bash
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PWD}/ffmpeg-mlu/build/lib:${NEUWARE_HOME}/lib64
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PWD}/ffmpeg-mlu/build/lib:${BANGWARE_HOME}/lib64

@@ -5,15 +5,15 @@ PARAM_NUM=$#
 function compile_script_helper() {
    echo ""
    echo "***** ffmpeg compile script instructions *****"
-   echo " ./compile_ffmpeg.sh <mlu_platform> <neuware_home>"
+   echo " ./compile_ffmpeg.sh <mlu_platform> <bangware_home>"
    echo "    <mlu_platform>: Required. Choose from MLU200 or MLU370, depending on your situation"
-   echo "    <neuware_home>: Optional. if you have set \$NEUWARE_HOME in your environment variable, it can be null."
-   echo "                    Otherwise the default neuware home path is /usr/local/neuware"
+   echo "    <bangware_home>: Optional. if you have set \$BANGWARE_HOME in your environment variable, it can be null."
+   echo "                    Otherwise the default bangware home path is /usr/local/neuware"
    echo ""
    echo "    e.g. if your hardware platform is MLU200, use this:"
    echo "      ./compile_ffmpeg.sh MLU200"
-   echo "    e.g. if your hardware platform is MLU370 and neuware path is /tmp/neuware, use this:"
-   echo "      ./compile_ffmpeg.sh MLU370 /tmp/neuware"
+   echo "    e.g. if your hardware platform is MLU370 and bangware path is /tmp/bangware, use this:"
+   echo "      ./compile_ffmpeg.sh MLU370 /tmp/bangware"
    echo "**********************************************"
    echo ""
 }
@@ -23,16 +23,16 @@ if [ ${PARAM_NUM} -ne 1 ] && [ ${PARAM_NUM} -ne 2 ];then
    exit 0
 fi
 
-NEUWARE_HOME_PATH=""
-if [ -z ${NEUWARE_HOME} ]; then
-   NEUWARE_HOME_PATH="/usr/local/neuware"
+BANGWARE_HOME_PATH=""
+if [ -z ${BANGWARE_HOME} ]; then
+   BANGWARE_HOME_PATH="/usr/local/neuware"
 else
-   NEUWARE_HOME_PATH=${NEUWARE_HOME}
+   BANGWARE_HOME_PATH=${BANGWARE_HOME}
 fi
 
 MLU_PLATFORM="$1"
 if [ ${PARAM_NUM} -eq 2 ]; then
-   NEUWARE_HOME_PATH=$2
+   BANGWARE_HOME_PATH=$2
 fi
 
 FFMPEG_MLU_VER=""
@@ -71,18 +71,21 @@ cd $FFMPEG_BUILD_DIR
 ../configure \
   --prefix="${FFMPEG_BUILD_DIR}" \
   --extra-libs="-lpthread -lm" \
-  --extra-cflags="-I${NEUWARE_HOME_PATH}/include" \
-  --extra-ldflags="-L${NEUWARE_HOME_PATH}/lib64" \
+  --extra-cflags="-I${BANGWARE_HOME_PATH}/include" \
+  --extra-ldflags="-L${BANGWARE_HOME_PATH}/lib64" \
   --extra-libs="-lcnrt -lcncodec${FFMPEG_MLU_LIB_VER} -lcndrv -ldl" \
   --enable-ffplay \
   --enable-ffmpeg \
+  --enable-mlu \
   --enable-mlumpp \
   --enable-gpl \
   --enable-version3 \
   --enable-nonfree \
   --enable-shared \
-  --disable-static \
+  --enable-static \
+  --enable-debug  \
   --enable-stripping \
+  --disable-x86asm \
   --enable-optimizations
 
 make -j$(nproc) && \
