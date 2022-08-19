@@ -34,9 +34,10 @@
 #include "cncv.h"
 #include "cnrt.h"
 
-#if defined(__cplusplus)
-extern "C" {
-#endif /* __cplusplus */
+#define MLUOP_MAJOR 2
+#define MLUOP_MINOR 4
+#define MLUOP_PATCH 0
+#define MLUOP_VERSION (MLUOP_MAJOR * 1000 + MLUOP_MINOR * 100 + MLUOP_PATCH)
 
 #define ALIGN_Y_SCALE 1
 #define ALIGN_R_SCALE 1
@@ -45,8 +46,20 @@ extern "C" {
 #define ALIGN_RESIZE_CVT 1
 #define PAD_UP(x, y) ((x / y + (int)((x) % y > 0)) * y)
 
-typedef void *HANDLE;
+#define MLUOP_RT_CHECK(ret, msg)                                               \
+  if (ret != CNRT_RET_SUCCESS) {                                               \
+    fprintf(stderr, "Error: %s, ret:%d, func:%s, line:%d\n"                    \
+            msg, ret, __func__, __LINE__);                                     \
+    return -1;                                                                 \
+  }
+#define MLUOP_CV_CHECK(ret, msg)                                               \
+  if (ret != CNCV_STATUS_SUCCESS) {                                            \
+    fprintf(stderr, "Error: %s, ret:%d, func:%s, line:%d\n"                    \
+            msg, ret, __func__, __LINE__);                                     \
+    return -1;                                                                 \
+  }
 
+typedef void *HANDLE;
 typedef enum {
   CN_DEPTH_NONE = -1,
   CN_DEPTH_8U = 0,
@@ -64,66 +77,151 @@ typedef enum {
   CN_COLOR_SPACE_BT_709 = 1,
 } cnColorSpace;
 
-/*------------------------resize yuv2yuv cncv----------------------*/
-int mluop_resize_yuv_init(HANDLE *h, int input_w, int input_h, int output_w,
-                          int output_h, const char *depth, const char *pix_fmt);
-int mluop_resize_yuv_exec(HANDLE h, void *input_y, void *input_uv,
-                          void *output_y, void *output_uv);
-int mluop_resize_pad_yuv_exec(HANDLE h, void *input_y, void *input_uv,
-                              void *output_y, void *output_uv);
-int mluop_resize_roi_yuv_exec(HANDLE h, void *input_y, void *input_uv,
-                              void *output_y, void *output_uv,
-                              uint32_t src_roi_x, uint32_t src_roi_y,
-                              uint32_t src_roi_w, uint32_t src_roi_h,
-                              uint32_t dst_roi_x, uint32_t dst_roi_y,
-                              uint32_t dst_roi_w, uint32_t dst_roi_h);
-int mluop_resize_yuv_destroy(HANDLE h);
+#if defined(__cplusplus)
+extern "C" {
+#endif /* __cplusplus */
 
-/*------------------------resize rgbx2rgbx cncv----------------------*/
-int mluop_resize_rgbx_init(HANDLE *h, int input_w, int input_h, int output_w,
-                           int output_h, const char *pix_fmt,
-                           const char *depth);
-int mluop_resize_rgbx_exec(HANDLE h, void *input, void *output);
-int mluop_resize_pad_rgbx_exec(HANDLE h, void *input, void *output);
-int mluop_resize_roi_rgbx_exec(HANDLE h, void *input, void *output,
-                            uint32_t src_roi_x, uint32_t src_roi_y,
-                            uint32_t src_roi_w, uint32_t src_roi_h,
-                            uint32_t dst_roi_x, uint32_t dst_roi_y,
-                            uint32_t dst_roi_w, uint32_t dst_roi_h);
+// deprecated
+int mluop_resize_yuv_init(HANDLE*, int, int, int, int, const char*, const char*);
+int mluop_resize_yuv_exec(HANDLE, void*, void*, void*, void*);
+int mluop_resize_pad_yuv_exec(HANDLE, void*, void*, void*, void*);
+int mluop_resize_roi_yuv_exec(HANDLE, void*, void*, void*, void*,
+                              uint32_t, uint32_t, uint32_t, uint32_t,
+                              uint32_t, uint32_t, uint32_t, uint32_t);
+int mluop_resize_yuv_destroy(HANDLE);
+// recommende
+int mluOpResizeYuvInit(HANDLE*, int, int, int, int, const char*, const char*);
+int mluOpResizeYuvExec(HANDLE, void*, void*, void*, void*);
+int mluOpResizeYuvExecPad(HANDLE, void*, void*, void*, void*);
+int mluOpResizeYuvExecRoi(HANDLE, void*, void*, void*, void*,
+                          uint32_t, uint32_t, uint32_t, uint32_t,
+                          uint32_t, uint32_t, uint32_t, uint32_t);
+int mluOpResizeYuvDestroy(HANDLE);
+// deprecated
+int mluop_resize_rgbx_init(HANDLE*, int, int, int, int, const char*, const char*);
+int mluop_resize_rgbx_exec(HANDLE, void*, void*);
+int mluop_resize_pad_rgbx_exec(HANDLE, void*, void*);
+int mluop_resize_roi_rgbx_exec(HANDLE, void*, void*,
+                              uint32_t, uint32_t, uint32_t, uint32_t,
+                              uint32_t, uint32_t, uint32_t, uint32_t);
+int mluop_resize_rgbx_destroy(HANDLE);
+// recommende
+int mluOpResizeRgbxInit(HANDLE*, int, int, int, int, const char*, const char*);
+int mluRpResizeRgbxExec(HANDLE, void*, void*);
+int mluOpResizeRgbxExecPad(HANDLE, void*, void*);
+int mluOpResizeRgbxExecRoi(HANDLE, void*, void*,
+                              uint32_t, uint32_t, uint32_t, uint32_t,
+                              uint32_t, uint32_t, uint32_t, uint32_t);
+int mluOpResizeRgbxDestroy(HANDLE);
+// deprecated
+int mluop_convert_yuv2rgbx_init(HANDLE*, int, int,
+                                const char*, const char*, const char*);
+int mluop_convert_yuv2rgbx_exec(HANDLE, void*, void*, void*);
+int mluop_convert_yuv2rgbx_destroy(HANDLE);
+// recommende
+int mluOpConvertYuv2RgbxInit(HANDLE*, int, int,
+                                const char*, const char*, const char*);
+int mluOpConvertYuv2RgbxExec(HANDLE, void*, void*, void*);
+int mluOpConvertYuv2RgbxDestroy(HANDLE);
+// deprecated
+int mluop_convert_rgbx2yuv_init(HANDLE*, int, int,
+                                const char*, const char*, const char*);
+int mluop_convert_rgbx2yuv_exec(HANDLE, void*, void*, void*);
+int mluop_convert_rgbx2yuv_exec_roi(HANDLE, void*, void*, void*,
+                                    int, int, int, int);
+int mluop_convert_rgbx2yuv_destroy(HANDLE);
+// recommende
+int mluOpConvertRgbx2YuvInit(HANDLE*, int, int,
+                                const char*, const char*, const char*);
+int mluOpConvertRgbx2YuvExec(HANDLE, void*, void*, void*);
+int mluOpConvertRgbx2YuvExecRoi(HANDLE, void*, void*, void*,
+                                    int, int, int, int);
+int mluOpConvertRgbx2YuvDestroy(HANDLE);
+// deprecated
+int MluopConvertRgbx2RgbxInit(HANDLE*, int, int,
+                              const char*, const char*, const char*);
+int MluopConvertRgbx2RgbxExec(HANDLE, void*, void*);
+int MluopConvertRgbx2RgbxDestroy(HANDLE);
+// recommende
+int mluOpConvertRgbx2RgbxInit(HANDLE*, int, int,
+                              const char*, const char*, const char*);
+int mluOpConvertRgbx2RgbxExec(HANDLE, void*, void*);
+int mluOpConvertRgbx2RgbxDestroy(HANDLE);
+// deprecated
+int MluopResizeCvtInit(HANDLE*, int, int, int, int, const char*, const char*,
+                       const char*);
+int MluopResizeCvtExec(HANDLE, void*, void*, void*);
+int MluopResizeCvtPadExec(HANDLE, void*, void*, void*);
+int MluopResizeCvtDestroy(HANDLE);
+// recommende
+int mluOpResizeCvtInit(HANDLE*, int, int, int, int, const char*, const char*,
+                       const char*);
+int mluOpResizeCvtExec(HANDLE, void*, void*, void*);
+int mluOpResizeCvtExecPad(HANDLE, void*, void*, void*);
+int mluOpResizeCvtDestroy(HANDLE);
 
-int mluop_resize_rgbx_destroy(HANDLE h);
+int mluOpGetVersion (void);
 
-/*------------------------convert yuv2rgbx cncv----------------------*/
-int mluop_convert_yuv2rgbx_init(HANDLE *h, int width, int height,
-                                const char *src_pix_fmt,
-                                const char *dst_pix_fmt, const char *depth);
-int mluop_convert_yuv2rgbx_exec(HANDLE h, void *input_y, void *input_uv,
-                                void *output);
-int mluop_convert_yuv2rgbx_destroy(HANDLE h);
+static uint32_t getSizeOfDepth(cncvDepth_t depth) {
+  if (depth == CNCV_DEPTH_8U) {
+    return 1;
+  } else if (depth == CNCV_DEPTH_16F) {
+    return 2;
+  } else if (depth == CNCV_DEPTH_32F) {
+    return 4;
+  }
+  return 1;
+}
 
-/*------------------------convert rgbx2yuv cncv----------------------*/
-int mluop_convert_rgbx2yuv_init(HANDLE *h, int width, int height,
-                                const char *src_pix_fmt,
-                                const char *dst_pix_fmt, const char *depth);
-int mluop_convert_rgbx2yuv_exec(HANDLE h, void *input_rgbx, void *output_y,
-                                void *output_uv);
-int mluop_convert_rgbx2yuv_destroy(HANDLE h);
+static uint32_t getPixFmtChannelNum(cncvPixelFormat pixfmt) {
+  if (pixfmt == CNCV_PIX_FMT_BGR || pixfmt == CNCV_PIX_FMT_RGB) {
+    return 3;
+  } else if (pixfmt == CNCV_PIX_FMT_ABGR || pixfmt == CNCV_PIX_FMT_ARGB ||
+             pixfmt == CNCV_PIX_FMT_BGRA || pixfmt == CNCV_PIX_FMT_RGBA) {
+    return 4;
+  } else if (pixfmt == CNCV_PIX_FMT_NV12 || pixfmt == CNCV_PIX_FMT_NV21) {
+    return 1;
+  } else {
+    printf("Unsupported pixfmt(%d)\n", pixfmt);
+    return 0;
+  }
+}
 
-/*------------------------convert rgbx2rgbx cncv----------------------*/
-int MluopConvertRgbx2RgbxInit(HANDLE *h, int width, int height,
-                              const char *src_pix_fmt, const char *dst_pix_fmt,
-                              const char *depth);
-int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx);
-int MluopConvertRgbx2RgbxDestroy(HANDLE h);
+static cncvDepth_t getCNCVDepthFromIndex(const char* depth) {
+  if (strcmp(depth, "8U") == 0 || strcmp(depth, "8u") == 0) {
+    return CNCV_DEPTH_8U;
+  } else if (strcmp(depth, "16F") == 0 || strcmp(depth, "16f") == 0) {
+    return CNCV_DEPTH_16F;
+  } else if (strcmp(depth, "32F") == 0 || strcmp(depth, "32f") == 0) {
+    return CNCV_DEPTH_32F;
+  } else {
+    printf("Unsupported depth(%s)\n", depth);
+    return CNCV_DEPTH_INVALID;
+  }
+}
 
-/*------------------------resize convert yuv2rgbx cncv----------------------*/
-int MluopResizeCvtInit(HANDLE *h, int src_width, int src_height,
-                       int dst_width, int dst_height,
-                       const char *src_pix_fmt, const char *dst_pix_fmt,
-                       const char *depth);
-int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv, void *output_rgbx);
-int MluopResizeCvtPadExec(HANDLE h, void *input_y, void *input_uv, void *output_rgbx);
-int MluopResizeCvtDestroy(HANDLE h);
+static cncvPixelFormat getCNCVPixFmtFromPixindex(const char* pix_fmt) {
+  if (strcmp(pix_fmt, "NV12") == 0 || strcmp(pix_fmt, "nv12") == 0) {
+    return CNCV_PIX_FMT_NV12;
+  } else if(strcmp(pix_fmt, "NV21") == 0 || strcmp(pix_fmt, "nv21") == 0) {
+    return CNCV_PIX_FMT_NV21;
+  } else if(strcmp(pix_fmt, "RGB24") == 0 || strcmp(pix_fmt, "rgb24") == 0) {
+    return CNCV_PIX_FMT_RGB;
+  } else if(strcmp(pix_fmt, "BGR24") == 0 || strcmp(pix_fmt, "bgr24") == 0) {
+    return CNCV_PIX_FMT_BGR;
+  } else if(strcmp(pix_fmt, "ARGB") == 0 || strcmp(pix_fmt, "argb") == 0) {
+    return CNCV_PIX_FMT_ARGB;
+  } else if(strcmp(pix_fmt, "ABGR") == 0 || strcmp(pix_fmt, "abgr") == 0) {
+    return CNCV_PIX_FMT_ABGR;
+  } else if(strcmp(pix_fmt, "RGBA") == 0 || strcmp(pix_fmt, "rgba") == 0) {
+    return CNCV_PIX_FMT_RGBA;
+  } else if (strcmp(pix_fmt, "BGRA") == 0 || strcmp(pix_fmt, "bgra") == 0) {
+    return CNCV_PIX_FMT_BGRA;
+  } else {
+    printf("Unsupported pixfmt(%s)\n", pix_fmt);
+    return CNCV_PIX_FMT_INVALID;
+  }
+}
 
 #if defined(__cplusplus)
 }

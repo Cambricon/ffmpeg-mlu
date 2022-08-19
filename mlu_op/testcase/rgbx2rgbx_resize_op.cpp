@@ -18,90 +18,55 @@
  * THE SOFTWARE.
  *************************************************************************/
 
-#include "mluop.h"
-#include "mluop_list.h"
-#include "test_mluop.h"
-#include<opencv2/core/core.hpp>
-#include<opencv2/highgui/highgui.hpp>
-#include<opencv2/imgproc/imgproc.hpp>
+// #include "mluop.h"
+#include "mluop_context.hpp"
 
-#define CV_8U   0
-#define CV_CN_SHIFT   3
-#define CV_DEPTH_MAX  (1 << CV_CN_SHIFT)
-#define CV_MAT_DEPTH_MASK       (CV_DEPTH_MAX - 1)
-#define CV_MAT_DEPTH(flags)     ((flags) & CV_MAT_DEPTH_MASK)
-#define CV_MAKETYPE(depth,cn) (CV_MAT_DEPTH(depth) + (((cn)-1) << CV_CN_SHIFT))
-#define CV_8UC3 CV_MAKETYPE(CV_8U,3)
-#define CV_8UC(n) CV_MAKETYPE(CV_8U,(n))
+int process_resize_rgbx(param_ctx_t ctx);
+void rgbx2rgbx_resize_op(params_conf &op_conf) {
+  param_ctx_t ctx;
+  ctx.input_file  = op_conf.find("input_file")->second;
+  ctx.output_file = op_conf.find("output_file")->second;
+  ctx.src_pix_fmt = op_conf.find("src_pix_fmt")->second;
 
-void rgbx2rgbx_resize_op(void *ctx_, char **argv) {
-  param_ctx_t *ctx = (param_ctx_t *)ctx_;
-  ctx->algo = atoi(argv[1]);
-  ctx->input_file = argv[2];
-  ctx->src_w = atoi(argv[3]);
-  ctx->src_h = atoi(argv[4]);
-  ctx->dst_w = atoi(argv[5]);
-  ctx->dst_h = atoi(argv[6]);
-  ctx->output_file = argv[7];
-  ctx->pix_fmt = argv[8];
-  ctx->frame_num = atoi(argv[9]);
-  ctx->thread_num = atoi(argv[10]);
-  ctx->save_flag = atoi(argv[11]);
-  ctx->device_id = atoi(argv[12]);
-  ctx->depth_size = 1; // depth_size: 1->uint8, 2->f16, 4->f32
+  ctx.src_w      = std::atoi(op_conf.find("src_w")->second.c_str());
+  ctx.src_h      = std::atoi(op_conf.find("src_h")->second.c_str());
+  ctx.dst_w      = std::atoi(op_conf.find("dst_w")->second.c_str());
+  ctx.dst_h      = std::atoi(op_conf.find("dst_h")->second.c_str());
+  ctx.frame_num  = std::atoi(op_conf.find("frame_num")->second.c_str());
+  ctx.thread_num = std::atoi(op_conf.find("thread_num")->second.c_str());
+  ctx.save_flag  = std::atoi(op_conf.find("save_flag")->second.c_str());
+  ctx.device_id  = std::atoi(op_conf.find("device_id")->second.c_str());
 
-  char depth_[3] = "8U";
-  ctx->depth = depth_;
-
-  if (ctx->algo <= 0) ctx->algo = 1;
-  if (ctx->dst_w <= 0) ctx->dst_w = 352;
-  if (ctx->dst_h <= 0) ctx->dst_h = 288;
-  if (ctx->save_flag <= 0) ctx->save_flag = 0;
-  if (ctx->frame_num <= 0) ctx->frame_num = 10;
-  if (ctx->thread_num <= 0) ctx->thread_num = THREADS_NUM;
-
-  int ret = 0;
-  void *status = NULL;
-  pthread_t tids[THREADS_NUM];
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-  for (uint32_t i = 0; i < ctx->thread_num; i++) {
-    printf("create thead [%d]\n", i);
-    ret = pthread_create(&tids[i], &attr, process_resize_rgbx, (void *)ctx);
+  std::vector<std::thread> thd_vec;
+  for (uint32_t i = 0; i < ctx.thread_num; i++) {
+    std::cout << "create thead [" << i << "]" << std::endl;
+    thd_vec.emplace_back(std::thread(process_resize_rgbx, ctx));
   }
-
-  pthread_attr_destroy(&attr);
-  for (uint32_t i = 0; i < ctx->thread_num; i++) {
-    ret = pthread_join(tids[i], &status);
-    if (ret != 0){
-        printf("pthread_join error(thread id :%lu): error_code=%d\n",(long unsigned)tids[i], ret);
-    } else {
-        printf("pthread_join ok(thread id :%lu): get status:=%ld\n",(long unsigned)tids[i], (long)status);
-    }
+  std::vector<std::thread>::iterator iter;
+  for (iter = thd_vec.begin(); iter != thd_vec.end(); iter++) {
+    iter->join();
   }
+  thd_vec.clear();
 }
 
-void *process_resize_rgbx(void *ctx_) {
-  param_ctx_t *ctx = (param_ctx_t *)ctx_;
-  bool save_flag = ctx->save_flag;
-  uint32_t input_w = ctx->src_w;
-  uint32_t input_h =  ctx->src_h;
-  uint32_t dst_w = ctx->dst_w;
-  uint32_t dst_h = ctx->dst_h;
-  uint32_t frame_num = ctx->frame_num;
-  uint32_t device_id = ctx->device_id;
-  uint32_t pix_chn_num = getPixFmtChannelNum(getCNCVPixFmtFromPixindex(ctx->pix_fmt));
-  uint32_t depth_size = ctx->depth_size;
-  const char *depth = ctx->depth;
-  const char *filename = ctx->input_file;
-  const char *output_file =ctx->output_file;
+int process_resize_rgbx(param_ctx_t ctx) {
+  bool save_flag = ctx.save_flag;
+  uint32_t input_w = ctx.src_w;
+  uint32_t input_h =  ctx.src_h;
+  uint32_t dst_w = ctx.dst_w;
+  uint32_t dst_h = ctx.dst_h;
+  uint32_t frame_num = ctx.frame_num;
+  uint32_t device_id = ctx.device_id;
+  uint32_t pix_chn_num = getPixFmtChannelNum(
+                          getCNCVPixFmtFromPixindex(ctx.src_pix_fmt));
+  const char *depth = "8U";
+  std::string filename = ctx.input_file;
+  std::string output_file =ctx.output_file;
 
-  set_cnrt_ctx(device_id, CNRT_CHANNEL_TYPE_NONE /* CNRT_CHANNEL_TYPE_0 */);
+  set_cnrt_ctx(device_id, CNRT_CHANNEL_TYPE_NONE);
 
-  uint32_t src_stride = PAD_UP(input_w, ALIGN_R_SCALE) * pix_chn_num * depth_size;
-  uint32_t dst_stride = PAD_UP(dst_w, ALIGN_R_SCALE) * pix_chn_num * depth_size;
+  uint32_t src_stride = PAD_UP(input_w, ALIGN_R_SCALE) * pix_chn_num;
+  uint32_t dst_stride = PAD_UP(dst_w, ALIGN_R_SCALE) * pix_chn_num;
   uint32_t src_size = input_h * src_stride;
   uint32_t dst_size = dst_h * dst_stride;
   void *src_cpu = (void *)malloc(src_size);
@@ -110,86 +75,88 @@ void *process_resize_rgbx(void *ctx_) {
   cv::Mat src_mat;
   cv::Mat dst_mat;
   dst_mat = cv::Mat(dst_h, dst_w, CV_8UC3, cv::Scalar(0, 0, 0));
-  src_mat = cv::imread(filename, cv::IMREAD_COLOR);  // read 8U_C3 BGR
-  for (uint32_t row = 0; row < input_h; ++row) {
-    memcpy(reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(src_cpu) +
-                                       row * src_stride),
-           src_mat.ptr<uint8_t>(row),
-           src_mat.cols * src_mat.elemSize());
-  }
+  src_mat = cv::imread(filename, cv::IMREAD_COLOR);
+  if (!strcmp(ctx.src_pix_fmt.c_str(), "rgb24"))
+    cv::cvtColor(src_mat, src_mat, cv::COLOR_BGR2RGB);
+  else if (!strcmp(ctx.src_pix_fmt.c_str(), "rgba"))
+    cv::cvtColor(src_mat, src_mat, cv::COLOR_BGR2RGBA);
+  else if (!strcmp(ctx.src_pix_fmt.c_str(), "bgra"))
+    cv::cvtColor(src_mat, src_mat, cv::COLOR_BGR2BGRA);
+  // else if (!strcmp(ctx.src_pix_fmt.c_str(), "abgr"))
+  //   cv::cvtColor(src_mat, src_mat, cv::COLOR_BGR2ABGR);
+  // else if (!strcmp(ctx.src_pix_fmt.c_str(), "argb"))
+  //   cv::cvtColor(src_mat, src_mat, cv::COLOR_BGR2ARGB);
+  memcpy(src_cpu, src_mat.data, src_size);
 
   HANDLE handle;
-  #if PRINT_TIME
-  float time_use = 0;
-  struct timeval end;
-  struct timeval start;
-  gettimeofday(&start, NULL);
-  #endif
-  /*--------init op--------*/
-  mluop_resize_rgbx_init(&handle,
-                         input_w, input_h,
-                         dst_w, dst_h,
-                         ctx->pix_fmt, depth);
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[init] time: %.3f ms\n", time_use/1000);
-  #endif
+  mluOpAPI mluop_api;
+  std::shared_ptr<mluOpFuncList> op_funcs;
+  op_funcs = mluop_api.getAPI();
+  std::cout << "MLUOP_VERSION:" << op_funcs->mluOpGetVersion() << std::endl;
+
+  double op_time = 0.0;
+  timeWatch op_watcher;
+  op_watcher.start();
+
+  int ret;
+  ret = op_funcs->mluScaleRgbxInit(&handle, input_w, input_h,
+                              dst_w, dst_h, ctx.src_pix_fmt.c_str(), depth);
+  if (ret) {
+    std::cout << "resize rgbx op init failed" << std::endl;
+    exit(1);
+  }
+  op_time = op_watcher.stop();
+  std::cout << "init time:" << op_time << "ms" << std::endl;
 
   void *src_mlu;
   void *dst_mlu;
-  CNRT_CHECK(cnrtMalloc((void **)(&src_mlu), depth_size * src_size));
-  CNRT_CHECK(cnrtMalloc((void **)(&dst_mlu), depth_size * dst_size));
+  CNRT_CHECK(cnrtMalloc((void **)(&src_mlu), src_size));
+  CNRT_CHECK(cnrtMalloc((void **)(&dst_mlu), dst_size));
+  CNRT_CHECK(cnrtMemcpy(src_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV));
   CNRT_CHECK(cnrtMemcpy(src_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV));
 
-  /*-------execute op-------*/
+  op_time = 0.0;
   for (uint32_t i = 0; i < frame_num; i++) {
-    CNRT_CHECK(cnrtMemcpy(src_mlu, src_cpu, src_size, CNRT_MEM_TRANS_DIR_HOST2DEV));
-    #if PRINT_TIME
-    gettimeofday(&start, NULL);
-    #endif
-
-    mluop_resize_rgbx_exec(handle, src_mlu, dst_mlu);
-    // mluop_resize_pad_rgbx_exec(handle, src_mlu, dst_mlu);
-    // mluop_resize_roi_rgbx_exec(handle, src_mlu, dst_mlu, 0,0,960,960,0,0,480,480);
-
-    #if PRINT_TIME
-    gettimeofday(&end, NULL);
-    time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-    printf("[exec] time(ave.): %.3f ms, total frame: %d\n", (time_use/1000.0)/frame_num, frame_num);
-    #endif
-    /*----------D2H-----------*/
-    cnrtMemcpy(dst_cpu, dst_mlu, dst_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
+    op_watcher.start();
+    ret = op_funcs->mluScaleRgbxExec(handle, src_mlu, dst_mlu);
+    // ret = op_funcs->mluScaleRgbxExecPad(handle, src_mlu, dst_mlu);
+    // ret = op_funcs->mluScaleRgbxExecCrop(handle, src_mlu, dst_mlu, 0,0,960,960,0,0,480,480);
+    if (ret) {
+      std::cout << "resize rgbx op init failed" << std::endl;
+      exit(1);
+    }
+    op_time += op_watcher.stop();
   }
- #if PRINT_TIME
-  gettimeofday(&start, NULL);
-  #endif
-  /*-------destroy op-------*/
-  mluop_resize_rgbx_destroy(handle);
-  #if PRINT_TIME
-  gettimeofday(&end, NULL);
-  time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-  printf("[destroy] time: %.3f ms\n", time_use/1000);
-  #endif
-  /*-------sace file-------*/
-  if (save_flag){
-    dst_mat.create(dst_h, dst_w, CV_8UC(3));
+  std::cout << "exec time(ave.):" << op_time / frame_num
+            << "ms, total frames:" << frame_num << std::endl;
+
+  cnrtMemcpy(dst_cpu, dst_mlu, dst_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
+
+  op_time = 0.0;
+  op_watcher.start();
+  ret = op_funcs->mluScaleRgbxDestroy(handle);
+  if (ret) {
+    std::cout << "resize rgbx op init failed" << std::endl;
+    exit(1);
+  }
+  op_time = op_watcher.stop();
+  std::cout << "destroy time:" << op_time << "ms" << std::endl;
+
+  if (save_flag) {
+    dst_mat.create(dst_h, dst_w, (pix_chn_num == 3 ? CV_8UC3:CV_8UC4));
     for (uint32_t row = 0; row < dst_h; ++row) {
         memcpy(dst_mat.ptr<uint8_t>(row),
                 reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst_cpu) +
                                  row * dst_stride),
-                dst_mat.cols * dst_mat.elemSize());  // valid data len = pic width * size of
-                                        // each element
+                dst_mat.cols * dst_mat.elemSize());
     }
     cv::imwrite(output_file, dst_mat);
   }
-  if (src_cpu)
-    free(src_cpu);
-  if (src_mlu)
-    cnrtFree(src_mlu);
-  if (dst_cpu)
-    free(dst_cpu);
-  if (dst_mlu)
-    cnrtFree(dst_mlu);
-  return NULL;
+
+  if (src_cpu) free(src_cpu);
+  if (src_mlu) cnrtFree(src_mlu);
+  if (dst_cpu) free(dst_cpu);
+  if (dst_mlu) cnrtFree(dst_mlu);
+
+  return 0;
 }

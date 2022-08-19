@@ -1,10 +1,10 @@
-From 96ea47346032313d387ab79f5c900c3a55a2acd2 Mon Sep 17 00:00:00 2001
-From: solution-sdk <solution-sdk@cambricon.com>
-Date: Mon, 9 May 2022 16:20:06 +0800
-Subject: [PATCH] gen new patch
+From de8bbb01cbf408e3a120938e865db58b77b054e1 Mon Sep 17 00:00:00 2001
+From: solution-sdk <solution-sdk>
+Date: Fri, 19 Aug 2022 19:06:10 +0800
+Subject: [PATCH] release mlu200
 
 ---
- configure                               |   20 +
+ configure                               |   21 +
  doc/examples/Makefile                   |    4 +
  doc/examples/decode_mlu.c               |  213 +++
  doc/examples/encode_mlu.c               |  252 ++++
@@ -44,7 +44,7 @@ Subject: [PATCH] gen new patch
  libavutil/hwcontext_mlu.h               |   62 +
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 40 files changed, 11270 insertions(+)
+ 40 files changed, 11271 insertions(+)
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_mlu.c
  create mode 100644 doc/examples/hw_decode_mlu.c
@@ -73,7 +73,7 @@ Subject: [PATCH] gen new patch
  create mode 100644 libavutil/hwcontext_mlu.h
 
 diff --git a/configure b/configure
-index 34c2adb4a4..f3b84d6ef6 100755
+index 34c2adb4a4..a3d7f05101 100755
 --- a/configure
 +++ b/configure
 @@ -340,6 +340,7 @@ External library support:
@@ -95,23 +95,17 @@ index 34c2adb4a4..f3b84d6ef6 100755
  "
  
  EXTERNAL_AUTODETECT_LIBRARY_LIST="
-@@ -1738,6 +1743,7 @@ EXTERNAL_LIBRARY_VERSION3_LIST="
+@@ -1738,6 +1743,9 @@ EXTERNAL_LIBRARY_VERSION3_LIST="
      libvo_amrwbenc
      mbedtls
      rkmpp
++    mlu
 +    mlumpp
++    mlufilter
  "
  
  EXTERNAL_LIBRARY_GPLV3_LIST="
-@@ -1831,6 +1837,7 @@ HWACCEL_AUTODETECT_LIBRARY_LIST="
-     videotoolbox
-     v4l2_m2m
-     xvmc
-+    mlu
- "
- 
- # catchall list of things that require external libs to link
-@@ -3014,11 +3021,14 @@ h264_mediacodec_decoder_deps="mediacodec"
+@@ -3014,11 +3022,14 @@ h264_mediacodec_decoder_deps="mediacodec"
  h264_mediacodec_decoder_select="h264_mp4toannexb_bsf h264_parser"
  h264_mmal_decoder_deps="mmal"
  h264_nvenc_encoder_deps="nvenc"
@@ -126,7 +120,7 @@ index 34c2adb4a4..f3b84d6ef6 100755
  h264_vaapi_encoder_select="cbs_h264 vaapi_encode"
  h264_v4l2m2m_decoder_deps="v4l2_m2m h264_v4l2_m2m"
  h264_v4l2m2m_decoder_select="h264_mp4toannexb_bsf"
-@@ -3029,16 +3039,21 @@ hevc_cuvid_decoder_select="hevc_mp4toannexb_bsf"
+@@ -3029,16 +3040,21 @@ hevc_cuvid_decoder_select="hevc_mp4toannexb_bsf"
  hevc_mediacodec_decoder_deps="mediacodec"
  hevc_mediacodec_decoder_select="hevc_mp4toannexb_bsf hevc_parser"
  hevc_nvenc_encoder_deps="nvenc"
@@ -148,7 +142,7 @@ index 34c2adb4a4..f3b84d6ef6 100755
  mjpeg_qsv_encoder_deps="libmfx"
  mjpeg_qsv_encoder_select="qsvenc"
  mjpeg_vaapi_encoder_deps="VAEncPictureParameterBufferJPEG"
-@@ -3069,6 +3084,7 @@ vc1_mmal_decoder_deps="mmal"
+@@ -3069,6 +3085,7 @@ vc1_mmal_decoder_deps="mmal"
  vc1_qsv_decoder_select="qsvdec vc1_parser"
  vc1_v4l2m2m_decoder_deps="v4l2_m2m vc1_v4l2_m2m"
  vp8_cuvid_decoder_deps="cuvid"
@@ -156,7 +150,7 @@ index 34c2adb4a4..f3b84d6ef6 100755
  vp8_mediacodec_decoder_deps="mediacodec"
  vp8_qsv_decoder_select="qsvdec vp8_parser"
  vp8_rkmpp_decoder_deps="rkmpp"
-@@ -3077,6 +3093,7 @@ vp8_vaapi_encoder_select="vaapi_encode"
+@@ -3077,6 +3094,7 @@ vp8_vaapi_encoder_select="vaapi_encode"
  vp8_v4l2m2m_decoder_deps="v4l2_m2m vp8_v4l2_m2m"
  vp8_v4l2m2m_encoder_deps="v4l2_m2m vp8_v4l2_m2m"
  vp9_cuvid_decoder_deps="cuvid"
@@ -164,7 +158,7 @@ index 34c2adb4a4..f3b84d6ef6 100755
  vp9_mediacodec_decoder_deps="mediacodec"
  vp9_rkmpp_decoder_deps="rkmpp"
  vp9_vaapi_encoder_deps="VAEncPictureParameterBufferVP9"
-@@ -6367,6 +6384,9 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
+@@ -6367,6 +6385,9 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
                               }
  enabled vapoursynth       && require_pkg_config vapoursynth "vapoursynth-script >= 42" VSScript.h vsscript_init
  
