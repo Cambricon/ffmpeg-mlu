@@ -62,7 +62,7 @@ int process_resize_yuv(param_ctx_t ctx) {
   const char *depth = "8U";
   std::string filename = ctx.input_file;
   std::string output_file =ctx.output_file;
-  set_cnrt_ctx(device_id, CNRT_CHANNEL_TYPE_NONE);
+  set_cnrt_ctx(device_id);
 
   int yuv_size = width * height * 3 / 2;
   uint8_t *input_cpu_yuv = (uint8_t *)malloc(yuv_size * sizeof(uint8_t));

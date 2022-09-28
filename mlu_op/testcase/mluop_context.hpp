@@ -36,11 +36,19 @@
 #include "cnrt.h"
 #include "utils.hpp"
 
-#define CNRT_ERROR_CHECK(ret)                                                 \
+#if CNRT_MAJOR_VERSION < 5
+#define MLUOP_TEST_CHECK(ret)                                                 \
   if (ret != CNRT_RET_SUCCESS) {                                              \
     fprintf(stderr, "error occur, func: %s, line: %d\n", __func__, __LINE__); \
     return -1;                                                                \
   }
+#else
+#define MLUOP_TEST_CHECK(ret)                                                 \
+  if (ret != cnrtSuccess) {                                                   \
+    fprintf(stderr, "error occur, func: %s, line: %d\n", __func__, __LINE__); \
+    return -1;                                                                \
+  }
+#endif
 typedef void *HANDLE;
 
 typedef struct {
@@ -170,23 +178,22 @@ private:
   }
 };
 
-static int set_cnrt_ctx(unsigned int device_id, cnrtChannelType_t channel_id) {
+static int set_cnrt_ctx(unsigned int device_id) {
+#if CNRT_MAJOR_VERSION < 5
   cnrtDev_t dev;
-  cnrtRet_t ret;
-  ret = cnrtGetDeviceHandle(&dev, device_id);
-  CNRT_ERROR_CHECK(ret);
-  ret = cnrtSetCurrentDevice(dev);
-  CNRT_ERROR_CHECK(ret);
-  if (channel_id >= CNRT_CHANNEL_TYPE_0) {
-    ret = cnrtSetCurrentChannel(channel_id);
-    CNRT_ERROR_CHECK(ret);
-  }
-
+  MLUOP_TEST_CHECK(cnrtGetDeviceHandle(&dev, device_id));
+  MLUOP_TEST_CHECK(cnrtSetCurrentDevice(dev));
   cnrtDeviceInfo_t info;
   cnrtGetDeviceInfo(&info, device_id);
-  std::string test = "MLU370";
-  std::cout << "MLU370:" << sizeof(test.c_str()) << std::endl;
-  std::cout << "dev name:" << info.device_name << ", core num:" << info.core_num << std::endl;
+  std::cout << "dev id:" << device_id << ", dev name:" << info.device_name;
+  std::cout << std::endl;
+#else
+  cnrtDeviceProp_t prop;
+  MLUOP_TEST_CHECK(cnrtSetDevice(device_id));
+  MLUOP_TEST_CHECK(cnrtGetDeviceProperties(&prop, device_id));
+  std::cout << "dev id:" << device_id << ", dev name:" << prop.name;
+  std::cout << std::endl;
+#endif
 
   return 0;
 }

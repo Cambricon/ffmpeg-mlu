@@ -76,7 +76,7 @@ struct CVConvertYUV2RGBXPrivate {
 int mluop_convert_yuv2rgbx_init(HANDLE *h, int width, int height, const char *src_pix_fmt,
                                 const char *dst_pix_fmt, const char *depth) {
   CVConvertYUV2RGBXPrivate *d_ptr_ = new CVConvertYUV2RGBXPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue_), "cnrtCreateQueue");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue_), "mluQueueCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
@@ -90,11 +90,11 @@ int mluop_convert_yuv2rgbx_init(HANDLE *h, int width, int height, const char *sr
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->dst_rgbx_ptrs_mlu_),
                             d_ptr_->batch_size * sizeof(void*)),
                             "cnrtMalloc");
-  MLUOP_CV_CHECK(cncvGetYuv420spToRgbxWorkspaceSize(
+  MLUOP_CV_CHECK(cncvGetYuvToRgbxWorkspaceSize(
                                     getCNCVPixFmtFromPixindex(src_pix_fmt),
                                     getCNCVPixFmtFromPixindex(dst_pix_fmt),
                                     &d_ptr_->workspace_size),
-                                    "cncvGetYuv420spToRgbxWorkspaceSize");
+                                    "cncvGetYuvToRgbxWorkspaceSize");
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
                             d_ptr_->workspace_size), "cnrtMalloc");
   memset(&d_ptr_->src_desc, 0, sizeof(d_ptr_->src_desc));
@@ -114,10 +114,10 @@ int mluop_convert_yuv2rgbx_init(HANDLE *h, int width, int height, const char *sr
                                 getPixFmtChannelNum(getCNCVPixFmtFromPixindex(dst_pix_fmt));
 
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin),
-                "cnrtCreateNotifier");
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_end),
-                "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),
+                "mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),
+                "mluNotifierCreate");
   #endif
 
   *h = static_cast<void *>(d_ptr_);
@@ -193,11 +193,11 @@ int mluop_convert_yuv2rgbx_destroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
                   "cnrtDestroyNorifier");
   }
   #endif
@@ -224,7 +224,7 @@ int mluop_convert_yuv2rgbx_destroy(HANDLE h) {
     d_ptr_->workspace = nullptr;
   }
   if (d_ptr_->queue_) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue_), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue_), "mluQueueDestroy");
     d_ptr_->queue_ = nullptr;
   }
   if (d_ptr_->handle) {
@@ -240,7 +240,7 @@ int mluop_convert_yuv2rgbx_destroy(HANDLE h) {
 int mluOpConvertYuv2RgbxInit(HANDLE *h, int width, int height, const char *src_pix_fmt,
                                 const char *dst_pix_fmt, const char *depth) {
   CVConvertYUV2RGBXPrivate *d_ptr_ = new CVConvertYUV2RGBXPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue_), "cnrtCreateQueue");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue_), "mluQueueCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
@@ -254,11 +254,11 @@ int mluOpConvertYuv2RgbxInit(HANDLE *h, int width, int height, const char *src_p
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->dst_rgbx_ptrs_mlu_),
                             d_ptr_->batch_size * sizeof(void*)),
                             "cnrtMalloc");
-  MLUOP_CV_CHECK(cncvGetYuv420spToRgbxWorkspaceSize(
+  MLUOP_CV_CHECK(cncvGetYuvToRgbxWorkspaceSize(
                                     getCNCVPixFmtFromPixindex(src_pix_fmt),
                                     getCNCVPixFmtFromPixindex(dst_pix_fmt),
                                     &d_ptr_->workspace_size),
-                                    "cncvGetYuv420spToRgbxWorkspaceSize");
+                                    "cncvGetYuvToRgbxWorkspaceSize");
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
                             d_ptr_->workspace_size), "cnrtMalloc");
   memset(&d_ptr_->src_desc, 0, sizeof(d_ptr_->src_desc));
@@ -278,10 +278,10 @@ int mluOpConvertYuv2RgbxInit(HANDLE *h, int width, int height, const char *src_p
                                 getPixFmtChannelNum(getCNCVPixFmtFromPixindex(dst_pix_fmt));
 
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin),
-                "cnrtCreateNotifier");
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_end),
-                "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),
+                "mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),
+                "mluNotifierCreate");
   #endif
 
   *h = static_cast<void *>(d_ptr_);
@@ -351,11 +351,11 @@ int mluOpConvertYuv2RgbxDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
                   "cnrtDestroyNorifier");
   }
   #endif
@@ -382,7 +382,7 @@ int mluOpConvertYuv2RgbxDestroy(HANDLE h) {
     d_ptr_->workspace = nullptr;
   }
   if (d_ptr_->queue_) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue_), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue_), "mluQueueDestroy");
     d_ptr_->queue_ = nullptr;
   }
   if (d_ptr_->handle) {

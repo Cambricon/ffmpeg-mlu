@@ -61,7 +61,7 @@ int process_convert_yuv2rgbx(param_ctx_t ctx) {
   std::string filename = ctx.input_file;
   std::string output_file =ctx.output_file;
 
-  set_cnrt_ctx(device_id, CNRT_CHANNEL_TYPE_NONE);
+  set_cnrt_ctx(device_id);
 
   uint32_t src_y_stride = PAD_UP(width, ALIGN_Y2R_CVT);
   uint32_t src_uv_stride = PAD_UP(width, ALIGN_Y2R_CVT);
