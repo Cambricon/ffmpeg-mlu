@@ -32,7 +32,7 @@
 #include "cnrt.h"
 #include "mluop.h"
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
 extern cncvStatus_t cncvResizeRgbx(cncvHandle_t handle,
                                    uint32_t batch_size,
                                    const cncvImageDescriptor src_desc,
@@ -105,7 +105,7 @@ int mluop_resize_rgbx_init(HANDLE *h,
                            const char *pix_fmt,
                            const char *depth) {
   CVResizeRgbxPrivate *d_ptr_ = new CVResizeRgbxPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue_), "cnrtCreateQueue");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue_), "mluQueueCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
@@ -159,8 +159,8 @@ int mluop_resize_rgbx_init(HANDLE *h,
   d_ptr_->dst_desc.depth = getCNCVDepthFromIndex(depth);
 
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin),"cnrtCreateNotifier");
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_end),  "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),"mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),  "mluNotifierCreate");
   #endif
 
   *h = static_cast<void *>(d_ptr_);
@@ -196,7 +196,7 @@ int mluop_resize_rgbx_exec(HANDLE h, void *input, void *output) {
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -299,7 +299,7 @@ int mluop_resize_pad_rgbx_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -397,7 +397,7 @@ int mluop_resize_roi_rgbx_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -454,12 +454,12 @@ int mluop_resize_rgbx_destroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+                  "mluNotifierDestory");
   }
   #endif
   if (d_ptr_->src_rgbx_ptrs_cpu_) {
@@ -485,7 +485,7 @@ int mluop_resize_rgbx_destroy(HANDLE h) {
     d_ptr_->workspace = nullptr;
   }
   if (d_ptr_->queue_) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue_), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue_), "mluQueueDestroy");
     d_ptr_->queue_ = nullptr;
   }
   if (d_ptr_->handle) {
@@ -506,7 +506,7 @@ int mluOpResizeRgbxInit(HANDLE *h,
                            const char *pix_fmt,
                            const char *depth) {
   CVResizeRgbxPrivate *d_ptr_ = new CVResizeRgbxPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue_), "cnrtCreateQueue");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue_), "mluQueueCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
@@ -560,8 +560,8 @@ int mluOpResizeRgbxInit(HANDLE *h,
   d_ptr_->dst_desc.depth = getCNCVDepthFromIndex(depth);
 
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin),"cnrtCreateNotifier");
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_end),  "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),"mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),  "mluNotifierCreate");
   #endif
 
   *h = static_cast<void *>(d_ptr_);
@@ -594,7 +594,7 @@ int mluRpResizeRgbxExec(HANDLE h, void *input, void *output) {
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -694,7 +694,7 @@ int mluOpResizeRgbxExecPad(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -789,7 +789,7 @@ int mluOpResizeRgbxExecRoi(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -843,12 +843,12 @@ int mluOpResizeRgbxDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+                  "mluNotifierDestory");
   }
   #endif
   if (d_ptr_->src_rgbx_ptrs_cpu_) {
@@ -874,7 +874,7 @@ int mluOpResizeRgbxDestroy(HANDLE h) {
     d_ptr_->workspace = nullptr;
   }
   if (d_ptr_->queue_) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue_), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue_), "mluQueueDestroy");
     d_ptr_->queue_ = nullptr;
   }
   if (d_ptr_->handle) {

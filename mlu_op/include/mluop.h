@@ -34,8 +34,8 @@
 #include "cncv.h"
 #include "cnrt.h"
 
-#define MLUOP_MAJOR 2
-#define MLUOP_MINOR 4
+#define MLUOP_MAJOR 3
+#define MLUOP_MINOR 0
 #define MLUOP_PATCH 0
 #define MLUOP_VERSION (MLUOP_MAJOR * 1000 + MLUOP_MINOR * 100 + MLUOP_PATCH)
 
@@ -46,18 +46,39 @@
 #define ALIGN_RESIZE_CVT 1
 #define PAD_UP(x, y) ((x / y + (int)((x) % y > 0)) * y)
 
+#if CNRT_MAJOR_VERSION < 5
 #define MLUOP_RT_CHECK(ret, msg)                                               \
   if (ret != CNRT_RET_SUCCESS) {                                               \
     fprintf(stderr, "Error: %s, ret:%d, func:%s, line:%d\n"                    \
             msg, ret, __func__, __LINE__);                                     \
     return -1;                                                                 \
   }
+#else
+#define MLUOP_RT_CHECK(ret, msg)                                               \
+  if (ret != cnrtSuccess) {                                                    \
+    fprintf(stderr, "Error: %s, ret:%d, func:%s, line:%d\n"                    \
+            msg, ret, __func__, __LINE__);                                     \
+    return -1;                                                                 \
+  }
+#endif
 #define MLUOP_CV_CHECK(ret, msg)                                               \
   if (ret != CNCV_STATUS_SUCCESS) {                                            \
     fprintf(stderr, "Error: %s, ret:%d, func:%s, line:%d\n"                    \
             msg, ret, __func__, __LINE__);                                     \
     return -1;                                                                 \
   }
+
+#if CNRT_MAJOR_VERSION < 5
+#define mluQueueCreate(q_ptr)  cnrtCreateQueue(q_ptr)
+#define mluQueueDestroy(queue) cnrtDestroyQueue(queue)
+#define mluNotifierCreate(event_ptr)  cnrtCreateNotifier(event_ptr)
+#define mluNotifierDestory(event_ptr) cnrtDestroyNotifier(event_ptr)
+#else
+#define mluQueueCreate(q_ptr)  cnrtQueueCreate(q_ptr)
+#define mluQueueDestroy(queue) cnrtQueueDestroy(queue)
+#define mluNotifierCreate(event_ptr)  cnrtNotifierCreate(event_ptr)
+#define mluNotifierDestory(event_ptr) cnrtNotifierDestory(event_ptr)
+#endif
 
 typedef void *HANDLE;
 typedef enum {

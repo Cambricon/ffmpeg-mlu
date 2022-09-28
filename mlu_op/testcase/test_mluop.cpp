@@ -122,7 +122,9 @@ int main(int argc, char **argv) {
   param_ctx_t *ctx = (param_ctx_t *)malloc(sizeof(param_ctx_t));
   memset(ctx, 0, sizeof(param_ctx_t));
 
-  CNRT_ERROR_CHECK(cnrtInit(0));
+#if CNRT_MAJOR_VERSION < 5
+  MLUOP_TEST_CHECK(cnrtInit(0));
+#endif
 
   int ret = 0;
   int algo_num = 0;
@@ -151,7 +153,9 @@ int main(int argc, char **argv) {
   }
 
   free(ctx);
+#if CNRT_MAJOR_VERSION < 5
   cnrtDestroy();
+#endif
 
   std::cout << "=======================" << std::endl;
   std::cout << "test mluop done" << std::endl;

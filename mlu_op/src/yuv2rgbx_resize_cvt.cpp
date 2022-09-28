@@ -33,7 +33,7 @@
 #include "cnrt.h"
 #include "mluop.h"
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
 extern cncvStatus_t cncvResizeConvert(cncvHandle_t handle,
                                       uint32_t batch_size,
                                       const cncvImageDescriptor *psrc_descs,
@@ -109,7 +109,7 @@ int MluopResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
                        int dst_height, const char *src_pix_fmt,
                        const char *dst_pix_fmt, const char *depth) {
   CvResizeCvtPrivate *d_ptr_ = new CvResizeCvtPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue), "cnrtCreateQueue");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue), "mluQueueCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue), "cncvSetQueue");
 
@@ -149,7 +149,7 @@ int MluopResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
   d_ptr_->dst_rois.h = dst_height;
   d_ptr_->dst_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
   d_ptr_->src_uv_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
@@ -173,7 +173,7 @@ int MluopResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void **>(&d_ptr_->workspace),
                      d_ptr_->workspace_size), "cnrtMalloc");
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin), "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin), "mluNotifierCreate");
   #endif
   *h = static_cast<void *>(d_ptr_);
 
@@ -191,7 +191,7 @@ int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
     return -1;
   }
   d_ptr_->dst_ptrs_cpu[0] = output_rgbx;
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu[0] = input_y;
   d_ptr_->src_uv_ptrs_cpu[0] = input_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->src_y_ptrs_mlu,
@@ -216,7 +216,7 @@ int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                   "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeConvert(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -389,12 +389,12 @@ int MluopResizeCvtDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+                  "mluNotifierDestory");
   }
   #endif
   if (d_ptr_->src_y_ptrs_cpu) {
@@ -434,7 +434,7 @@ int MluopResizeCvtDestroy(HANDLE h) {
     d_ptr_->workspace = nullptr;
   }
   if (d_ptr_->queue) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue), "mluQueueDestroy");
     d_ptr_->queue = nullptr;
   }
   if (d_ptr_->handle) {
@@ -453,7 +453,7 @@ int mluOpResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
                        int dst_height, const char *src_pix_fmt,
                        const char *dst_pix_fmt, const char *depth) {
   CvResizeCvtPrivate *d_ptr_ = new CvResizeCvtPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue), "cnrtCreateQueue");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue), "mluQueueCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue), "cncvSetQueue");
 
@@ -493,7 +493,7 @@ int mluOpResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
   d_ptr_->dst_rois.h = dst_height;
   d_ptr_->dst_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
   d_ptr_->src_uv_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
@@ -517,7 +517,7 @@ int mluOpResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void **>(&d_ptr_->workspace),
                      d_ptr_->workspace_size), "cnrtMalloc");
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin), "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin), "mluNotifierCreate");
   #endif
   *h = static_cast<void *>(d_ptr_);
 
@@ -532,7 +532,7 @@ int mluOpResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
     return -1;
   }
   d_ptr_->dst_ptrs_cpu[0] = output_rgbx;
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu[0] = input_y;
   d_ptr_->src_uv_ptrs_cpu[0] = input_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->src_y_ptrs_mlu,
@@ -557,7 +557,7 @@ int mluOpResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                   "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeConvert(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -724,12 +724,12 @@ int mluOpResizeCvtDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+                  "mluNotifierDestory");
   }
   #endif
   if (d_ptr_->src_y_ptrs_cpu) {
@@ -769,7 +769,7 @@ int mluOpResizeCvtDestroy(HANDLE h) {
     d_ptr_->workspace = nullptr;
   }
   if (d_ptr_->queue) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue), "mluQueueDestroy");
     d_ptr_->queue = nullptr;
   }
   if (d_ptr_->handle) {

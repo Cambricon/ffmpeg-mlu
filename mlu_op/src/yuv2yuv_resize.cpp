@@ -29,7 +29,7 @@
 #include "cnrt.h"
 #include "mluop.h"
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
 extern cncvStatus_t cncvResizeYuv(cncvHandle_t handle,
                                   const uint32_t batch_size,
                                   const cncvImageDescriptor *src_desc,
@@ -102,7 +102,7 @@ int mluop_resize_yuv_init(HANDLE *h,
                           int output_w, int output_h,
                           const char *depth, const char *pix_fmt) {
   CVResizeYUVPrivate *d_ptr_ = new CVResizeYUVPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue_), "cnrtCreate");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue_), "cnrtCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
@@ -162,8 +162,8 @@ int mluop_resize_yuv_init(HANDLE *h,
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
                 d_ptr_->workspace_size), "cnrtMalloc");
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin),"cnrtCreateNotifier");
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_end),  "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),"mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),  "mluNotifierCreate");
   #endif
 
   *h = static_cast<void *>(d_ptr_);
@@ -175,7 +175,7 @@ int mluOpResizeYuvInit(HANDLE *h,
                           int output_w, int output_h,
                           const char *depth, const char *pix_fmt) {
   CVResizeYUVPrivate *d_ptr_ = new CVResizeYUVPrivate;
-  MLUOP_RT_CHECK(cnrtCreateQueue(&d_ptr_->queue_), "cnrtCreate");
+  MLUOP_RT_CHECK(mluQueueCreate(&d_ptr_->queue_), "cnrtCreate");
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
@@ -235,8 +235,8 @@ int mluOpResizeYuvInit(HANDLE *h,
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
                 d_ptr_->workspace_size), "cnrtMalloc");
   #ifdef DEBUG
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_begin),"cnrtCreateNotifier");
-  MLUOP_RT_CHECK(cnrtCreateNotifier(&d_ptr_->event_end),  "cnrtCreateNotifier");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),"mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),  "mluNotifierCreate");
   #endif
 
   *h = static_cast<void *>(d_ptr_);
@@ -273,7 +273,7 @@ int mluop_resize_yuv_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeYuv(d_ptr_->handle,
                         d_ptr_->batch_size,
                         d_ptr_->src_desc,
@@ -302,7 +302,7 @@ int mluop_resize_yuv_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-  MLUOP_RT_CHECK(cnrtSyncQueue(d_ptr_->queue_), "cnrtSyncQueue");
+  MLUOP_CV_CHECK(cncvSyncQueue(d_ptr_->handle), "cncvSyncQueue");
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
@@ -343,7 +343,7 @@ int mluOpResizeYuvExec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeYuv(d_ptr_->handle,
                         d_ptr_->batch_size,
                         d_ptr_->src_desc,
@@ -372,7 +372,7 @@ int mluOpResizeYuvExec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-  MLUOP_RT_CHECK(cnrtSyncQueue(d_ptr_->queue_), "cnrtSyncQueue");
+  MLUOP_CV_CHECK(cncvSyncQueue(d_ptr_->handle), "cncvSyncQueue");
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
@@ -449,7 +449,7 @@ int mluop_resize_pad_yuv_exec(HANDLE h,
                 "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeYuv(d_ptr_->handle,
                         d_ptr_->batch_size,
                         d_ptr_->src_desc,
@@ -478,7 +478,7 @@ int mluop_resize_pad_yuv_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-  MLUOP_RT_CHECK(cnrtSyncQueue(d_ptr_->queue_), "cnrtSyncQueue");
+  MLUOP_CV_CHECK(cncvSyncQueue(d_ptr_->handle), "cncvSyncQueue");
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin,
@@ -552,7 +552,7 @@ int mluOpResizeYuvExecPad(HANDLE h,
                 "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeYuv(d_ptr_->handle,
                         d_ptr_->batch_size,
                         d_ptr_->src_desc,
@@ -581,7 +581,7 @@ int mluOpResizeYuvExecPad(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-  MLUOP_RT_CHECK(cnrtSyncQueue(d_ptr_->queue_), "cnrtSyncQueue");
+  MLUOP_CV_CHECK(cncvSyncQueue(d_ptr_->handle), "cncvSyncQueue");
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin,
@@ -654,7 +654,7 @@ int mluop_resize_roi_yuv_exec(HANDLE h,
                 "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeYuv(d_ptr_->handle,
                         d_ptr_->batch_size,
                         d_ptr_->src_desc,
@@ -683,7 +683,7 @@ int mluop_resize_roi_yuv_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-  MLUOP_RT_CHECK(cnrtSyncQueue(d_ptr_->queue_), "cnrtSyncQueue");
+  MLUOP_CV_CHECK(cncvSyncQueue(d_ptr_->handle), "cncvSyncQueue");
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
@@ -752,7 +752,7 @@ int mluOpResizeYuvExecRoi(HANDLE h,
                 "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MINOR < 8
+#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeYuv(d_ptr_->handle,
                         d_ptr_->batch_size,
                         d_ptr_->src_desc,
@@ -781,7 +781,7 @@ int mluOpResizeYuvExecRoi(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-  MLUOP_RT_CHECK(cnrtSyncQueue(d_ptr_->queue_), "cnrtSyncQueue");
+  MLUOP_CV_CHECK(cncvSyncQueue(d_ptr_->handle), "cncvSyncQueue");
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
@@ -805,12 +805,12 @@ int mluop_resize_yuv_destroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+                  "mluNotifierDestory");
   }
   #endif
   if (d_ptr_->src_ptrs_cpu_) {
@@ -850,7 +850,7 @@ int mluop_resize_yuv_destroy(HANDLE h) {
     d_ptr_->dst_rois = nullptr;
   }
   if (d_ptr_->queue_) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue_), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue_), "mluQueueDestroy");
     d_ptr_->queue_ = nullptr;
   }
   if (d_ptr_->handle) {
@@ -871,12 +871,12 @@ int mluOpResizeYuvDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_begin),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
+                  "mluNotifierDestory");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(cnrtDestroyNotifier(&d_ptr_->event_end),
-                  "cnrtDestroyNotifier");
+    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+                  "mluNotifierDestory");
   }
   #endif
   if (d_ptr_->src_ptrs_cpu_) {
@@ -916,7 +916,7 @@ int mluOpResizeYuvDestroy(HANDLE h) {
     d_ptr_->dst_rois = nullptr;
   }
   if (d_ptr_->queue_) {
-    MLUOP_RT_CHECK(cnrtDestroyQueue(d_ptr_->queue_), "cnrtDestroyQueue");
+    MLUOP_RT_CHECK(mluQueueDestroy(d_ptr_->queue_), "mluQueueDestroy");
     d_ptr_->queue_ = nullptr;
   }
   if (d_ptr_->handle) {
