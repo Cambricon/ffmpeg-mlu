@@ -6,4 +6,4 @@
 
 ​寒武纪 FFmpeg-MLU 使用纯C接口实现硬件加速的图像、视频编解码和常见图像算法处理，完全兼容社区FFmpeg；符合社区FFmpeg代码开发及命令行使用规范，同时也符合社区FFmpeg hwaccel硬件加速框架规范( https://trac.ffmpeg.org/wiki/HWAccelIntro )，实现了硬件内存管理、硬件加速处理模块与cpu模块的流程化兼容处理等。
 
-关于FFmpeg-MLU的更详细介绍请查阅 docs 文件夹中《Cambricon-FFmpeg-MLU-User-Guide-CN-v2.3.0.pdf》文档。
+关于FFmpeg-MLU的更详细介绍请查阅 docs 文件夹中《Cambricon-FFmpeg-MLU-User-Guide-CN-v3.x.x.pdf》文档。
