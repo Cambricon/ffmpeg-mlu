@@ -1,6 +1,6 @@
-From c1acc0d5a4de50d28facc9fe82e342a20f7a324d Mon Sep 17 00:00:00 2001
+From 08601ea613f60036e9311c8458089bcb65b8f1e9 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk>
-Date: Thu, 29 Sep 2022 15:25:08 +0800
+Date: Tue, 3 Jan 2023 17:33:06 +0800
 Subject: [PATCH] release mlu300
 
 ---
@@ -16,8 +16,8 @@ Subject: [PATCH] release mlu300
  libavcodec/Makefile                     |   10 +
  libavcodec/allcodecs.c                  |   11 +
  libavcodec/hwaccel.h                    |    2 +
- libavcodec/mlumpp_codec.h               |  363 ++++++++
- libavcodec/mlumpp_dec.c                 | 1491 +++++++++++++++++++++++++++++++
+ libavcodec/mlumpp_codec.h               |  381 ++++++++
+ libavcodec/mlumpp_dec.c                 | 1509 +++++++++++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c            |  209 +++++
  libavcodec/mlumpp_enc_hevc.c            |  218 +++++
  libavcodec/mlumpp_enc_jpeg.c            |  107 +++
@@ -30,7 +30,7 @@ Subject: [PATCH] release mlu300
  libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  425 +++++++++
  libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  427 +++++++++
  libavfilter/vf_hwdownload_mlu.c         |  213 +++++
- libavfilter/vf_hwupload_mlu.c           |  201 +++++
+ libavfilter/vf_hwupload_mlu.c           |  201 ++++
  libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  429 +++++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  416 +++++++++
  libavfilter/vf_scale_yuv2yuv_mlu.c      |  441 +++++++++
@@ -43,7 +43,7 @@ Subject: [PATCH] release mlu300
  libavutil/mlu_dl_loader.h               |  186 ++++
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 39 files changed, 8144 insertions(+)
+ 39 files changed, 8180 insertions(+)
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_mlu.c
  create mode 100644 doc/examples/hw_decode_mlu.c
@@ -1190,10 +1190,10 @@ index 3aaa925..6a0ea9f 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000..8d02afc
+index 0000000..2f8a1d4
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
-@@ -0,0 +1,363 @@
+@@ -0,0 +1,381 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1238,13 +1238,15 @@ index 0000000..8d02afc
 +
 +#include "cnrt.h"
 +#include "cncodec_v3_common.h"
++#include "cncodec_v3_dec.h"
++#include "cncodec_v3_enc.h"
 +
 +#define FF_MLU_MAJPR_VERSION 3
-+#define FF_MLU_MINOR_VERSION 0
++#define FF_MLU_MINOR_VERSION 1
 +#define FF_MLU_PATCH_VERSION 0
 +
 +#define cndec_version_info(void)                                              \
-+    av_log(NULL, AV_LOG_VERBOSE, "REL FLAG: 09282022\n");                     \
++    av_log(NULL, AV_LOG_VERBOSE, "REL FLAG: 12202022\n");                     \
 +    av_log(NULL, AV_LOG_INFO, "CNCODEC: %d.%d.%d \n",                         \
 +        CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION); \
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",                      \
@@ -1434,6 +1436,17 @@ index 0000000..8d02afc
 +    }
 +}
 +
++static inline cncodecDecOutputOrder_t
++    cndec_get_output_order_by_name(char* output_order) {
++    if (!strcmp("display", output_order) || !strcmp("DISPLAY", output_order)) {
++        return CNCODEC_DEC_OUTPUT_ORDER_DISPLAY;
++    } else if (!strcmp("decode", output_order) || !strcmp("DECODE", output_order)) {
++        return CNCODEC_DEC_OUTPUT_ORDER_DECODE;
++    } else {
++        return CNCODEC_DEC_OUTPUT_ORDER_DISPLAY;
++    }
++}
++
 +static inline int cndec_check_output_pixfmt(uint32_t out_fmt_mask,
 +    cncodecPixelFormat_t cn_pixfmt) {
 +    if (out_fmt_mask == 0) {
@@ -1555,14 +1568,19 @@ index 0000000..8d02afc
 +#endif
 +}
 +
++static inline uint64_t cn_get_current_time(void) {
++    struct timeval tv;
++    gettimeofday(&tv, NULL);
++    return (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
++}
 +
 +#endif /* MLUMPP_CODEC_H */
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000..0bdc437
+index 0000000..900942c
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1491 @@
+@@ -0,0 +1,1509 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -1622,6 +1640,7 @@ index 0000000..0bdc437
 +    int cnrt_init_flag;
 +    int async_queue_depth;
 +    char *output_pixfmt;
++    char *output_order;
 +    struct {
 +        int x;
 +        int y;
@@ -2037,6 +2056,7 @@ index 0000000..0bdc437
 +    input.pts = avpkt->pts;
 +    input.mem_type = CNCODEC_MEM_TYPE_HOST;
 +    input.alloc_len = avpkt->size;
++    input.priv_data = avpkt->dts;
 +    ret = cncodecDecSendStream(ctx->codec_handle_, &input, feed_timeout);
 +    MLUMPP_CHECK(avctx, ret, "Decoder send stream");
 +
@@ -2079,7 +2099,7 @@ index 0000000..0bdc437
 +    params.color_space       = CNCODEC_COLOR_SPACE_BT_709;
 +    params.stride_align      = ctx->stride_align;
 +    params.dec_mode          = CNCODEC_DEC_MODE_IPB;
-+    params.output_order      = CNCODEC_DEC_OUTPUT_ORDER_DISPLAY;
++    params.output_order      = cndec_get_output_order_by_name(ctx->output_order);
 +    params.output_buf_source = CNCODEC_BUF_SOURCE_LIB;
 +
 +    params.pp_attr.crop.enable = 1;
@@ -2396,6 +2416,7 @@ index 0000000..0bdc437
 +
 +    int ret = 0;
 +    int64_t pts = -1;
++    int64_t dts = -1;
 +    cncodecPicType_t pic_type;
 +    DecEventInfoMsg_t frame_info;
 +
@@ -2412,6 +2433,7 @@ index 0000000..0bdc437
 +        return AVERROR_EOF;
 +    }
 +    pts      = frame_info.event_output.frame.pts;
++    dts      = frame_info.event_output.frame.priv_data;
 +    pic_type = frame_info.event_output.frame.pic_type;
 +
 +    ret = cndec_frame_copyout(avctx, frame, &frame_info.event_output.frame);
@@ -2426,6 +2448,7 @@ index 0000000..0bdc437
 +    frame->pkt_size     = -1;
 +    frame->interlaced_frame = ctx->progressive ? 0 : 1;
 +    frame->pts          = pts;
++    frame->pkt_dts      = dts;
 +#if FF_API_PKT_PTS
 +FF_DISABLE_DEPRECATION_WARNINGS
 +    frame->pkt_pts = frame->pts;
@@ -2467,6 +2490,8 @@ index 0000000..0bdc437
 +    int in_ret = -1;
 +    int out_ret = -1;
 +    AVPacket pkt = {0};
++    uint64_t cn_start = 0;
++    uint64_t cn_timeout = 0;
 +    bool inbuf_valid = false;
 +
 +    if (NULL == avctx || NULL == avctx->priv_data) {
@@ -2481,16 +2506,20 @@ index 0000000..0bdc437
 +    if (mlu_device_binding(ctx->mlu_ctx) < 0) {
 +        av_log(avctx, AV_LOG_ERROR, "MLU device binding error\n");
 +    }
-+
 +    if (ctx->eos_received) {
 +        return AVERROR_EOF;
 +    }
++    cn_start = cn_get_current_time();
++
 +    while (!ctx->codec_abort_flag) {
 +        inbuf_valid = cndec_input_buf_available(avctx);
 +        if (!ctx->decoder_flushing && inbuf_valid) {
 +            in_ret = ff_decode_get_packet(avctx, &pkt);
 +            if (in_ret < 0 && in_ret != AVERROR_EOF) {
-+                return in_ret;
++                if (in_ret == AVERROR(EAGAIN))
++                    goto output_frame;
++                else
++                    return in_ret;
 +            }
 +            in_ret = cndec_send_packet(avctx, &pkt);
 +            av_packet_unref(&pkt);
@@ -2500,18 +2529,26 @@ index 0000000..0bdc437
 +                return in_ret;
 +            }
 +        }
++
++    output_frame:
 +        if (ctx->codec_type == CNCODEC_JPEG) {
++            if (in_ret == AVERROR(EAGAIN)) return in_ret;
 +            return cndec_output_jpeg_frame(avctx, frame);
 +        }
 +        out_ret = cndec_output_frame(avctx, frame);
-+        if (out_ret != 0 && out_ret != AVERROR_EOF) {
-+            if (out_ret != AVERROR(EAGAIN)) {
++        if (out_ret == AVERROR(EAGAIN)) {
++            cn_timeout = cn_get_current_time() - cn_start;
++            if ((!inbuf_valid || ctx->decoder_flushing) && cn_timeout > 5000) {
++                av_log(avctx, AV_LOG_ERROR, "Dec output frame timeout\n");
++                return AVERROR_EXTERNAL;
++            }
++            if (in_ret == AVERROR(EAGAIN)) {
++                av_log(avctx, AV_LOG_DEBUG,
++                    "Dec got pkt and frame failed, return again\n");
 +                return out_ret;
 +            }
-+            if (ctx->decoder_flushing || !inbuf_valid ||
-+                out_ret == AVERROR(EAGAIN)) {
-+                av_usleep(2000);
-+            }
++            av_usleep(2000);
++            av_log(avctx, AV_LOG_DEBUG, "Dec frame empty, try again\n");
 +        } else {
 +            if (out_ret == AVERROR_EOF) {
 +                ctx->eos_received = 1;
@@ -2842,8 +2879,6 @@ index 0000000..0bdc437
 +        ctx->codec_params_.output_buf_num = ctx->num_output_buffers;
 +        ctx->codec_params_.pixel_format   = cncodec_get_cn_pixfmt_by_av_pixfmt(avctx->sw_pix_fmt);
 +        ctx->codec_params_.color_space    = CNCODEC_COLOR_SPACE_BT_709;
-+        ctx->codec_params_.dec_mode       = CNCODEC_DEC_MODE_IPB;
-+        ctx->codec_params_.output_order   = CNCODEC_DEC_OUTPUT_ORDER_DISPLAY;
 +        ctx->codec_params_.output_buf_source = CNCODEC_BUF_SOURCE_LIB;
 +
 +        if (CNCODEC_PIX_FMT_NV12 != ctx->codec_params_.pixel_format &&
@@ -2982,7 +3017,8 @@ index 0000000..0bdc437
 +    { "max_width",      "max width of decoder buffer",            OFFSET(max_width),         AV_OPT_TYPE_INT, {.i64 = 0 }, 0, 8192,VD }, \
 +    { "max_height",     "max height of decoder buffer",           OFFSET(max_height),        AV_OPT_TYPE_INT, {.i64 = 0 }, 0, 4320,VD }, \
 +    { "backend",        "hardware backend for image decoder",     OFFSET(image_dec_backend), AV_OPT_TYPE_INT, {.i64 = 0 }, 0, 2,   VD }, \
-+    { "output_pixfmt",  "output pix fmt of decoder",              OFFSET(output_pixfmt),     AV_OPT_TYPE_STRING, {.str = "nv12" },0, 0, VD },
++    { "output_pixfmt",  "output pix fmt of decoder",              OFFSET(output_pixfmt),     AV_OPT_TYPE_STRING, {.str = "nv12" },0, 0, VD }, \
++    { "output_order",   "output decode frame order",              OFFSET(output_order),      AV_OPT_TYPE_STRING, {.str = "display" },0, 0, VD },
 +
 +static const AVOption options[] = {
 +    MLU3XX_COMMON_OPTS
