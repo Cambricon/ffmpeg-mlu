@@ -33,7 +33,7 @@
 #include "cnrt.h"
 #include "mluop.h"
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
 extern cncvStatus_t cncvResizeConvert(cncvHandle_t handle,
                                       uint32_t batch_size,
                                       const cncvImageDescriptor *psrc_descs,
@@ -43,6 +43,20 @@ extern cncvStatus_t cncvResizeConvert(cncvHandle_t handle,
                                       const cncvImageDescriptor *pdst_descs,
                                       const cncvRect *dst_rois,
                                       void **dst,
+                                      const size_t workspace_size,
+                                      void *workspace,
+                                      cncvInterpolation interpolation);
+#else
+#if CNCV_MAJOR >= 2
+extern cncvStatus_t cncvResizeConvert_AdvancedROI(
+                                      cncvHandle_t handle,
+                                      const uint32_t batch_size,
+                                      const cncvImageDescriptor *psrc_descs,
+                                      const cncvRect *src_rois,
+                                      cncvBufferList_t src,
+                                      const cncvImageDescriptor *pdst_descs,
+                                      const cncvRect *dst_rois,
+                                      cncvBufferList_t dst,
                                       const size_t workspace_size,
                                       void *workspace,
                                       cncvInterpolation interpolation);
@@ -59,6 +73,7 @@ extern cncvStatus_t cncvResizeConvert_AdvancedROI(
                                       const size_t workspace_size,
                                       void *workspace,
                                       cncvInterpolation interpolation);
+#endif
 #endif
 
 extern cncvStatus_t cncvGetResizeConvertWorkspaceSize(
@@ -149,7 +164,7 @@ int MluopResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
   d_ptr_->dst_rois.h = dst_height;
   d_ptr_->dst_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
   d_ptr_->src_uv_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
@@ -191,7 +206,7 @@ int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
     return -1;
   }
   d_ptr_->dst_ptrs_cpu[0] = output_rgbx;
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu[0] = input_y;
   d_ptr_->src_uv_ptrs_cpu[0] = input_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->src_y_ptrs_mlu,
@@ -216,7 +231,7 @@ int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                   "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeConvert(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -231,6 +246,20 @@ int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
+                              1,
+                              &d_ptr_->src_desc,
+                              &d_ptr_->src_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->src_ptrs_mlu),
+                              &d_ptr_->dst_desc,
+                              &d_ptr_->dst_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_ptrs_mlu),
+                              d_ptr_->workspace_size,
+                              d_ptr_->workspace,
+                              CNCV_INTER_BILINEAR),
+                              "cncvResizeConvert_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -243,6 +272,7 @@ int MluopResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                               d_ptr_->workspace,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue),
@@ -276,7 +306,7 @@ int MluopResizeCvtPadExec(HANDLE h, void *input_y, void *input_uv,
   }
   d_ptr_->dst_ptrs_cpu[0] = output_rgbx;
 
-#if CNCV_MONOR < 8
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu[0] = input_y;
   d_ptr_->src_uv_ptrs_cpu[0] = input_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->src_y_ptrs_mlu,
@@ -334,7 +364,7 @@ int MluopResizeCvtPadExec(HANDLE h, void *input_y, void *input_uv,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MONOR < 8
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeConvert(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -348,6 +378,20 @@ int MluopResizeCvtPadExec(HANDLE h, void *input_y, void *input_uv,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
+                              1,
+                              &d_ptr_->src_desc,
+                              &d_ptr_->src_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->src_ptrs_mlu),
+                              &d_ptr_->dst_desc,
+                              &d_ptr_->dst_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_ptrs_mlu),
+                              d_ptr_->workspace_size,
+                              d_ptr_->workspace,
+                              CNCV_INTER_BILINEAR),
+                              "cncvResizeConvert_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -356,9 +400,11 @@ int MluopResizeCvtPadExec(HANDLE h, void *input_y, void *input_uv,
                               &d_ptr_->dst_desc,
                               &d_ptr_->dst_rois,
                               reinterpret_cast<void **>(d_ptr_->dst_ptrs_mlu),
-                              d_ptr_->workspace_size, d_ptr_->workspace,
+                              d_ptr_->workspace_size,
+                              d_ptr_->workspace,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue),
@@ -493,7 +539,7 @@ int mluOpResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
   d_ptr_->dst_rois.h = dst_height;
   d_ptr_->dst_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
   d_ptr_->src_uv_ptrs_cpu = reinterpret_cast<void **>(malloc(sizeof(char *)));
 
@@ -532,7 +578,7 @@ int mluOpResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
     return -1;
   }
   d_ptr_->dst_ptrs_cpu[0] = output_rgbx;
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu[0] = input_y;
   d_ptr_->src_uv_ptrs_cpu[0] = input_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->src_y_ptrs_mlu,
@@ -557,7 +603,7 @@ int mluOpResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                   "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeConvert(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -572,6 +618,20 @@ int mluOpResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
+                              1,
+                              &d_ptr_->src_desc,
+                              &d_ptr_->src_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->src_ptrs_mlu),
+                              &d_ptr_->dst_desc,
+                              &d_ptr_->dst_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_ptrs_mlu),
+                              d_ptr_->workspace_size,
+                              d_ptr_->workspace,
+                              CNCV_INTER_BILINEAR),
+                              "cncvResizeConvert_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -584,6 +644,7 @@ int mluOpResizeCvtExec(HANDLE h, void *input_y, void *input_uv,
                               d_ptr_->workspace,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue),
@@ -614,7 +675,7 @@ int mluOpResizeCvtExecPad(HANDLE h, void *input_y, void *input_uv,
   }
   d_ptr_->dst_ptrs_cpu[0] = output_rgbx;
 
-#if CNCV_MONOR < 8
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->src_y_ptrs_cpu[0] = input_y;
   d_ptr_->src_uv_ptrs_cpu[0] = input_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->src_y_ptrs_mlu,
@@ -672,7 +733,7 @@ int mluOpResizeCvtExecPad(HANDLE h, void *input_y, void *input_uv,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_MONOR < 8
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeConvert(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -686,6 +747,20 @@ int mluOpResizeCvtExecPad(HANDLE h, void *input_y, void *input_uv,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
+                              1,
+                              &d_ptr_->src_desc,
+                              &d_ptr_->src_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->src_ptrs_mlu),
+                              &d_ptr_->dst_desc,
+                              &d_ptr_->dst_rois,
+                              reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_ptrs_mlu),
+                              d_ptr_->workspace_size,
+                              d_ptr_->workspace,
+                              CNCV_INTER_BILINEAR),
+                              "cncvResizeConvert_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeConvert_AdvancedROI(d_ptr_->handle,
                               1,
                               &d_ptr_->src_desc,
@@ -694,9 +769,11 @@ int mluOpResizeCvtExecPad(HANDLE h, void *input_y, void *input_uv,
                               &d_ptr_->dst_desc,
                               &d_ptr_->dst_rois,
                               reinterpret_cast<void **>(d_ptr_->dst_ptrs_mlu),
-                              d_ptr_->workspace_size, d_ptr_->workspace,
+                              d_ptr_->workspace_size,
+                              d_ptr_->workspace,
                               CNCV_INTER_BILINEAR),
                               "cncvResizeConvert_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue),

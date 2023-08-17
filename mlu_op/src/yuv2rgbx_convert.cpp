@@ -29,6 +29,16 @@
 #include "cnrt.h"
 #include "mluop.h"
 
+#if CNCV_MAJOR >= 2
+extern cncvStatus_t cncvYuvToRgbx(cncvHandle_t handle,
+                                      const uint32_t batch_size,
+                                      const cncvImageDescriptor src_desc,
+                                      cncvBufferList_t src,
+                                      const cncvImageDescriptor dst_desc,
+                                      cncvBufferList_t dst,
+                                      const size_t workspace_size,
+                                      void *workspace);
+#else
 extern cncvStatus_t cncvYuvToRgbx(cncvHandle_t handle,
                                       const uint32_t batch_size,
                                       const cncvImageDescriptor src_desc,
@@ -37,6 +47,7 @@ extern cncvStatus_t cncvYuvToRgbx(cncvHandle_t handle,
                                       void **dst,
                                       const size_t workspace_size,
                                       void *workspace);
+#endif
 extern cncvStatus_t cncvGetYuvToRgbxWorkspaceSize(cncvPixelFormat src_pixfmt,
                                                   cncvPixelFormat dst_pixfmt,
                                                   size_t *size);
@@ -157,6 +168,16 @@ int mluop_convert_yuv2rgbx_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
+  #if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvYuvToRgbx(d_ptr_->handle,
+                     d_ptr_->batch_size,
+                     d_ptr_->src_desc,
+                     reinterpret_cast<cncvBufferList_t>(d_ptr_->src_yuv_ptrs_mlu_),
+                     d_ptr_->dst_desc,
+                     reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                     d_ptr_->workspace_size,
+                     d_ptr_->workspace), "cncvYuvToRgbx");
+  #else
   MLUOP_CV_CHECK(cncvYuvToRgbx(d_ptr_->handle,
                      d_ptr_->batch_size,
                      d_ptr_->src_desc,
@@ -165,6 +186,7 @@ int mluop_convert_yuv2rgbx_exec(HANDLE h,
                      reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_mlu_),
                      d_ptr_->workspace_size,
                      d_ptr_->workspace), "cncvYuvToRgbx");
+  #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
@@ -318,6 +340,16 @@ int mluOpConvertYuv2RgbxExec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
+  #if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvYuvToRgbx(d_ptr_->handle,
+                     d_ptr_->batch_size,
+                     d_ptr_->src_desc,
+                     reinterpret_cast<cncvBufferList_t>(d_ptr_->src_yuv_ptrs_mlu_),
+                     d_ptr_->dst_desc,
+                     reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                     d_ptr_->workspace_size,
+                     d_ptr_->workspace), "cncvYuvToRgbx");
+  #else
   MLUOP_CV_CHECK(cncvYuvToRgbx(d_ptr_->handle,
                      d_ptr_->batch_size,
                      d_ptr_->src_desc,
@@ -326,6 +358,7 @@ int mluOpConvertYuv2RgbxExec(HANDLE h,
                      reinterpret_cast<void**>(d_ptr_->dst_rgbx_ptrs_mlu_),
                      d_ptr_->workspace_size,
                      d_ptr_->workspace), "cncvYuvToRgbx");
+  #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
                 "cnrtPlaceNotifier");

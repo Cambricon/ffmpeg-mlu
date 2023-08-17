@@ -32,7 +32,7 @@
 #include "cnrt.h"
 #include "mluop.h"
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
 extern cncvStatus_t cncvResizeRgbx(cncvHandle_t handle,
                                    uint32_t batch_size,
                                    const cncvImageDescriptor src_desc,
@@ -45,6 +45,26 @@ extern cncvStatus_t cncvResizeRgbx(cncvHandle_t handle,
                                    void *workspace,
                                    cncvInterpolation interpolation);
 #else
+#if CNCV_MAJOR >= 2
+cncvStatus_t cncvResizeRgbx_AdvancedROI(cncvHandle_t handle,
+                                        uint32_t batch_size,
+                                        const cncvImageDescriptor *psrc_descs,
+                                        const cncvRect *src_rois,
+                                        cncvBufferList_t src,
+                                        const cncvImageDescriptor *pdst_descs,
+                                        const cncvRect *dst_rois,
+                                        cncvBufferList_t dst,
+                                        const size_t workspace_size,
+                                        void *workspace,
+                                        cncvInterpolation interpolation);
+cncvStatus_t cncvGetResizeRgbxAdvancedWorkspaceSize(const uint32_t batch_size,
+                                        const cncvImageDescriptor *psrc_descs,
+                                        const cncvRect *psrc_rois,
+                                        const cncvImageDescriptor *pdst_descs,
+                                        const cncvRect *pdst_rois,
+                                        const cncvInterpolation interpolation,
+                                        size_t *workspace_size);
+#else
 cncvStatus_t cncvResizeRgbx_AdvancedROI(cncvHandle_t handle,
                                         uint32_t batch_size,
                                         const cncvImageDescriptor *psrc_descs,
@@ -56,9 +76,11 @@ cncvStatus_t cncvResizeRgbx_AdvancedROI(cncvHandle_t handle,
                                         const size_t workspace_size,
                                         void *workspace,
                                         cncvInterpolation interpolation);
-#endif
 extern cncvStatus_t cncvGetResizeRgbxWorkspaceSize(const uint32_t batch_size,
                                                    size_t *workspace_size);
+#endif
+#endif
+
 struct CVResizeRgbxPrivate {
  public:
   uint32_t input_w, input_h;
@@ -66,7 +88,7 @@ struct CVResizeRgbxPrivate {
   uint32_t output_w, output_h;
   uint32_t output_stride_in_bytes;
 
-  uint32_t batch_size = 1;
+  uint32_t batch_size;
   uint32_t depth_size;
   uint32_t pix_chn_num;
   size_t workspace_size = 0;
@@ -109,6 +131,7 @@ int mluop_resize_rgbx_init(HANDLE *h,
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
+  d_ptr_->batch_size = 1;
   d_ptr_->input_h = input_h;
   d_ptr_->input_w = PAD_UP(input_w, ALIGN_R_SCALE);
   d_ptr_->output_h = output_h;
@@ -130,12 +153,7 @@ int mluop_resize_rgbx_init(HANDLE *h,
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->dst_rgbx_ptrs_mlu_),
                                   sizeof(char*) * d_ptr_->batch_size),
                                   "cnrtMalloc");
-  MLUOP_CV_CHECK(cncvGetResizeRgbxWorkspaceSize(d_ptr_->batch_size,
-                                  &d_ptr_->workspace_size),
-                                  "cncvGetResizeRgbxWorkspaceSize");
-  MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
-                                  d_ptr_->workspace_size),
-                                  "cnrtMalloc");
+
   d_ptr_->src_rois.h = d_ptr_->input_h;
   d_ptr_->src_rois.w = d_ptr_->input_w;
   d_ptr_->src_rois.x = 0;
@@ -162,6 +180,24 @@ int mluop_resize_rgbx_init(HANDLE *h,
   MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),"mluNotifierCreate");
   MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),  "mluNotifierCreate");
   #endif
+
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvGetResizeRgbxAdvancedWorkspaceSize(
+                                      d_ptr_->batch_size,
+                                      &d_ptr_->src_desc,
+                                      &d_ptr_->src_rois,
+                                      &d_ptr_->dst_desc,
+                                      &d_ptr_->dst_rois,
+                                      CNCV_INTER_BILINEAR,
+                                      &d_ptr_->workspace_size),
+                                      "cncvGetResizeRgbxAdvancedWorkspaceSize");
+#else
+  MLUOP_CV_CHECK(cncvGetResizeRgbxWorkspaceSize(d_ptr_->batch_size,
+                                  &d_ptr_->workspace_size),
+                                  "cncvGetResizeRgbxWorkspaceSize");
+#endif
+  MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
+                                  d_ptr_->workspace_size), "cnrtMalloc");
 
   *h = static_cast<void *>(d_ptr_);
 
@@ -196,7 +232,7 @@ int mluop_resize_rgbx_exec(HANDLE h, void *input, void *output) {
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -210,6 +246,20 @@ int mluop_resize_rgbx_exec(HANDLE h, void *input, void *output) {
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 &d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 &d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR),
+                 "cncvResizeRgbx_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
                  d_ptr_->batch_size,
                  &d_ptr_->src_desc,
@@ -222,6 +272,7 @@ int mluop_resize_rgbx_exec(HANDLE h, void *input, void *output) {
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
@@ -299,7 +350,7 @@ int mluop_resize_pad_rgbx_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -313,6 +364,20 @@ int mluop_resize_pad_rgbx_exec(HANDLE h,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 &d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 &d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR),
+                 "cncvResizeRgbx_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
                  d_ptr_->batch_size,
                  &d_ptr_->src_desc,
@@ -325,6 +390,7 @@ int mluop_resize_pad_rgbx_exec(HANDLE h,
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
@@ -397,7 +463,7 @@ int mluop_resize_roi_rgbx_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -411,6 +477,20 @@ int mluop_resize_roi_rgbx_exec(HANDLE h,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 &d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 &d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR),
+                 "cncvResizeRgbx_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
                  d_ptr_->batch_size,
                  &d_ptr_->src_desc,
@@ -423,6 +503,7 @@ int mluop_resize_roi_rgbx_exec(HANDLE h,
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
@@ -510,6 +591,7 @@ int mluOpResizeRgbxInit(HANDLE *h,
   MLUOP_CV_CHECK(cncvCreate(&d_ptr_->handle), "cncvCreate");
   MLUOP_CV_CHECK(cncvSetQueue(d_ptr_->handle, d_ptr_->queue_), "cncvSetQueue");
 
+  d_ptr_->batch_size = 1;
   d_ptr_->input_h = input_h;
   d_ptr_->input_w = PAD_UP(input_w, ALIGN_R_SCALE);
   d_ptr_->output_h = output_h;
@@ -531,12 +613,7 @@ int mluOpResizeRgbxInit(HANDLE *h,
   MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->dst_rgbx_ptrs_mlu_),
                                   sizeof(char*) * d_ptr_->batch_size),
                                   "cnrtMalloc");
-  MLUOP_CV_CHECK(cncvGetResizeRgbxWorkspaceSize(d_ptr_->batch_size,
-                                  &d_ptr_->workspace_size),
-                                  "cncvGetResizeRgbxWorkspaceSize");
-  MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
-                                  d_ptr_->workspace_size),
-                                  "cnrtMalloc");
+
   d_ptr_->src_rois.h = d_ptr_->input_h;
   d_ptr_->src_rois.w = d_ptr_->input_w;
   d_ptr_->src_rois.x = 0;
@@ -563,6 +640,24 @@ int mluOpResizeRgbxInit(HANDLE *h,
   MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin),"mluNotifierCreate");
   MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),  "mluNotifierCreate");
   #endif
+
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvGetResizeRgbxAdvancedWorkspaceSize(
+                                      d_ptr_->batch_size,
+                                      &d_ptr_->src_desc,
+                                      &d_ptr_->src_rois,
+                                      &d_ptr_->dst_desc,
+                                      &d_ptr_->dst_rois,
+                                      CNCV_INTER_BILINEAR,
+                                      &d_ptr_->workspace_size),
+                                      "cncvGetResizeRgbxAdvancedWorkspaceSize");
+#else
+  MLUOP_CV_CHECK(cncvGetResizeRgbxWorkspaceSize(d_ptr_->batch_size,
+                                  &d_ptr_->workspace_size),
+                                  "cncvGetResizeRgbxWorkspaceSize");
+#endif
+  MLUOP_RT_CHECK(cnrtMalloc(reinterpret_cast<void**>(&d_ptr_->workspace),
+                                  d_ptr_->workspace_size), "cnrtMalloc");
 
   *h = static_cast<void *>(d_ptr_);
 
@@ -594,7 +689,7 @@ int mluRpResizeRgbxExec(HANDLE h, void *input, void *output) {
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -608,6 +703,20 @@ int mluRpResizeRgbxExec(HANDLE h, void *input, void *output) {
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 &d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 &d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR),
+                 "cncvResizeRgbx_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
                  d_ptr_->batch_size,
                  &d_ptr_->src_desc,
@@ -620,6 +729,7 @@ int mluRpResizeRgbxExec(HANDLE h, void *input, void *output) {
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
@@ -694,7 +804,7 @@ int mluOpResizeRgbxExecPad(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -708,6 +818,20 @@ int mluOpResizeRgbxExecPad(HANDLE h,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 &d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 &d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR),
+                 "cncvResizeRgbx_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
                  d_ptr_->batch_size,
                  &d_ptr_->src_desc,
@@ -720,6 +844,7 @@ int mluOpResizeRgbxExecPad(HANDLE h,
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),
@@ -789,7 +914,7 @@ int mluOpResizeRgbxExecRoi(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvResizeRgbx(d_ptr_->handle,
                  d_ptr_->batch_size,
                  d_ptr_->src_desc,
@@ -803,6 +928,20 @@ int mluOpResizeRgbxExecRoi(HANDLE h,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
+                 d_ptr_->batch_size,
+                 &d_ptr_->src_desc,
+                 &d_ptr_->src_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->src_rgbx_ptrs_mlu_),
+                 &d_ptr_->dst_desc,
+                 &d_ptr_->dst_rois,
+                 reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_rgbx_ptrs_mlu_),
+                 d_ptr_->workspace_size,
+                 d_ptr_->workspace,
+                 CNCV_INTER_BILINEAR),
+                 "cncvResizeRgbx_AdvancedROI");
+#else
   MLUOP_CV_CHECK(cncvResizeRgbx_AdvancedROI(d_ptr_->handle,
                  d_ptr_->batch_size,
                  &d_ptr_->src_desc,
@@ -815,6 +954,7 @@ int mluOpResizeRgbxExecRoi(HANDLE h,
                  d_ptr_->workspace,
                  CNCV_INTER_BILINEAR),
                  "cncvResizeRgbx_AdvancedROI");
+#endif
 #endif
   #ifdef DEBUG
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue_),

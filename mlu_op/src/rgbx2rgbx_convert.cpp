@@ -33,7 +33,7 @@
 #include "cnrt.h"
 #include "mluop.h"
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
 extern cncvStatus_t cncvRgbxToRgbx(cncvHandle_t handle,
                                     const uint32_t batch_size,
                                     const cncvImageDescriptor src_desc,
@@ -43,6 +43,16 @@ extern cncvStatus_t cncvRgbxToRgbx(cncvHandle_t handle,
                                     const cncvRect dst_roi,
                                     void **dst);
 #else
+#if CNCV_MAJOR >= 2
+extern cncvStatus_t cncvRgbxToRgbx_ROI(cncvHandle_t handle,
+                                    const uint32_t batch_size,
+                                    const cncvImageDescriptor src_desc,
+                                    const cncvRect src_roi,
+                                    cncvBufferList_t src,
+                                    const cncvImageDescriptor dst_desc,
+                                    const cncvRect dst_roi,
+                                    cncvBufferList_t dst);
+#else
 extern cncvStatus_t cncvRgbxToRgbx_ROI(cncvHandle_t handle,
                                     const uint32_t batch_size,
                                     const cncvImageDescriptor src_desc,
@@ -51,6 +61,7 @@ extern cncvStatus_t cncvRgbxToRgbx_ROI(cncvHandle_t handle,
                                     const cncvImageDescriptor dst_desc,
                                     const cncvRect dst_roi,
                                     void **dst);
+#endif
 #endif
 extern cncvStatus_t cncvGetResizeRgbxWorkspaceSize(const uint32_t batch_size,
                                                    size_t *workspace_size);
@@ -216,7 +227,7 @@ int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvRgbxToRgbx(d_ptr_->handle,
                             1, d_ptr_->src_desc,
                             d_ptr_->src_rois,
@@ -226,6 +237,16 @@ int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
                             reinterpret_cast<void **>(d_ptr_->dst_ptrs_mlu)),
                             "cncvRgbxToRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvRgbxToRgbx_ROI(d_ptr_->handle,
+                            1, d_ptr_->src_desc,
+                            d_ptr_->src_rois,
+                            reinterpret_cast<cncvBufferList_t>(d_ptr_->src_ptrs_mlu),
+                            d_ptr_->dst_desc,
+                            d_ptr_->dst_rois,
+                            reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_ptrs_mlu)),
+                            "cncvRgbxToRgbx_ROI");
+#else
   MLUOP_CV_CHECK(cncvRgbxToRgbx_ROI(d_ptr_->handle,
                             1, d_ptr_->src_desc,
                             d_ptr_->src_rois,
@@ -234,6 +255,7 @@ int MluopConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
                             d_ptr_->dst_rois,
                             reinterpret_cast<void **>(d_ptr_->dst_ptrs_mlu)),
                             "cncvRgbxToRgbx_ROI");
+#endif
 #endif
   #ifdef DEBUG
   cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue);
@@ -275,7 +297,7 @@ int mluOpConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue),
                 "cnrtPlaceNotifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvRgbxToRgbx(d_ptr_->handle,
                             1, d_ptr_->src_desc,
                             d_ptr_->src_rois,
@@ -285,6 +307,16 @@ int mluOpConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
                             reinterpret_cast<void **>(d_ptr_->dst_ptrs_mlu)),
                             "cncvRgbxToRgbx");
 #else
+#if CNCV_MAJOR >= 2
+  MLUOP_CV_CHECK(cncvRgbxToRgbx_ROI(d_ptr_->handle,
+                            1, d_ptr_->src_desc,
+                            d_ptr_->src_rois,
+                            reinterpret_cast<cncvBufferList_t>(d_ptr_->src_ptrs_mlu),
+                            d_ptr_->dst_desc,
+                            d_ptr_->dst_rois,
+                            reinterpret_cast<cncvBufferList_t>(d_ptr_->dst_ptrs_mlu)),
+                            "cncvRgbxToRgbx_ROI");
+#else
   MLUOP_CV_CHECK(cncvRgbxToRgbx_ROI(d_ptr_->handle,
                             1, d_ptr_->src_desc,
                             d_ptr_->src_rois,
@@ -293,6 +325,7 @@ int mluOpConvertRgbx2RgbxExec(HANDLE h, void *input_rgbx, void *output_rgbx) {
                             d_ptr_->dst_rois,
                             reinterpret_cast<void **>(d_ptr_->dst_ptrs_mlu)),
                             "cncvRgbxToRgbx_ROI");
+#endif
 #endif
   #ifdef DEBUG
   cnrtPlaceNotifier(d_ptr_->event_end, d_ptr_->queue);
