@@ -37,10 +37,10 @@ fi
 
 FFMPEG_MLU_VER=""
 FFMPEG_MLU_LIB_VER=""
-if [ "${MLU_PLATFORM}" == "MLU370" ]; then
+if [[ "${MLU_PLATFORM}" == "MLU370" || "${MLU_PLATFORM}" == "MLU300" || "${MLU_PLATFORM}" == "MLU500" ]];then
    FFMPEG_MLU_VER="300"
    FFMPEG_MLU_LIB_VER="_v3"
-elif [ "${MLU_PLATFORM}" == "MLU200" ]; then
+elif [[ "${MLU_PLATFORM}" == "MLU200" || "${MLU_PLATFORM}" == "MLU220" || "${MLU_PLATFORM}" == "MLU270" ]];then
    FFMPEG_MLU_VER="200"
 else
    echo "!!! ERROR: The input parameter is not supported: ${MLU_PLATFORM} !!!"

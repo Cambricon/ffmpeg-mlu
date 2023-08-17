@@ -25,14 +25,14 @@
 #    --net=host --pid=host --ipc=host -v $HOME/.Xauthority -it --name ubuntu_ffmpeg-mlu  -v $PWD:/workspace ubuntu_ffmpeg-mlu:v1
 # 4. if docker is ready, can execute it by docker start ubuntu_ffmpeg-mlu / docker exec -it  ubuntu_ffmpeg-mlu /bin/bash
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 MAINTAINER <Cambricon, Inc.>
 
 WORKDIR /root/ffmpeg-mlu/
 
-ARG neuware_version=cntoolkit_1.6.0
-ARG neuware_package=${neuware_version}-1.ubuntu16.04_amd64.deb
+ARG neuware_version=cntoolkit_3.6.0
+ARG neuware_package=${neuware_version}-1.ubuntu18.04_amd64.deb
 ARG mlu_platform=MLU270
 
 RUN echo -e 'nameserver 114.114.114.114' > /etc/resolv.conf
@@ -67,7 +67,7 @@ RUN dpkg -i /root/ffmpeg-mlu/$neuware_package && \
     cd ffmpeg && \
     git apply ../ffmpeg4.2_mlu.patch && \
     mkdir build && cd build && \
-    ../configure --enable-gpl --enable-version3 --enable-mlumpp --extra-cflags="-I/usr/local/neuware/include" --extra-ldflags="-L/usr/local/neuware/lib64" --extra-libs="-lcncodec -lcnrt -ldl -lcndrv" && \
+    ../configure --enable-gpl --enable-version3 --enable-mlu --enable-mlumpp --extra-cflags="-I/usr/local/neuware/include" --extra-ldflags="-L/usr/local/neuware/lib64" --extra-libs="-lcncodec -lcncodec_v3 -lcnrt -ldl -lcndrv" && \
     make -j && \
     rm -rf /root/ffmpeg-mlu/$neuware_package
 

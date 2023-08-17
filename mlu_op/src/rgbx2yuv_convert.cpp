@@ -29,7 +29,7 @@
 #include "cnrt.h"
 #include "mluop.h"
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
 extern cncvStatus_t cncvRgbxToYuv(cncvHandle_t handle,
                                   const cncvImageDescriptor src_desc,
                                   const cncvRect src_roi,
@@ -131,7 +131,7 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
     printf("Not create cnrt queue\n");
     return -1;
   }
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->dst_yuv_ptrs_cpu_[0] = output_y;
   d_ptr_->dst_yuv_ptrs_cpu_[1] = output_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->dst_yuv_ptrs_mlu_,
@@ -145,7 +145,7 @@ int mluop_convert_rgbx2yuv_exec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNorifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvRgbxToYuv(d_ptr_->handle, d_ptr_->src_desc,
                             d_ptr_->src_rois,
                             reinterpret_cast<const void *>(input_rgbx),
@@ -199,7 +199,7 @@ int mluop_convert_rgbx2yuv_exec_roi(HANDLE h,
   }
   struct cncvRect src_rois = {in_x, in_y, in_w, in_h};
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->dst_yuv_ptrs_cpu_[0] = output_y;
   d_ptr_->dst_yuv_ptrs_cpu_[1] = output_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->dst_yuv_ptrs_mlu_,
@@ -215,7 +215,7 @@ int mluop_convert_rgbx2yuv_exec_roi(HANDLE h,
                 "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MONOR < 8
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvRgbxToYuv(d_ptr_->handle,
                 d_ptr_->src_desc,
                 src_rois,
@@ -347,7 +347,7 @@ int mluOpConvertRgbx2YuvExec(HANDLE h,
     printf("Not create cnrt queue\n");
     return -1;
   }
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->dst_yuv_ptrs_cpu_[0] = output_y;
   d_ptr_->dst_yuv_ptrs_cpu_[1] = output_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->dst_yuv_ptrs_mlu_,
@@ -361,7 +361,7 @@ int mluOpConvertRgbx2YuvExec(HANDLE h,
   MLUOP_RT_CHECK(cnrtPlaceNotifier(d_ptr_->event_begin, d_ptr_->queue_),
                 "cnrtPlaceNorifier");
   #endif
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvRgbxToYuv(d_ptr_->handle, d_ptr_->src_desc,
                             d_ptr_->src_rois,
                             reinterpret_cast<const void *>(input_rgbx),
@@ -412,7 +412,7 @@ int mluOpConvertRgbx2YuvExecRoi(HANDLE h,
   }
   struct cncvRect src_rois = {in_x, in_y, in_w, in_h};
 
-#if CNCV_VERSION < 800 || CNCV_PATCHLEVEL > 100
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   d_ptr_->dst_yuv_ptrs_cpu_[0] = output_y;
   d_ptr_->dst_yuv_ptrs_cpu_[1] = output_uv;
   MLUOP_RT_CHECK(cnrtMemcpy(d_ptr_->dst_yuv_ptrs_mlu_,
@@ -428,7 +428,7 @@ int mluOpConvertRgbx2YuvExecRoi(HANDLE h,
                 "cnrtPlaceNotifier");
   #endif
 
-#if CNCV_MONOR < 8
+#if (CNCV_MAJOR == 0 && CNCV_MINOR < 8) || CNCV_PATCHLEVEL > 100
   MLUOP_CV_CHECK(cncvRgbxToYuv(d_ptr_->handle,
                 d_ptr_->src_desc,
                 src_rois,
