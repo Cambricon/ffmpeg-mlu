@@ -29,6 +29,7 @@
 #include <mutex>
 #include <vector>
 #include <string>
+#include <cstdint>
 #include <sys/time.h>
 #include <chrono>
 #include <opencv2/opencv.hpp>
@@ -58,17 +59,31 @@ typedef struct {
   uint32_t src_h;
   uint32_t dst_w;
   uint32_t dst_h;
+  uint32_t src_bg_w;
+  uint32_t src_bg_h;
+  uint32_t src_fg_w;
+  uint32_t src_fg_h;
   uint32_t frame_num;
   uint32_t thread_num;
   uint32_t device_id;
   uint32_t src_roi_x;
   uint32_t src_roi_y;
+  uint32_t src_roi_w;
+  uint32_t src_roi_h;
   uint32_t dst_roi_x;
   uint32_t dst_roi_y;
-  std::string input_file;
-  std::string output_file;
+  uint32_t dst_roi_w;
+  uint32_t dst_roi_h;
   std::string exec_mod;
+  std::string input_file;
+  std::string input_file_bg;
+  std::string input_file_fg;
+  std::string output_file;
+
   std::string src_pix_fmt;
+  std::string src_bg_pix_fmt;
+  std::string src_fg_pix_fmt;
+  std::string blend_pix_fmt;
   std::string dst_pix_fmt;
 } param_ctx_t;
 
@@ -79,6 +94,7 @@ typedef enum mluOpMember {
   CONVERT_RGBX2YUV,
   CONVERT_RGBX,
   RESIZE_CONVERT_YUV2RGBX,
+  OVERLAY,
   UNKNOW_MEMBER,
 } mluOpMember;
 
@@ -106,6 +122,7 @@ private:
 };
 
 using params_conf = std::map<std::string, std::string>;
+
 class parserTool {
 public:
   parserTool(std::string inputfile):m_inputfile(inputfile) {}
@@ -119,10 +136,19 @@ public:
   int get_conf_params(std::map<std::string, params_conf> &algo_conf) {
     int ret;
     ret = parser_conf_file();
-    std::cout << "Paser:" << m_inputfile
-              << ", total op num:" << ret << std::endl;
+    std::cout << "Parser " << m_inputfile << " finished, total op num:" << ret << std::endl;
     algo_conf.insert(m_algos_conf.begin(), m_algos_conf.end());
     return ret;
+  }
+  std::string get_algo_name(std::string algo_name) {
+    std::string name;
+    auto it = algo_name.find_first_of(":");
+    if (it != std::string::npos) {
+      name = algo_name.substr(0, it);
+    } else {
+        name = algo_name;
+    }
+    return name;
   }
 
 private:
@@ -148,7 +174,7 @@ private:
     std::string algo_name;
     params_conf algo_params;
     int line_num = 0;
-    int conf_start = 1;
+    int overlay_cnt = 1;
 
     std::ifstream parser;
     parser.open(m_inputfile.c_str(), std::ios::in);
@@ -156,6 +182,7 @@ private:
       printf("Unable to open config file\n");
       return -1;
     }
+    std::cout << "Parser:" << std::endl;
     while (std::getline(parser, line_str)) {
       if (line_str.size() == 0 || line_str[0] == '#' || line_str[0] == '{') {
         continue;
@@ -164,6 +191,11 @@ private:
         continue;
       } else if (line_str[0] == '}') {
         line_num++;
+        auto it = m_algos_conf.find(algo_name.c_str());
+        if (it != m_algos_conf.end()) {
+            algo_name += (":overlay=" + std::to_string(overlay_cnt++));
+        }
+        std::cout << "algo name:" << algo_name << std::endl;
         m_algos_conf.insert(std::make_pair(algo_name, algo_params));
         algo_params.clear();
         continue;
@@ -227,8 +259,11 @@ typedef int CNAPI mluScaleYuvExecPad_t(void*, void*, void*, void*, void*);
 typedef int CNAPI mluScaleYuvExecCrop_t(void*, void*, void*, void*, void*, int, int, int, int, int, int, int, int);
 typedef int CNAPI mluScaleYuvDestroy_t(void*);
 
-typedef int CNAPI mluOpGetVersion_t(void);
+typedef int CNAPI mluOverlayInit_t(void**, uint32_t, uint32_t, const char *, const char *, const char *);
+typedef int CNAPI mluOverlayExec_t(void*, void*, void*, void*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, float);
+typedef int CNAPI mluOverlayDestroy_t(void*);
 
+typedef int CNAPI mluOpGetVersion_t(void);
 
 typedef struct mluOpFuncList {
   mluCvtRgbx2RgbxInit_t        *mluCvtRgbx2RgbxInit;
@@ -254,6 +289,10 @@ typedef struct mluOpFuncList {
   mluScaleYuvExecCrop_t        *mluScaleYuvExecCrop;
   mluScaleYuvDestroy_t         *mluScaleYuvDestroy;
   mluOpGetVersion_t            *mluOpGetVersion;
+  mluOverlayInit_t             *mluOverlayInit;
+  mluOverlayExec_t             *mluOverlayExec;
+  mluOverlayDestroy_t          *mluOverlayDestroy;
+
 } mluOpFuncList;
 
 #define MLUOP_HANDLE void *
@@ -357,6 +396,10 @@ private:
     MLU_LOAD_SYMBOL(m_api->mluScaleYuvExecCrop, mluScaleYuvExecCrop_t, "mluOpResizeYuvExecRoi", m_api_hdl);
     MLU_LOAD_SYMBOL(m_api->mluScaleYuvDestroy, mluScaleYuvDestroy_t, "mluOpResizeYuvDestroy", m_api_hdl);
     MLU_LOAD_SYMBOL(m_api->mluOpGetVersion, mluOpGetVersion_t, "mluOpGetVersion", m_api_hdl);
+    MLU_LOAD_SYMBOL(m_api->mluOverlayInit, mluOverlayInit_t, "mluOpOverlayInit", m_api_hdl);
+    MLU_LOAD_SYMBOL(m_api->mluOverlayExec, mluOverlayExec_t, "mluOpOverlayExec", m_api_hdl);
+    MLU_LOAD_SYMBOL(m_api->mluOverlayDestroy, mluOverlayDestroy_t, "mluOpOverlayDestroy", m_api_hdl);
+
     return 0;
   error:
     if (m_api_hdl) {

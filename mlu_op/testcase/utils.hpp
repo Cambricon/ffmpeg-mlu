@@ -252,5 +252,52 @@ static void RGB24_TO_NV21(cv::Mat &src_rgb, cv::Mat &dst_yuv) {
   }
   dst_yuv = img_nv21.clone();
 }
+static void BGRA32_TO_NV12(cv::Mat &src_bgra, cv::Mat &dst_yuv) {
+  cv::Mat img_i420;
+  cv::cvtColor(src_bgra, img_i420, cv::COLOR_BGRA2YUV_I420);
+  cv::Mat img_nv12;
+  img_nv12 = cv::Mat(src_bgra.rows * 3/2, src_bgra.cols, CV_8UC1);
+
+  uint8_t *yuv420   = img_i420.ptr<uint8_t>();
+  uint8_t *ynv12    = img_nv12.ptr<uint8_t>();
+  int32_t uv_height = src_bgra.rows / 2;
+  int32_t uv_width  = src_bgra.cols / 2;
+  int32_t y_size    = src_bgra.rows * src_bgra.cols;
+  memcpy(ynv12, yuv420, y_size);
+
+  uint8_t *nv12 = ynv12 + y_size;
+  uint8_t *u_data = yuv420 + y_size;
+  uint8_t *v_data = u_data + uv_height * uv_width;
+
+  for (int32_t i = 0; i < uv_width * uv_height; i++) {
+      *nv12++ = *u_data++;
+      *nv12++ = *v_data++;
+  }
+  dst_yuv = img_nv12.clone();
+}
+
+static void BGRA32_TO_NV21(cv::Mat &src_bgra, cv::Mat &dst_yuv) {
+  cv::Mat img_i420;
+  cv::cvtColor(src_bgra, img_i420, cv::COLOR_BGRA2YUV_I420);
+  cv::Mat img_nv21;
+  img_nv21 = cv::Mat(src_bgra.rows * 3/2, src_bgra.cols, CV_8UC1);
+
+  uint8_t *yuv420   = img_i420.ptr<uint8_t>();
+  uint8_t *ynv21    = img_nv21.ptr<uint8_t>();
+  int32_t uv_height = src_bgra.rows / 2;
+  int32_t uv_width  = src_bgra.cols / 2;
+  int32_t y_size    = src_bgra.rows * src_bgra.cols;
+  memcpy(ynv21, yuv420, y_size);
+
+  uint8_t *nv21 = ynv21 + y_size;
+  uint8_t *u_data = yuv420 + y_size;
+  uint8_t *v_data = u_data + uv_height * uv_width;
+
+  for (int32_t i = 0; i < uv_width * uv_height; i++) {
+      *nv21++ = *v_data++;
+      *nv21++ = *u_data++;
+  }
+  dst_yuv = img_nv21.clone();
+}
 
 #endif

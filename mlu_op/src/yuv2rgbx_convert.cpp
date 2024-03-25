@@ -215,11 +215,11 @@ int mluop_convert_yuv2rgbx_destroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
                   "cnrtDestroyNorifier");
   }
   #endif
@@ -384,11 +384,11 @@ int mluOpConvertYuv2RgbxDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
                   "cnrtDestroyNorifier");
   }
   #endif
