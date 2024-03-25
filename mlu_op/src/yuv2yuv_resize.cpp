@@ -903,12 +903,12 @@ int mluop_resize_yuv_destroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
+                  "mluNotifierDestroy");
   }
   #endif
   if (d_ptr_->src_ptrs_cpu_) {
@@ -969,12 +969,12 @@ int mluOpResizeYuvDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
+                  "mluNotifierDestroy");
   }
   #endif
   if (d_ptr_->src_ptrs_cpu_) {

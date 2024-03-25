@@ -53,6 +53,7 @@
             msg, ret, __func__, __LINE__);                                     \
     return -1;                                                                 \
   }
+
 #else
 #define MLUOP_RT_CHECK(ret, msg)                                               \
   if (ret != cnrtSuccess) {                                                    \
@@ -60,6 +61,7 @@
             msg, ret, __func__, __LINE__);                                     \
     return -1;                                                                 \
   }
+
 #endif
 #define MLUOP_CV_CHECK(ret, msg)                                               \
   if (ret != CNCV_STATUS_SUCCESS) {                                            \
@@ -72,12 +74,12 @@
 #define mluQueueCreate(q_ptr)  cnrtCreateQueue(q_ptr)
 #define mluQueueDestroy(queue) cnrtDestroyQueue(queue)
 #define mluNotifierCreate(event_ptr)  cnrtCreateNotifier(event_ptr)
-#define mluNotifierDestory(event_ptr) cnrtDestroyNotifier(event_ptr)
+#define mluNotifierDestroy(event_ptr) cnrtDestroyNotifier(event_ptr)
 #else
 #define mluQueueCreate(q_ptr)  cnrtQueueCreate(q_ptr)
 #define mluQueueDestroy(queue) cnrtQueueDestroy(queue)
 #define mluNotifierCreate(event_ptr)  cnrtNotifierCreate(event_ptr)
-#define mluNotifierDestory(event_ptr) cnrtNotifierDestory(event_ptr)
+#define mluNotifierDestroy(event_ptr) cnrtNotifierDestroy(event_ptr)
 #endif
 
 typedef void *HANDLE;
@@ -181,6 +183,11 @@ int mluOpResizeCvtExec(HANDLE, void*, void*, void*);
 int mluOpResizeCvtExecPad(HANDLE, void*, void*, void*);
 int mluOpResizeCvtDestroy(HANDLE);
 
+int mluOpOverlayInit(HANDLE*, uint32_t, uint32_t, const char *, const char *, const char *);
+int mluOpOverlayExec(HANDLE, void*, void*, void*, uint32_t, uint32_t, uint32_t,
+        uint32_t, uint32_t, uint32_t, float, float, float);
+int mluOpOverlayDestroy(HANDLE);
+
 int mluOpGetVersion (void);
 
 static uint32_t getSizeOfDepth(cncvDepth_t depth) {
@@ -194,6 +201,7 @@ static uint32_t getSizeOfDepth(cncvDepth_t depth) {
   return 1;
 }
 
+// deprecate: error
 static uint32_t getPixFmtChannelNum(cncvPixelFormat pixfmt) {
   if (pixfmt == CNCV_PIX_FMT_BGR || pixfmt == CNCV_PIX_FMT_RGB) {
     return 3;
@@ -226,6 +234,8 @@ static cncvPixelFormat getCNCVPixFmtFromPixindex(const char* pix_fmt) {
     return CNCV_PIX_FMT_NV12;
   } else if(strcmp(pix_fmt, "NV21") == 0 || strcmp(pix_fmt, "nv21") == 0) {
     return CNCV_PIX_FMT_NV21;
+  } else if(strcmp(pix_fmt, "YUV420P") == 0 || strcmp(pix_fmt, "yuv420p") == 0) {
+    return CNCV_PIX_FMT_I420;
   } else if(strcmp(pix_fmt, "RGB24") == 0 || strcmp(pix_fmt, "rgb24") == 0) {
     return CNCV_PIX_FMT_RGB;
   } else if(strcmp(pix_fmt, "BGR24") == 0 || strcmp(pix_fmt, "bgr24") == 0) {
@@ -242,6 +252,63 @@ static cncvPixelFormat getCNCVPixFmtFromPixindex(const char* pix_fmt) {
     printf("Unsupported pixfmt(%s)\n", pix_fmt);
     return CNCV_PIX_FMT_INVALID;
   }
+}
+
+static uint32_t getPlaneNumFromPixfmt(cncvPixelFormat pixfmt) {
+    if (pixfmt == CNCV_PIX_FMT_BGR  || pixfmt == CNCV_PIX_FMT_RGB ||
+        pixfmt == CNCV_PIX_FMT_ABGR || pixfmt == CNCV_PIX_FMT_ARGB ||
+        pixfmt == CNCV_PIX_FMT_BGRA || pixfmt == CNCV_PIX_FMT_RGBA) {
+        return 1;
+    } else if (pixfmt == CNCV_PIX_FMT_NV12 || pixfmt == CNCV_PIX_FMT_NV21) {
+        return 2;
+    } else if (pixfmt == CNCV_PIX_FMT_I420) {
+        return 3;
+    } else {
+        printf("Unsupported pixfmt(%d)\n", pixfmt);
+        return 0;
+    }
+}
+
+static int getPlaneStrideFromPixfmt(uint32_t *plane_strides,
+        cncvPixelFormat pixfmt, uint32_t width, cncvDepth_t depth, int align) {
+    uint32_t strides[4] = {0};
+    switch (pixfmt) {
+    case CNCV_PIX_FMT_NV12:
+    case CNCV_PIX_FMT_NV21:
+        strides[0] = (PAD_UP(width, align)) * getSizeOfDepth(depth);
+        strides[1] = (PAD_UP(width, align)) * getSizeOfDepth(depth);
+        strides[2] = 0;
+        strides[3] = 0;
+        break;
+    case CNCV_PIX_FMT_I420:
+        strides[0] = (PAD_UP(width, align))     * getSizeOfDepth(depth);
+        strides[1] = (PAD_UP(width, align) / 2) * getSizeOfDepth(depth);
+        strides[2] = (PAD_UP(width, align) / 2) * getSizeOfDepth(depth);
+        strides[3] = 0;
+        break;
+    case CNCV_PIX_FMT_RGB:
+    case CNCV_PIX_FMT_BGR:
+        strides[0] = (PAD_UP(width, align) * 3) * getSizeOfDepth(depth);
+        strides[1] = 0;
+        strides[2] = 0;
+        strides[3] = 0;
+        break;
+    case CNCV_PIX_FMT_RGBA:
+    case CNCV_PIX_FMT_BGRA:
+    case CNCV_PIX_FMT_ABGR:
+    case CNCV_PIX_FMT_ARGB:
+        strides[0] = (PAD_UP(width, align) * 4) * getSizeOfDepth(depth);
+        strides[1] = 0;
+        strides[2] = 0;
+        strides[3] = 0;
+        break;
+    default:
+        printf("unsupported pixfmt(%d)\n", pixfmt);
+        return -1;
+    }
+    memcpy(plane_strides, strides, sizeof(uint32_t) * 4);
+
+    return 0;
 }
 
 #if defined(__cplusplus)

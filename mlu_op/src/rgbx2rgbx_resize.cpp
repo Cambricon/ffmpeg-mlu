@@ -514,7 +514,7 @@ int mluop_resize_roi_rgbx_exec(HANDLE h,
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
-                                  &d_ptr_->hw_time, "cnrtNotifierDuration");
+                                  &d_ptr_->hw_time), "cnrtNotifierDuration");
   d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
                     + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
   printf("hw time: %.3f ms, sw time: %.3f ms\n",
@@ -535,12 +535,12 @@ int mluop_resize_rgbx_destroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
+                  "mluNotifierDestroy");
   }
   #endif
   if (d_ptr_->src_rgbx_ptrs_cpu_) {
@@ -965,7 +965,7 @@ int mluOpResizeRgbxExecRoi(HANDLE h,
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
-                                  &d_ptr_->hw_time, "cnrtNotifierDuration");
+                                  &d_ptr_->hw_time), "cnrtNotifierDuration");
   d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
                     + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
   printf("hw time: %.3f ms, sw time: %.3f ms\n",
@@ -983,12 +983,12 @@ int mluOpResizeRgbxDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
+                  "mluNotifierDestroy");
   }
   #endif
   if (d_ptr_->src_rgbx_ptrs_cpu_) {

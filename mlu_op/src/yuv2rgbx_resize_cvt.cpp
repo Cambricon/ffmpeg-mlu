@@ -189,6 +189,7 @@ int MluopResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
                      d_ptr_->workspace_size), "cnrtMalloc");
   #ifdef DEBUG
   MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin), "mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),   "mluNotifierCreate");
   #endif
   *h = static_cast<void *>(d_ptr_);
 
@@ -414,7 +415,7 @@ int MluopResizeCvtPadExec(HANDLE h, void *input_y, void *input_uv,
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
-                          &d_ptr_->hw_time, "cnrtNotifierDuration");
+                          &d_ptr_->hw_time), "cnrtNotifierDuration");
   d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
                     + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
   printf("hw time: %.3f ms, sw time: %.3f ms\n",
@@ -435,12 +436,12 @@ int MluopResizeCvtDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
+                  "mluNotifierDestroy");
   }
   #endif
   if (d_ptr_->src_y_ptrs_cpu) {
@@ -564,6 +565,7 @@ int mluOpResizeCvtInit(HANDLE *h, int src_width, int src_height, int dst_width,
                      d_ptr_->workspace_size), "cnrtMalloc");
   #ifdef DEBUG
   MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_begin), "mluNotifierCreate");
+  MLUOP_RT_CHECK(mluNotifierCreate(&d_ptr_->event_end),   "mluNotifierCreate");
   #endif
   *h = static_cast<void *>(d_ptr_);
 
@@ -783,7 +785,7 @@ int mluOpResizeCvtExecPad(HANDLE h, void *input_y, void *input_uv,
   #ifdef DEBUG
   gettimeofday(&d_ptr_->end, NULL);
   MLUOP_RT_CHECK(cnrtNotifierDuration(d_ptr_->event_begin, d_ptr_->event_end,
-                          &d_ptr_->hw_time, "cnrtNotifierDuration");
+                          &d_ptr_->hw_time), "cnrtNotifierDuration");
   d_ptr_->sw_time = (d_ptr_->end.tv_sec - d_ptr_->start.tv_sec) * 1000000
                     + (d_ptr_->end.tv_usec - d_ptr_->start.tv_usec);
   printf("hw time: %.3f ms, sw time: %.3f ms\n",
@@ -801,12 +803,12 @@ int mluOpResizeCvtDestroy(HANDLE h) {
   }
   #ifdef DEBUG
   if (d_ptr_->event_begin) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_begin),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_begin),
+                  "mluNotifierDestroy");
   }
   if (d_ptr_->event_end) {
-    MLUOP_RT_CHECK(mluNotifierDestory(&d_ptr_->event_end),
-                  "mluNotifierDestory");
+    MLUOP_RT_CHECK(mluNotifierDestroy(d_ptr_->event_end),
+                  "mluNotifierDestroy");
   }
   #endif
   if (d_ptr_->src_y_ptrs_cpu) {
