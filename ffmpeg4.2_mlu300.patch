@@ -1,10 +1,10 @@
-From fdb865c53b8b94181ff1d6b136febce2d631f43c Mon Sep 17 00:00:00 2001
+From 9e88d8e282f0f81cd069a9b7ef6f71ce8cd14826 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Mon, 25 Mar 2024 11:37:12 +0800
+Date: Wed, 17 Apr 2024 10:49:36 +0800
 Subject: [PATCH] release mlu300
 
 ---
- configure                               |   41 +
+ configure                               |   42 +
  doc/examples/Makefile                   |    4 +
  doc/examples/decode_mlu.c               |  213 ++++
  doc/examples/encode_mlu.c               |  252 ++++
@@ -45,7 +45,7 @@ Subject: [PATCH] release mlu300
  libavutil/mlu_dl_loader.h               |  191 +++
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 41 files changed, 9404 insertions(+)
+ 41 files changed, 9405 insertions(+)
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_mlu.c
  create mode 100644 doc/examples/hw_decode_mlu.c
@@ -75,7 +75,7 @@ Subject: [PATCH] release mlu300
  create mode 100644 libavutil/mlu_dl_loader.h
 
 diff --git a/configure b/configure
-index 34c2adb4a4..027e584993 100755
+index 34c2adb4a4..eb59940a43 100755
 --- a/configure
 +++ b/configure
 @@ -340,6 +340,8 @@ External library support:
@@ -108,7 +108,7 @@ index 34c2adb4a4..027e584993 100755
  "
  
  EXTERNAL_LIBRARY_GPLV3_LIST="
-@@ -2991,6 +3000,15 @@ qsvvpp_select="qsv"
+@@ -2991,6 +3000,16 @@ qsvvpp_select="qsv"
  vaapi_encode_deps="vaapi"
  v4l2_m2m_deps="linux_videodev2_h sem_timedwait"
  
@@ -120,11 +120,12 @@ index 34c2adb4a4..027e584993 100755
 +scale_yuv2yuv_mlu_filter_deps="mlufilter"
 +scale_rgbx2rgbx_mlu_filter_deps="mlufilter"
 +scale_cvt_yuv2rgbx_mlu_filter_deps="mlufilter"
++overlay_mlu_filter_deps="mlufilter"
 +
  hwupload_cuda_filter_deps="ffnvcodec"
  scale_npp_filter_deps="ffnvcodec libnpp"
  scale_cuda_filter_deps="ffnvcodec"
-@@ -3019,6 +3037,9 @@ h264_qsv_decoder_select="h264_mp4toannexb_bsf h264_parser qsvdec"
+@@ -3019,6 +3038,9 @@ h264_qsv_decoder_select="h264_mp4toannexb_bsf h264_parser qsvdec"
  h264_qsv_encoder_select="qsvenc"
  h264_rkmpp_decoder_deps="rkmpp"
  h264_rkmpp_decoder_select="h264_mp4toannexb_bsf"
@@ -134,7 +135,7 @@ index 34c2adb4a4..027e584993 100755
  h264_vaapi_encoder_select="cbs_h264 vaapi_encode"
  h264_v4l2m2m_decoder_deps="v4l2_m2m h264_v4l2_m2m"
  h264_v4l2m2m_decoder_select="h264_mp4toannexb_bsf"
-@@ -3033,12 +3054,17 @@ hevc_qsv_decoder_select="hevc_mp4toannexb_bsf hevc_parser qsvdec"
+@@ -3033,12 +3055,17 @@ hevc_qsv_decoder_select="hevc_mp4toannexb_bsf hevc_parser qsvdec"
  hevc_qsv_encoder_select="hevcparse qsvenc"
  hevc_rkmpp_decoder_deps="rkmpp"
  hevc_rkmpp_decoder_select="hevc_mp4toannexb_bsf"
@@ -152,7 +153,7 @@ index 34c2adb4a4..027e584993 100755
  mjpeg_qsv_encoder_deps="libmfx"
  mjpeg_qsv_encoder_select="qsvenc"
  mjpeg_vaapi_encoder_deps="VAEncPictureParameterBufferJPEG"
-@@ -3069,6 +3095,7 @@ vc1_mmal_decoder_deps="mmal"
+@@ -3069,6 +3096,7 @@ vc1_mmal_decoder_deps="mmal"
  vc1_qsv_decoder_select="qsvdec vc1_parser"
  vc1_v4l2m2m_decoder_deps="v4l2_m2m vc1_v4l2_m2m"
  vp8_cuvid_decoder_deps="cuvid"
@@ -160,7 +161,7 @@ index 34c2adb4a4..027e584993 100755
  vp8_mediacodec_decoder_deps="mediacodec"
  vp8_qsv_decoder_select="qsvdec vp8_parser"
  vp8_rkmpp_decoder_deps="rkmpp"
-@@ -3077,12 +3104,15 @@ vp8_vaapi_encoder_select="vaapi_encode"
+@@ -3077,12 +3105,15 @@ vp8_vaapi_encoder_select="vaapi_encode"
  vp8_v4l2m2m_decoder_deps="v4l2_m2m vp8_v4l2_m2m"
  vp8_v4l2m2m_encoder_deps="v4l2_m2m vp8_v4l2_m2m"
  vp9_cuvid_decoder_deps="cuvid"
@@ -176,7 +177,7 @@ index 34c2adb4a4..027e584993 100755
  
  # parsers
  aac_parser_select="adts_header"
-@@ -6367,6 +6397,17 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
+@@ -6367,6 +6398,17 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
                               }
  enabled vapoursynth       && require_pkg_config vapoursynth "vapoursynth-script >= 42" VSScript.h vsscript_init
  
