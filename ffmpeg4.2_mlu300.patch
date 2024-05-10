@@ -1,6 +1,6 @@
-From 6b8c397e1db1af824517e912ed04f3ace8ad5270 Mon Sep 17 00:00:00 2001
+From fab9325590bbbe7b7b4d6f50aada0123ef09d10b Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Thu, 9 May 2024 10:49:11 +0800
+Date: Fri, 10 May 2024 15:59:38 +0800
 Subject: [PATCH] release mlu300
 
 ---
@@ -1466,7 +1466,7 @@ index 3aaa92571c..6a0ea9f6f9 100644
  #define HWACCEL_VDPAU(codec) \
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..ec719016d2
+index 0000000000..1f4080f72a
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
 @@ -0,0 +1,435 @@
@@ -1518,13 +1518,13 @@ index 0000000000..ec719016d2
 +#include "cncodec_v3_enc.h"
 +
 +#define FF_MLU_MAJOR_VERSION 3
-+#define FF_MLU_MINOR_VERSION 4
++#define FF_MLU_MINOR_VERSION 5
 +#define FF_MLU_PATCH_VERSION 0
 +#define FF_MLU_VERSION  (FF_MLU_MAJOR_VERSION * 1000 + FF_MLU_MINOR_VERSION * 100 + FF_MLU_PATCH_VERSION)
 +#define CNCODEC_VERSION (CNCODEC_MAJOR_VERSION* 1000 + CNCODEC_MINOR_VERSION* 100 + CNCODEC_PATCH_VERSION)
 +
 +#define cndec_version_info(void)                                              \
-+    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 03152024\n");                        \
++    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 04102024\n");                        \
 +    av_log(NULL, AV_LOG_DEBUG, "CNCODEC: %d.%d.%d \n",                        \
 +        CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION); \
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",                      \
