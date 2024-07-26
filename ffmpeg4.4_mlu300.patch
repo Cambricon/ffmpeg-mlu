@@ -1,10 +1,10 @@
-From 54cf74f2f5f95ba8a112ae25fc10688b9d06805d Mon Sep 17 00:00:00 2001
+From d2377ee9edfe482efe42075ce7312d06e73b0c49 Mon Sep 17 00:00:00 2001
 From: solution-sdk <solution-sdk@cambricon.com>
-Date: Fri, 26 Jul 2024 16:42:37 +0800
+Date: Fri, 26 Jul 2024 16:42:18 +0800
 Subject: [PATCH] release mlu300
 
 ---
- configure                               |   50 +
+ configure                               |   47 +
  doc/examples/Makefile                   |    6 +
  doc/examples/decode_mlu.c               |  213 +++
  doc/examples/encode_change_mlu.c        |  284 ++++
@@ -14,40 +14,40 @@ Subject: [PATCH] release mlu300
  doc/examples/hw_encode_mlu.c            |  257 ++++
  fftools/Makefile                        |    1 +
  fftools/ffmpeg.h                        |    2 +
- fftools/ffmpeg_mlu.c                    |   74 ++
- fftools/ffmpeg_opt.c                    |    3 +
+ fftools/ffmpeg_mlu.c                    |   75 ++
+ fftools/ffmpeg_opt.c                    |    4 +
  libavcodec/Makefile                     |   10 +
- libavcodec/allcodecs.c                  |   11 +
+ libavcodec/allcodecs.c                  |   10 +
+ libavcodec/hwconfig.h                   |    2 +
  libavcodec/mlumpp_codec.h               |  436 +++++++
  libavcodec/mlumpp_dec.c                 | 1573 +++++++++++++++++++++++
- libavcodec/mlumpp_enc_h264.c            |  220 ++++
+ libavcodec/mlumpp_enc_h264.c            |  218 ++++
  libavcodec/mlumpp_enc_hevc.c            |  229 ++++
  libavcodec/mlumpp_enc_jpeg.c            |  124 ++
- libavcodec/mlumpp_vid_enc.c             | 1140 ++++++++++++++++
- libavcodec/mlumpp_vid_enc.h             |  130 ++
+ libavcodec/mlumpp_vid_enc.c             | 1165 +++++++++++++++++
+ libavcodec/mlumpp_vid_enc.h             |  131 ++
  libavfilter/Makefile                    |    9 +
- libavfilter/allfilters.c                |   10 +
+ libavfilter/allfilters.c                |    9 +
  libavfilter/mlu_filter_common.h         |  130 ++
- libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  410 ++++++
- libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  426 ++++++
- libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  428 ++++++
+ libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  409 ++++++
+ libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  425 ++++++
+ libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  427 ++++++
  libavfilter/vf_hwdownload_mlu.c         |  213 +++
- libavfilter/vf_hwupload_mlu.c           |  201 +++
- libavfilter/vf_overlay_mlu.c            |  696 ++++++++++
+ libavfilter/vf_hwupload_mlu.c           |  196 +++
+ libavfilter/vf_overlay_mlu.c            |  695 ++++++++++
  libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  430 +++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  417 ++++++
  libavfilter/vf_scale_yuv2yuv_mlu.c      |  436 +++++++
  libavutil/Makefile                      |    3 +
- libavutil/frame.c                       |    6 +-
  libavutil/hwcontext.c                   |    5 +
  libavutil/hwcontext.h                   |    1 +
  libavutil/hwcontext_internal.h          |    1 +
- libavutil/hwcontext_mlu.c               |  458 +++++++
+ libavutil/hwcontext_mlu.c               |  456 +++++++
  libavutil/hwcontext_mlu.h               |  114 ++
  libavutil/mlu_dl_loader.h               |  260 ++++
- libavutil/pixdesc.c                     |    4 +
- libavutil/pixfmt.h                      |    6 +
- 43 files changed, 10234 insertions(+), 1 deletion(-)
+ libavutil/pixdesc.c                     |    5 +
+ libavutil/pixfmt.h                      |    7 +
+ 43 files changed, 10243 insertions(+)
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_change_mlu.c
  create mode 100644 doc/examples/encode_mlu.c
@@ -55,8 +55,6 @@ Subject: [PATCH] release mlu300
  create mode 100644 doc/examples/hw_encode_change_mlu.c
  create mode 100644 doc/examples/hw_encode_mlu.c
  create mode 100644 fftools/ffmpeg_mlu.c
- mode change 100644 => 100755 libavcodec/Makefile
- mode change 100644 => 100755 libavcodec/allcodecs.c
  create mode 100644 libavcodec/mlumpp_codec.h
  create mode 100755 libavcodec/mlumpp_dec.c
  create mode 100644 libavcodec/mlumpp_enc_h264.c
@@ -79,10 +77,10 @@ Subject: [PATCH] release mlu300
  create mode 100644 libavutil/mlu_dl_loader.h
 
 diff --git a/configure b/configure
-index 34c2adb4a4..4b68ff4b9a 100755
+index fb55e04ee7..51b0f5e332 100755
 --- a/configure
 +++ b/configure
-@@ -340,6 +340,9 @@ External library support:
+@@ -349,6 +349,9 @@ External library support:
    --disable-vaapi          disable Video Acceleration API (mainly Unix/Intel) code [autodetect]
    --disable-vdpau          disable Nvidia Video Decode and Presentation API for Unix code [autodetect]
    --disable-videotoolbox   disable VideoToolbox code [autodetect]
@@ -92,7 +90,7 @@ index 34c2adb4a4..4b68ff4b9a 100755
  
  Toolchain options:
    --arch=ARCH              select architecture [$arch]
-@@ -1685,6 +1688,12 @@ EXAMPLE_LIST="
+@@ -1695,6 +1698,12 @@ EXAMPLE_LIST="
      transcoding_example
      vaapi_encode_example
      vaapi_transcode_example
@@ -105,7 +103,7 @@ index 34c2adb4a4..4b68ff4b9a 100755
  "
  
  EXTERNAL_AUTODETECT_LIBRARY_LIST="
-@@ -1738,6 +1747,10 @@ EXTERNAL_LIBRARY_VERSION3_LIST="
+@@ -1748,6 +1757,10 @@ EXTERNAL_LIBRARY_VERSION3_LIST="
      libvo_amrwbenc
      mbedtls
      rkmpp
@@ -116,9 +114,9 @@ index 34c2adb4a4..4b68ff4b9a 100755
  "
  
  EXTERNAL_LIBRARY_GPLV3_LIST="
-@@ -2991,6 +3004,16 @@ qsvvpp_select="qsv"
- vaapi_encode_deps="vaapi"
- v4l2_m2m_deps="linux_videodev2_h sem_timedwait"
+@@ -3062,6 +3075,16 @@ transpose_npp_filter_deps="ffnvcodec libnpp"
+ overlay_cuda_filter_deps="ffnvcodec"
+ overlay_cuda_filter_deps_any="cuda_nvcc cuda_llvm"
  
 +hwdownload_mlu_filter_deps="mlu"
 +hwupload_mlu_filter_deps="mlu"
@@ -130,77 +128,70 @@ index 34c2adb4a4..4b68ff4b9a 100755
 +scale_cvt_yuv2rgbx_mlu_filter_deps="mlufilter"
 +overlay_mlu_filter_deps="mlufilter"
 +
- hwupload_cuda_filter_deps="ffnvcodec"
- scale_npp_filter_deps="ffnvcodec libnpp"
- scale_cuda_filter_deps="ffnvcodec"
-@@ -3019,6 +3042,9 @@ h264_qsv_decoder_select="h264_mp4toannexb_bsf h264_parser qsvdec"
- h264_qsv_encoder_select="qsvenc"
- h264_rkmpp_decoder_deps="rkmpp"
- h264_rkmpp_decoder_select="h264_mp4toannexb_bsf"
+ amf_deps_any="libdl LoadLibrary"
+ nvenc_deps="ffnvcodec"
+ nvenc_deps_any="libdl LoadLibrary"
+@@ -3091,6 +3114,9 @@ h264_vaapi_encoder_select="cbs_h264 vaapi_encode"
+ h264_v4l2m2m_decoder_deps="v4l2_m2m h264_v4l2_m2m"
+ h264_v4l2m2m_decoder_select="h264_mp4toannexb_bsf"
+ h264_v4l2m2m_encoder_deps="v4l2_m2m h264_v4l2_m2m"
 +h264_mlumpp_decoder_deps="mlumpp"
 +h264_mlumpp_decoder_select="h264_mp4toannexb_bsf"
 +h264_mlumpp_encoder_deps="mlumpp"
- h264_vaapi_encoder_select="cbs_h264 vaapi_encode"
- h264_v4l2m2m_decoder_deps="v4l2_m2m h264_v4l2_m2m"
- h264_v4l2m2m_decoder_select="h264_mp4toannexb_bsf"
-@@ -3033,12 +3059,17 @@ hevc_qsv_decoder_select="hevc_mp4toannexb_bsf hevc_parser qsvdec"
- hevc_qsv_encoder_select="hevcparse qsvenc"
- hevc_rkmpp_decoder_deps="rkmpp"
- hevc_rkmpp_decoder_select="hevc_mp4toannexb_bsf"
-+hevc_mlumpp_decoder_deps="mlumpp"
-+hevc_mlumpp_decoder_select="hevc_mp4toannexb_bsf"
-+hevc_mlumpp_encoder_deps="mlumpp"
- hevc_vaapi_encoder_deps="VAEncPictureParameterBufferHEVC"
- hevc_vaapi_encoder_select="cbs_h265 vaapi_encode"
+ hevc_amf_encoder_deps="amf"
+ hevc_cuvid_decoder_deps="cuvid"
+ hevc_cuvid_decoder_select="hevc_mp4toannexb_bsf"
+@@ -3108,12 +3134,17 @@ hevc_vaapi_encoder_select="cbs_h265 vaapi_encode"
  hevc_v4l2m2m_decoder_deps="v4l2_m2m hevc_v4l2_m2m"
  hevc_v4l2m2m_decoder_select="hevc_mp4toannexb_bsf"
  hevc_v4l2m2m_encoder_deps="v4l2_m2m hevc_v4l2_m2m"
++hevc_mlumpp_decoder_deps="mlumpp"
++hevc_mlumpp_decoder_select="hevc_mp4toannexb_bsf"
++hevc_mlumpp_encoder_deps="mlumpp"
  mjpeg_cuvid_decoder_deps="cuvid"
-+mjpeg_mlumpp_decoder_deps="mlumpp"
-+mjpeg_mlumpp_encoder_deps="mlumpp"
+ mjpeg_qsv_decoder_select="qsvdec"
  mjpeg_qsv_encoder_deps="libmfx"
  mjpeg_qsv_encoder_select="qsvenc"
  mjpeg_vaapi_encoder_deps="VAEncPictureParameterBufferJPEG"
-@@ -3069,6 +3100,7 @@ vc1_mmal_decoder_deps="mmal"
- vc1_qsv_decoder_select="qsvdec vc1_parser"
- vc1_v4l2m2m_decoder_deps="v4l2_m2m vc1_v4l2_m2m"
- vp8_cuvid_decoder_deps="cuvid"
-+vp8_mlumpp_decoder_deps="mlumpp"
- vp8_mediacodec_decoder_deps="mediacodec"
- vp8_qsv_decoder_select="qsvdec vp8_parser"
- vp8_rkmpp_decoder_deps="rkmpp"
-@@ -3077,12 +3109,15 @@ vp8_vaapi_encoder_select="vaapi_encode"
+ mjpeg_vaapi_encoder_select="cbs_jpeg jpegtables vaapi_encode"
++mjpeg_mlumpp_decoder_deps="mlumpp"
++mjpeg_mlumpp_encoder_deps="mlumpp"
+ mp3_mf_encoder_deps="mediafoundation"
+ mpeg1_cuvid_decoder_deps="cuvid"
+ mpeg1_v4l2m2m_decoder_deps="v4l2_m2m mpeg1_v4l2_m2m"
+@@ -3148,6 +3179,7 @@ vp8_vaapi_encoder_deps="VAEncPictureParameterBufferVP8"
+ vp8_vaapi_encoder_select="vaapi_encode"
  vp8_v4l2m2m_decoder_deps="v4l2_m2m vp8_v4l2_m2m"
  vp8_v4l2m2m_encoder_deps="v4l2_m2m vp8_v4l2_m2m"
++vp8_mlumpp_decoder_deps="mlumpp"
  vp9_cuvid_decoder_deps="cuvid"
-+vp9_mlumpp_decoder_deps="mlumpp"
  vp9_mediacodec_decoder_deps="mediacodec"
- vp9_rkmpp_decoder_deps="rkmpp"
- vp9_vaapi_encoder_deps="VAEncPictureParameterBufferVP9"
- vp9_vaapi_encoder_select="vaapi_encode"
+ vp9_qsv_decoder_select="qsvdec"
+@@ -3157,8 +3189,11 @@ vp9_vaapi_encoder_select="vaapi_encode"
+ vp9_qsv_encoder_deps="libmfx MFX_CODEC_VP9"
+ vp9_qsv_encoder_select="qsvenc"
  vp9_v4l2m2m_decoder_deps="v4l2_m2m vp9_v4l2_m2m"
++vp9_mlumpp_decoder_deps="mlumpp"
  wmv3_crystalhd_decoder_select="crystalhd"
+ av1_qsv_decoder_select="qsvdec"
 +avs_mlumpp_decoder_deps="mlumpp"
 +avs2_mlumpp_decoder_deps="mlumpp"
  
  # parsers
  aac_parser_select="adts_header"
-@@ -6367,6 +6402,21 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
+@@ -6546,6 +6581,18 @@ enabled rkmpp             && { require_pkg_config rkmpp rockchip_mpp  rockchip/r
                               }
  enabled vapoursynth       && require_pkg_config vapoursynth "vapoursynth-script >= 42" VSScript.h vsscript_init
  
 +if enabled mlu; then
 +    require_headers "cnrt.h" || die "ERROR: cnrt header not found"
 +fi
-+
 +if enabled mlumpp; then
 +    require_headers  "cncodec_v3_dec.h cncodec_v3_enc.h cncodec_v3_common.h" || die "ERROR: cncodec_v3 headers not found"
 +fi
-+
 +if enabled mlufilter; then
 +    require_headers  "cncv.h" || die "ERROR: cncv header not found"
 +fi
-+
 +if enabled mluaffinity; then
 +    require_headers  "cndev.h" || die "ERROR: cndev header not found"
 +fi
@@ -208,7 +199,7 @@ index 34c2adb4a4..4b68ff4b9a 100755
  if enabled gcrypt; then
      GCRYPT_CONFIG="${cross_prefix}libgcrypt-config"
 diff --git a/doc/examples/Makefile b/doc/examples/Makefile
-index 2935424e54..62968e7596 100644
+index 81bfd34d5d..4f3a281d26 100644
 --- a/doc/examples/Makefile
 +++ b/doc/examples/Makefile
 @@ -21,6 +21,12 @@ EXAMPLES-$(CONFIG_TRANSCODE_AAC_EXAMPLE)     += transcode_aac
@@ -1823,43 +1814,43 @@ index 0000000000..3593a7e859
 +    return ret;
 +}
 diff --git a/fftools/Makefile b/fftools/Makefile
-index 6cec666dd9..ea35e26a4c 100644
+index 5affaa3f56..0eb7f25be7 100644
 --- a/fftools/Makefile
 +++ b/fftools/Makefile
-@@ -12,6 +12,7 @@ ALLAVPROGS_G = $(AVBASENAMES:%=%$(PROGSSUF)_g$(EXESUF))
+@@ -11,6 +11,7 @@ ALLAVPROGS_G = $(AVBASENAMES:%=%$(PROGSSUF)_g$(EXESUF))
+ 
  OBJS-ffmpeg                        += fftools/ffmpeg_opt.o fftools/ffmpeg_filter.o fftools/ffmpeg_hw.o
- OBJS-ffmpeg-$(CONFIG_CUVID)        += fftools/ffmpeg_cuvid.o
  OBJS-ffmpeg-$(CONFIG_LIBMFX)       += fftools/ffmpeg_qsv.o
 +OBJS-ffmpeg-$(CONFIG_MLU)          += fftools/ffmpeg_mlu.o
  ifndef CONFIG_VIDEOTOOLBOX
  OBJS-ffmpeg-$(CONFIG_VDA)          += fftools/ffmpeg_videotoolbox.o
  endif
 diff --git a/fftools/ffmpeg.h b/fftools/ffmpeg.h
-index 7b6f802082..210ebbe01b 100644
+index 606f2afe0c..dada67623d 100644
 --- a/fftools/ffmpeg.h
 +++ b/fftools/ffmpeg.h
-@@ -62,6 +62,7 @@ enum HWAccelID {
+@@ -61,6 +61,7 @@ enum HWAccelID {
+     HWACCEL_GENERIC,
      HWACCEL_VIDEOTOOLBOX,
      HWACCEL_QSV,
-     HWACCEL_CUVID,
 +    HWACCEL_MLU,
  };
  
  typedef struct HWAccel {
-@@ -655,6 +656,7 @@ int ffmpeg_parse_options(int argc, char **argv);
+@@ -668,6 +669,7 @@ int ffmpeg_parse_options(int argc, char **argv);
+ 
  int videotoolbox_init(AVCodecContext *s);
  int qsv_init(AVCodecContext *s);
- int cuvid_init(AVCodecContext *s);
 +int mlu_init(AVCodecContext *s);
  
  HWDevice *hw_device_get_by_name(const char *name);
  int hw_device_init_from_string(const char *arg, HWDevice **dev);
 diff --git a/fftools/ffmpeg_mlu.c b/fftools/ffmpeg_mlu.c
 new file mode 100644
-index 0000000000..68764b6173
+index 0000000000..e6958e25f4
 --- /dev/null
 +++ b/fftools/ffmpeg_mlu.c
-@@ -0,0 +1,74 @@
+@@ -0,0 +1,75 @@
 +/*
 + * This file is part of FFmpeg.
 + *
@@ -1894,6 +1885,7 @@ index 0000000000..68764b6173
 +{
 +    InputStream *ist = avctx->opaque;
 +    AVHWFramesContext *frames_ctx;
++    static AVBufferRef *hw_device_ctx;
 +    int ret;
 +
 +    av_log(avctx, AV_LOG_VERBOSE, "Initializing mlu hwaccel\n");
@@ -1935,26 +1927,25 @@ index 0000000000..68764b6173
 +    return 0;
 +}
 diff --git a/fftools/ffmpeg_opt.c b/fftools/ffmpeg_opt.c
-index f5ca18aa64..1609135935 100644
+index 807e783422..e79bb59615 100644
 --- a/fftools/ffmpeg_opt.c
 +++ b/fftools/ffmpeg_opt.c
-@@ -74,6 +74,9 @@ const HWAccel hwaccels[] = {
+@@ -140,6 +140,10 @@ const HWAccel hwaccels[] = {
+ #if CONFIG_LIBMFX
+     { "qsv",   qsv_init,   HWACCEL_QSV,   AV_PIX_FMT_QSV },
  #endif
- #if CONFIG_CUVID
-     { "cuvid", cuvid_init, HWACCEL_CUVID, AV_PIX_FMT_CUDA },
-+#endif
 +#if CONFIG_MLU
 +   { "mlu", mlu_init, HWACCEL_MLU, AV_PIX_FMT_MLU },
- #endif
++#endif
++
      { 0 },
  };
+ HWDevice *filter_hw_device;
 diff --git a/libavcodec/Makefile b/libavcodec/Makefile
-old mode 100644
-new mode 100755
-index 3cd73fbcc6..fbfcbee58c
+index b3d284d7d0..e75960d7b3 100644
 --- a/libavcodec/Makefile
 +++ b/libavcodec/Makefile
-@@ -222,6 +222,7 @@ OBJS-$(CONFIG_AVRN_DECODER)            += avrndec.o mjpegdec.o
+@@ -235,6 +235,7 @@ OBJS-$(CONFIG_AVRN_DECODER)            += avrndec.o
  OBJS-$(CONFIG_AVRP_DECODER)            += r210dec.o
  OBJS-$(CONFIG_AVRP_ENCODER)            += r210enc.o
  OBJS-$(CONFIG_AVS_DECODER)             += avs.o
@@ -1962,71 +1953,65 @@ index 3cd73fbcc6..fbfcbee58c
  OBJS-$(CONFIG_AVUI_DECODER)            += avuidec.o
  OBJS-$(CONFIG_AVUI_ENCODER)            += avuienc.o
  OBJS-$(CONFIG_AYUV_DECODER)            += v408dec.o
-@@ -241,6 +242,7 @@ OBJS-$(CONFIG_BRENDER_PIX_DECODER)     += brenderpix.o
+@@ -254,6 +255,7 @@ OBJS-$(CONFIG_BRENDER_PIX_DECODER)     += brenderpix.o
  OBJS-$(CONFIG_C93_DECODER)             += c93.o
  OBJS-$(CONFIG_CAVS_DECODER)            += cavs.o cavsdec.o cavsdsp.o \
                                            cavsdata.o
 +OBJS-$(CONFIG_AVS2_MLUMPP_DECODER)     += mlumpp_dec.o
- OBJS-$(CONFIG_CCAPTION_DECODER)        += ccaption_dec.o
+ OBJS-$(CONFIG_CCAPTION_DECODER)        += ccaption_dec.o ass.o
  OBJS-$(CONFIG_CDGRAPHICS_DECODER)      += cdgraphics.o
- OBJS-$(CONFIG_CDXL_DECODER)            += cdxl.o
-@@ -347,6 +349,8 @@ OBJS-$(CONFIG_H264_DECODER)            += h264dec.o h264_cabac.o h264_cavlc.o \
-                                           h264_mb.o h264_picture.o \
-                                           h264_refs.o h264_sei.o \
-                                           h264_slice.o h264data.o
+ OBJS-$(CONFIG_CDTOONS_DECODER)         += cdtoons.o
+@@ -385,6 +387,8 @@ OBJS-$(CONFIG_H264_VAAPI_ENCODER)      += vaapi_encode_h264.o h264_levels.o
+ OBJS-$(CONFIG_H264_VIDEOTOOLBOX_ENCODER) += videotoolboxenc.o
+ OBJS-$(CONFIG_H264_V4L2M2M_DECODER)    += v4l2_m2m_dec.o
+ OBJS-$(CONFIG_H264_V4L2M2M_ENCODER)    += v4l2_m2m_enc.o
 +OBJS-$(CONFIG_H264_MLUMPP_DECODER)     += mlumpp_dec.o
-+OBJS-$(CONFIG_H264_MLUMPP_ENCODER)     += mlumpp_vid_enc.o mlumpp_enc_h264.o
- OBJS-$(CONFIG_H264_AMF_ENCODER)        += amfenc_h264.o
- OBJS-$(CONFIG_H264_CUVID_DECODER)      += cuviddec.o
- OBJS-$(CONFIG_H264_MEDIACODEC_DECODER) += mediacodecdec.o
-@@ -368,6 +372,8 @@ OBJS-$(CONFIG_HCOM_DECODER)            += hcom.o
- OBJS-$(CONFIG_HEVC_DECODER)            += hevcdec.o hevc_mvs.o \
-                                           hevc_cabac.o hevc_refs.o hevcpred.o    \
-                                           hevcdsp.o hevc_filter.o hevc_data.o
++OBJS-$(CONFIG_H264_MLUMPP_ENCODER)    += mlumpp_vid_enc.o mlumpp_enc_h264.o
+ OBJS-$(CONFIG_HAP_DECODER)             += hapdec.o hap.o
+ OBJS-$(CONFIG_HAP_ENCODER)             += hapenc.o hap.o
+ OBJS-$(CONFIG_HCA_DECODER)             += hcadec.o
+@@ -405,6 +409,8 @@ OBJS-$(CONFIG_HEVC_RKMPP_DECODER)      += rkmppdec.o
+ OBJS-$(CONFIG_HEVC_VAAPI_ENCODER)      += vaapi_encode_h265.o h265_profile_level.o
+ OBJS-$(CONFIG_HEVC_V4L2M2M_DECODER)    += v4l2_m2m_dec.o
+ OBJS-$(CONFIG_HEVC_V4L2M2M_ENCODER)    += v4l2_m2m_enc.o
 +OBJS-$(CONFIG_HEVC_MLUMPP_DECODER)     += mlumpp_dec.o
 +OBJS-$(CONFIG_HEVC_MLUMPP_ENCODER)     += mlumpp_vid_enc.o mlumpp_enc_hevc.o
- OBJS-$(CONFIG_HEVC_AMF_ENCODER)        += amfenc_hevc.o
- OBJS-$(CONFIG_HEVC_CUVID_DECODER)      += cuviddec.o
- OBJS-$(CONFIG_HEVC_MEDIACODEC_DECODER) += mediacodecdec.o
-@@ -427,10 +433,12 @@ OBJS-$(CONFIG_MIMIC_DECODER)           += mimic.o
- OBJS-$(CONFIG_MJPEG_DECODER)           += mjpegdec.o
- OBJS-$(CONFIG_MJPEG_ENCODER)           += mjpegenc.o mjpegenc_common.o \
-                                           mjpegenc_huffman.o
-+OBJS-$(CONFIG_MJPEG_MLUMPP_DECODER)    += mlumpp_dec.o
- OBJS-$(CONFIG_MJPEGB_DECODER)          += mjpegbdec.o
+ OBJS-$(CONFIG_HNM4_VIDEO_DECODER)      += hnm4video.o
+ OBJS-$(CONFIG_HQ_HQA_DECODER)          += hq_hqa.o hq_hqadata.o hq_hqadsp.o \
+                                           canopus.o
+@@ -459,6 +465,8 @@ OBJS-$(CONFIG_MJPEGB_DECODER)          += mjpegbdec.o
  OBJS-$(CONFIG_MJPEG_CUVID_DECODER)     += cuviddec.o
  OBJS-$(CONFIG_MJPEG_QSV_ENCODER)       += qsvenc_jpeg.o
  OBJS-$(CONFIG_MJPEG_VAAPI_ENCODER)     += vaapi_encode_mjpeg.o
++OBJS-$(CONFIG_MJPEG_MLUMPP_DECODER)    += mlumpp_dec.o
 +OBJS-$(CONFIG_MJPEG_MLUMPP_ENCODER)    += mlumpp_vid_enc.o mlumpp_enc_jpeg.o
  OBJS-$(CONFIG_MLP_DECODER)             += mlpdec.o mlpdsp.o
  OBJS-$(CONFIG_MLP_ENCODER)             += mlpenc.o mlp.o
  OBJS-$(CONFIG_MMVIDEO_DECODER)         += mmvideo.o
-@@ -666,6 +674,7 @@ OBJS-$(CONFIG_VP3_DECODER)             += vp3.o
- OBJS-$(CONFIG_VP5_DECODER)             += vp5.o vp56.o vp56data.o vp56rac.o
- OBJS-$(CONFIG_VP6_DECODER)             += vp6.o vp56.o vp56data.o \
-                                           vp6dsp.o vp56rac.o
+@@ -720,6 +728,7 @@ OBJS-$(CONFIG_VP8_RKMPP_DECODER)       += rkmppdec.o
+ OBJS-$(CONFIG_VP8_VAAPI_ENCODER)       += vaapi_encode_vp8.o
+ OBJS-$(CONFIG_VP8_V4L2M2M_DECODER)     += v4l2_m2m_dec.o
+ OBJS-$(CONFIG_VP8_V4L2M2M_ENCODER)     += v4l2_m2m_enc.o
 +OBJS-$(CONFIG_VP8_MLUMPP_DECODER)      += mlumpp_dec.o
- OBJS-$(CONFIG_VP7_DECODER)             += vp8.o vp56rac.o
- OBJS-$(CONFIG_VP8_DECODER)             += vp8.o vp56rac.o
- OBJS-$(CONFIG_VP8_CUVID_DECODER)       += cuviddec.o
-@@ -678,6 +687,7 @@ OBJS-$(CONFIG_VP8_V4L2M2M_ENCODER)     += v4l2_m2m_enc.o
  OBJS-$(CONFIG_VP9_DECODER)             += vp9.o vp9data.o vp9dsp.o vp9lpf.o vp9recon.o \
                                            vp9block.o vp9prob.o vp9mvs.o vp56rac.o \
                                            vp9dsp_8bpp.o vp9dsp_10bpp.o vp9dsp_12bpp.o
-+OBJS-$(CONFIG_VP9_MLUMPP_DECODER)      += mlumpp_dec.o
- OBJS-$(CONFIG_VP9_CUVID_DECODER)       += cuviddec.o
- OBJS-$(CONFIG_VP9_MEDIACODEC_DECODER)  += mediacodecdec.o
+@@ -728,6 +737,7 @@ OBJS-$(CONFIG_VP9_MEDIACODEC_DECODER)  += mediacodecdec.o
  OBJS-$(CONFIG_VP9_RKMPP_DECODER)       += rkmppdec.o
+ OBJS-$(CONFIG_VP9_VAAPI_ENCODER)       += vaapi_encode_vp9.o
+ OBJS-$(CONFIG_VP9_QSV_ENCODER)         += qsvenc_vp9.o
++OBJS-$(CONFIG_VP9_MLUMPP_DECODER)      += mlumpp_dec.o
+ OBJS-$(CONFIG_VPLAYER_DECODER)         += textdec.o ass.o
+ OBJS-$(CONFIG_VP9_V4L2M2M_DECODER)     += v4l2_m2m_dec.o
+ OBJS-$(CONFIG_VQA_DECODER)             += vqavideo.o
 diff --git a/libavcodec/allcodecs.c b/libavcodec/allcodecs.c
-old mode 100644
-new mode 100755
-index d2f9a39ce5..476c82cdd7
+index 2e9a3581de..3ea18eead6 100644
 --- a/libavcodec/allcodecs.c
 +++ b/libavcodec/allcodecs.c
-@@ -781,6 +781,17 @@ extern AVCodec ff_vp9_cuvid_decoder;
- extern AVCodec ff_vp9_mediacodec_decoder;
+@@ -835,6 +835,16 @@ extern AVCodec ff_vp9_mediacodec_decoder;
+ extern AVCodec ff_vp9_qsv_decoder;
  extern AVCodec ff_vp9_vaapi_encoder;
- 
+ extern AVCodec ff_vp9_qsv_encoder;
 +extern AVCodec ff_h264_mlumpp_decoder;
 +extern AVCodec ff_h264_mlumpp_encoder;
 +extern AVCodec ff_hevc_mlumpp_decoder;
@@ -2037,13 +2022,25 @@ index d2f9a39ce5..476c82cdd7
 +extern AVCodec ff_vp9_mlumpp_decoder;
 +extern AVCodec ff_avs2_mlumpp_decoder;
 +extern AVCodec ff_avs_mlumpp_decoder;
-+
+ 
  // The iterate API is not usable with ossfuzz due to the excessive size of binaries created
  #if CONFIG_OSSFUZZ
- AVCodec * codec_list[] = {
+diff --git a/libavcodec/hwconfig.h b/libavcodec/hwconfig.h
+index f421dc909f..9bc7e46a29 100644
+--- a/libavcodec/hwconfig.h
++++ b/libavcodec/hwconfig.h
+@@ -80,6 +80,8 @@ typedef struct AVCodecHWConfigInternal {
+     HW_CONFIG_HWACCEL(0, 0, 1, D3D11VA_VLD,  NONE,         ff_ ## codec ## _d3d11va_hwaccel)
+ #define HWACCEL_XVMC(codec) \
+     HW_CONFIG_HWACCEL(0, 0, 1, XVMC,         NONE,         ff_ ## codec ## _xvmc_hwaccel)
++// #define HWACCEL_MLUDEC(codec) \
++//     HW_CONFIG_HWACCEL(1, 1, 0, MLU,          MLU,         ff_ ## codec ## _mludec_hwaccel)
+ 
+ #define HW_CONFIG_ENCODER(device, frames, ad_hoc, format, device_type_) \
+     &(const AVCodecHWConfigInternal) { \
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..3e0d540da1
+index 0000000000..73f0c7d00d
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
 @@ -0,0 +1,436 @@
@@ -2085,7 +2082,7 @@ index 0000000000..3e0d540da1
 +#include "config.h"
 +#include "avcodec.h"
 +#include "decode.h"
-+#include "hwaccel.h"
++#include "hwconfig.h"
 +#include "internal.h"
 +#include "libavutil/avutil.h"
 +
@@ -4064,10 +4061,10 @@ index 0000000000..7b1141963b
 +#endif
 diff --git a/libavcodec/mlumpp_enc_h264.c b/libavcodec/mlumpp_enc_h264.c
 new file mode 100644
-index 0000000000..23fcbe3bf3
+index 0000000000..982140b247
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_h264.c
-@@ -0,0 +1,220 @@
+@@ -0,0 +1,218 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4100,11 +4097,11 @@ index 0000000000..23fcbe3bf3
 +    CNencH264EncContext *cnctx =(CNencH264EncContext*)avctx->priv_data;
 +    return ff_mlumpp_enc_init(avctx, &cnctx->cnenc);
 +}
-+static int mlumpp_enc_send_frame(AVCodecContext *avctx, const AVFrame *frame)
-+{
-+    CNencH264EncContext *cnctx = (CNencH264EncContext*)avctx->priv_data;
-+    return ff_mlumpp_enc_send_frame(avctx, &cnctx->cnenc, frame);
-+}
++// static int mlumpp_enc_send_frame(AVCodecContext *avctx, const AVFrame *frame)
++// {
++//     CNencH264EncContext *cnctx = (CNencH264EncContext*)avctx->priv_data;
++//     return ff_mlumpp_enc_send_frame(avctx, &cnctx->cnenc, frame);
++// }
 +static int mlumpp_enc_receive_packet(AVCodecContext *avctx, AVPacket *pkt)
 +{
 +    CNencH264EncContext *cnctx = (CNencH264EncContext*)avctx->priv_data;
@@ -4264,33 +4261,31 @@ index 0000000000..23fcbe3bf3
 +    NULL
 +};
 +AVCodec ff_h264_mlumpp_encoder = {
-+    .name = "h264_mluenc",
-+    .long_name = NULL_IF_CONFIG_SMALL("H.264 ENCODER(Cambricon Video acceleration)"),
-+    .type = AVMEDIA_TYPE_VIDEO,
-+    .id = AV_CODEC_ID_H264,
-+    .init = mlumpp_enc_init,
-+    .send_frame = mlumpp_enc_send_frame,
-+    .receive_packet = mlumpp_enc_receive_packet,
-+    /*.encode2        = mlumpp_enc_frame,*/
-+    .close = mlumpp_enc_close,
++    .name             = "h264_mluenc",
++    .long_name        = NULL_IF_CONFIG_SMALL("H.264 ENCODER(Cambricon Video acceleration)"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_H264,
++    .init             = mlumpp_enc_init,
++    .receive_packet   = mlumpp_enc_receive_packet,
++    .close            = mlumpp_enc_close,
 +    .init_static_data = mlumpp_init_static,
-+    .priv_data_size = sizeof(CNencH264EncContext),
-+    .priv_class = &class,
-+    .defaults = h264_defaults,
-+    .capabilities = AV_CODEC_CAP_DELAY,
-+    .caps_internal = FF_CODEC_CAP_INIT_CLEANUP,
-+    .pix_fmts = (const enum AVPixelFormat[]) {AV_PIX_FMT_NV12, AV_PIX_FMT_NV21,
-+                AV_PIX_FMT_YUV420P, AV_PIX_FMT_P010, AV_PIX_FMT_YUYV422,
-+                AV_PIX_FMT_UYVY422, AV_PIX_FMT_ARGB, AV_PIX_FMT_BGRA,
-+                AV_PIX_FMT_RGBA,    AV_PIX_FMT_ABGR,
-+                AV_PIX_FMT_RGB24,    AV_PIX_FMT_BGR24,
-+                AV_PIX_FMT_MLU, AV_PIX_FMT_NONE},
-+    .wrapper_name = "mluenc",
-+    .hw_configs   = mlu_hw_configs,
++    .priv_data_size   = sizeof(CNencH264EncContext),
++    .priv_class       = &class,
++    .defaults         = h264_defaults,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_CLEANUP,
++    .pix_fmts         = (const enum AVPixelFormat[]) {
++                        AV_PIX_FMT_NV12, AV_PIX_FMT_NV21, AV_PIX_FMT_YUV420P,
++                        AV_PIX_FMT_P010, AV_PIX_FMT_YUYV422, AV_PIX_FMT_UYVY422,
++                        AV_PIX_FMT_ARGB, AV_PIX_FMT_BGRA, AV_PIX_FMT_RGBA,
++                        AV_PIX_FMT_ABGR, AV_PIX_FMT_RGB24, AV_PIX_FMT_BGR24,
++                        AV_PIX_FMT_MLU, AV_PIX_FMT_NONE},
++    .wrapper_name     = "mluenc",
++    .hw_configs       = mlu_hw_configs,
 +};
 diff --git a/libavcodec/mlumpp_enc_hevc.c b/libavcodec/mlumpp_enc_hevc.c
 new file mode 100644
-index 0000000000..147c3f46c2
+index 0000000000..74c7f33f6e
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_hevc.c
 @@ -0,0 +1,229 @@
@@ -4327,11 +4322,11 @@ index 0000000000..147c3f46c2
 +    return ff_mlumpp_enc_init(avctx, &cnctx->cnenc);
 +}
 +
-+static int mlumpp_enc_send_frame(AVCodecContext *avctx, const AVFrame *frame)
-+{
-+    CNencHevcEncContext *cnctx = (CNencHevcEncContext*)avctx->priv_data;
-+    return ff_mlumpp_enc_send_frame(avctx, &cnctx->cnenc, frame);
-+}
++// static int mlumpp_enc_send_frame(AVCodecContext *avctx, const AVFrame *frame)
++// {
++//     CNencHevcEncContext *cnctx = (CNencHevcEncContext*)avctx->priv_data;
++//     return ff_mlumpp_enc_send_frame(avctx, &cnctx->cnenc, frame);
++// }
 +
 +static int mlumpp_enc_receive_packet(AVCodecContext *avctx, AVPacket *pkt){
 +    CNencHevcEncContext *cnctx = (CNencHevcEncContext*)avctx->priv_data;
@@ -4504,7 +4499,7 @@ index 0000000000..147c3f46c2
 +    .type = AVMEDIA_TYPE_VIDEO,
 +    .id = AV_CODEC_ID_HEVC,
 +    .init = mlumpp_enc_init,
-+    .send_frame = mlumpp_enc_send_frame,
++    // .send_frame = mlumpp_enc_send_frame,
 +    .receive_packet = mlumpp_enc_receive_packet,
 +    /*.encode2 = mlumpp_enc_frame,*/
 +    .close = mlumpp_enc_close,
@@ -4525,7 +4520,7 @@ index 0000000000..147c3f46c2
 +};
 diff --git a/libavcodec/mlumpp_enc_jpeg.c b/libavcodec/mlumpp_enc_jpeg.c
 new file mode 100644
-index 0000000000..65680665f3
+index 0000000000..1b7a2c8c65
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_jpeg.c
 @@ -0,0 +1,124 @@
@@ -4562,11 +4557,11 @@ index 0000000000..65680665f3
 +    return ff_mlumpp_enc_init(avctx, &cnctx->cnenc);
 +}
 +
-+static int mlumpp_enc_send_frame(AVCodecContext *avctx, const AVFrame *frame)
-+{
-+    CNencJpegEncContext *cnctx = (CNencJpegEncContext*)avctx->priv_data;
-+    return ff_mlumpp_enc_send_frame(avctx, &cnctx->cnenc, frame);
-+}
++// static int mlumpp_enc_send_frame(AVCodecContext *avctx, const AVFrame *frame)
++// {
++//     CNencJpegEncContext *cnctx = (CNencJpegEncContext*)avctx->priv_data;
++//     return ff_mlumpp_enc_send_frame(avctx, &cnctx->cnenc, frame);
++// }
 +
 +static int mlumpp_enc_receive_packet(AVCodecContext *avctx, AVPacket *pkt){
 +    CNencJpegEncContext *cnctx = (CNencJpegEncContext*)avctx->priv_data;
@@ -4636,7 +4631,7 @@ index 0000000000..65680665f3
 +    .type = AVMEDIA_TYPE_VIDEO,
 +    .id = AV_CODEC_ID_MJPEG,
 +    .init = mlumpp_enc_init,
-+    .send_frame = mlumpp_enc_send_frame,
++    // .send_frame = mlumpp_enc_send_frame,
 +    .receive_packet = mlumpp_enc_receive_packet,
 +    .close = mlumpp_enc_close,
 +    .init_static_data = mlumpp_init_static,
@@ -4656,10 +4651,10 @@ index 0000000000..65680665f3
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100644
-index 0000000000..324ab65b02
+index 0000000000..7f87fe1f41
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1140 @@
+@@ -0,0 +1,1165 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4680,6 +4675,16 @@ index 0000000000..324ab65b02
 + * License along with FFmpeg; if not, write to the Free Software
 + * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 + *******************************************************************************/
++// #include "config.h"
++#include "libavutil/hwcontext.h"
++#include "libavutil/imgutils.h"
++#include "libavutil/avassert.h"
++#include "libavutil/mem.h"
++#include "libavutil/pixdesc.h"
++#include "encode.h"
++#include "internal.h"
++#include "packet_internal.h"
++
 +#include "mlumpp_vid_enc.h"
 +
 +#define CN_JFRAME_ALIGN_H 16
@@ -5316,11 +5321,10 @@ index 0000000000..324ab65b02
 +        MLUMPP_CHECK(cnctx->avctx, cncodecEncSetEos(cnctx->handle), "Send EOS");
 +
 +        cnctx->encoder_flushing = 1;
-+        return 0;
++        return avctx->codec_id == AV_CODEC_ID_MJPEG ? AVERROR_EOF : 0;
 +    }
++    av_log(avctx, AV_LOG_WARNING, "Both valid frame and eos were sent, skip send functions\n");
 +
-+    av_log(avctx, AV_LOG_WARNING,
-+        "Both valid frame and eos were sent, skip senc func\n");
 +    return AVERROR_EOF;
 +}
 +
@@ -5329,7 +5333,10 @@ index 0000000000..324ab65b02
 +    int ret = -1;
 +    int got_packet = 0;
 +    int waittime;
-+    if (NULL == avctx || NULL == cnctx || NULL == pkt || !cnctx->encoder_init_flag) {
++    bool jpeg_send_eof = false;
++    AVFrame *frame = cnctx->frame;
++
++    if (NULL == avctx || NULL == cnctx || !cnctx->encoder_init_flag) {
 +        av_log(avctx, AV_LOG_ERROR, "Early error in ff_mlumpp_enc_receive_packet \n");
 +        return AVERROR_EXTERNAL;
 +    }
@@ -5338,6 +5345,20 @@ index 0000000000..324ab65b02
 +            "Encode got abort before receiving packet, return error\n");
 +        return AVERROR_EXTERNAL;
 +    }
++    if (!frame->buf[0]) {
++        ret = ff_encode_get_frame(avctx, frame);
++        if (ret < 0 && ret != AVERROR_EOF)
++            return ret;
++    }
++
++    ret = ff_mlumpp_enc_send_frame(avctx, cnctx, frame);
++    if (ret < 0 && AVERROR_EOF != ret && AVERROR(EAGAIN) != ret) {
++        return ret;
++    } else {
++        av_frame_unref(frame);
++        if (AVERROR_EOF == ret) jpeg_send_eof = true;
++    }
++
 +    if (avctx->codec_id == AV_CODEC_ID_MJPEG) {
 +        waittime = CN_TIMEOUT_VALUE;
 +        while (waittime > 0) {
@@ -5346,17 +5367,16 @@ index 0000000000..324ab65b02
 +                cnctx->pkt_recv_sum += 1;
 +                return ret;
 +            } else if (ret == AVERROR(EAGAIN)) {
-+                if (cnctx->pkt_recv_sum == cnctx->frame_send_sum) {
++                if (cnctx->pkt_recv_sum == cnctx->frame_send_sum && !jpeg_send_eof) {
 +                    return ret;
 +                }
 +            } else {
 +                return ret;
 +            }
-+            av_usleep(10);
++            av_usleep(100);
 +            waittime -= 1;
 +        }
-+        av_log(cnctx->avctx, AV_LOG_ERROR,
-+            "Receive packet timeout, return eof \n");
++        av_log(cnctx->avctx, AV_LOG_ERROR, "Receive packet timeout, return eof\n");
 +        return AVERROR_EOF;
 +    }
 +
@@ -5370,14 +5390,12 @@ index 0000000000..324ab65b02
 +            if (ret == AVERROR(EAGAIN)) {
 +                av_log(avctx, AV_LOG_DEBUG, "Wait packet from queue\n");
 +                if (waittime <= 0 && !cnctx->eos_post_flag) {
-+                    av_log(avctx, AV_LOG_WARNING,
-+                        "Wait packet from queue timeout\n");
++                    av_log(avctx, AV_LOG_WARNING, "Wait packet from queue timeout\n");
 +                    cnctx->codec_abort_flag = 1;
 +                    return AVERROR_EOF;
 +                }
 +                if (cnctx->eos_post_flag && cnenc_is_fifo_empty(cnctx)) {
-+                    av_log(avctx, AV_LOG_WARNING,
-+                        "EOS in queue LOST! Unkonwn Error!\n");
++                    av_log(avctx, AV_LOG_WARNING, "EOS in queue LOST, Unkonwn Error!!!\n");
 +                    cnctx->codec_abort_flag = 1;
 +                    return AVERROR_EOF;
 +                }
@@ -5737,6 +5755,10 @@ index 0000000000..324ab65b02
 +    if (avctx->codec_id != AV_CODEC_ID_MJPEG) {
 +        sem_wait(&(cnctx->header_sema));
 +    }
++    cnctx->frame = av_frame_alloc();
++    if (!cnctx->frame) {
++        return AVERROR(ENOMEM);
++    }
 +
 +    cnctx->frame_send_sum = 0;
 +    cnctx->first_iframe = true;
@@ -5754,9 +5776,6 @@ index 0000000000..324ab65b02
 +        av_log(avctx, AV_LOG_ERROR, "Early error in ff_mlumpp_enc_close\n");
 +        return AVERROR(EINVAL);
 +    }
-+    if (avctx->codec_id == AV_CODEC_ID_MJPEG) {
-+        MLUMPP_CHECK(cnctx->avctx, cncodecEncSetEos(cnctx->handle), "Jpeg send Eos");
-+    }
 +    if (!cnctx->eos_post_flag && !cnctx->codec_abort_flag) {
 +        av_log(avctx, AV_LOG_DEBUG, "Haven't got EOS, waiting\n");
 +        clock_gettime(CLOCK_REALTIME, &ts);
@@ -5767,6 +5786,7 @@ index 0000000000..324ab65b02
 +        }
 +    }
 +
++    av_frame_free(&cnctx->frame);
 +    ff_mutex_lock(&cnctx->queue_mutex);
 +    av_fifo_free(cnctx->frame_queue);
 +    cnctx->frame_queue = NULL;
@@ -5802,10 +5822,10 @@ index 0000000000..324ab65b02
 +}
 diff --git a/libavcodec/mlumpp_vid_enc.h b/libavcodec/mlumpp_vid_enc.h
 new file mode 100644
-index 0000000000..e719574ff2
+index 0000000000..8e78380afd
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.h
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,131 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -5918,6 +5938,7 @@ index 0000000000..e719574ff2
 +    bool                            extradata_ready;
 +    cnrtQueue_t                     mlu_queue;
 +
++    AVFrame                         *frame;
 +    AVBufferRef                     *hw_frame_ref;
 +    AVBufferRef                     *hw_device_ref;
 +
@@ -5938,10 +5959,10 @@ index 0000000000..e719574ff2
 +#endif /* AVCODEC_MLUMPP_VID_ENC_H */
 \ No newline at end of file
 diff --git a/libavfilter/Makefile b/libavfilter/Makefile
-index 455c809b15..7021fb6e50 100644
+index b2c254ea67..8a7765166f 100644
 --- a/libavfilter/Makefile
 +++ b/libavfilter/Makefile
-@@ -196,6 +196,9 @@ OBJS-$(CONFIG_CROP_FILTER)                   += vf_crop.o
+@@ -220,6 +220,9 @@ OBJS-$(CONFIG_CROP_FILTER)                   += vf_crop.o
  OBJS-$(CONFIG_CROPDETECT_FILTER)             += vf_cropdetect.o
  OBJS-$(CONFIG_CUE_FILTER)                    += f_cue.o
  OBJS-$(CONFIG_CURVES_FILTER)                 += vf_curves.o
@@ -5949,44 +5970,43 @@ index 455c809b15..7021fb6e50 100644
 +OBJS-$(CONFIG_CVT_YUV2RGBX_MLU_FILTER)       += vf_cvt_yuv2rgbx_mlu.o
 +OBJS-$(CONFIG_CVT_RGBX2YUV_MLU_FILTER)       += vf_cvt_rgbx2yuv_mlu.o
  OBJS-$(CONFIG_DATASCOPE_FILTER)              += vf_datascope.o
+ OBJS-$(CONFIG_DBLUR_FILTER)                  += vf_dblur.o
  OBJS-$(CONFIG_DCTDNOIZ_FILTER)               += vf_dctdnoiz.o
- OBJS-$(CONFIG_DEBAND_FILTER)                 += vf_deband.o
-@@ -263,8 +266,10 @@ OBJS-$(CONFIG_HQX_FILTER)                    += vf_hqx.o
+@@ -295,9 +298,11 @@ OBJS-$(CONFIG_HQX_FILTER)                    += vf_hqx.o
  OBJS-$(CONFIG_HSTACK_FILTER)                 += vf_stack.o framesync.o
  OBJS-$(CONFIG_HUE_FILTER)                    += vf_hue.o
  OBJS-$(CONFIG_HWDOWNLOAD_FILTER)             += vf_hwdownload.o
 +OBJS-$(CONFIG_HWDOWNLOAD_MLU_FILTER)         += vf_hwdownload_mlu.o
  OBJS-$(CONFIG_HWMAP_FILTER)                  += vf_hwmap.o
  OBJS-$(CONFIG_HWUPLOAD_CUDA_FILTER)          += vf_hwupload_cuda.o
-+OBJS-$(CONFIG_HWUPLOAD_MLU_FILTER)           += vf_hwupload_mlu.o
  OBJS-$(CONFIG_HWUPLOAD_FILTER)               += vf_hwupload.o
++OBJS-$(CONFIG_HWUPLOAD_MLU_FILTER)           += vf_hwupload_mlu.o
  OBJS-$(CONFIG_HYSTERESIS_FILTER)             += vf_hysteresis.o framesync.o
+ OBJS-$(CONFIG_IDENTITY_FILTER)               += vf_identity.o
  OBJS-$(CONFIG_IDET_FILTER)                   += vf_idet.o
-@@ -312,6 +317,7 @@ OBJS-$(CONFIG_OVERLAY_FILTER)                += vf_overlay.o framesync.o
- OBJS-$(CONFIG_OVERLAY_OPENCL_FILTER)         += vf_overlay_opencl.o opencl.o \
+@@ -353,6 +358,7 @@ OBJS-$(CONFIG_OVERLAY_OPENCL_FILTER)         += vf_overlay_opencl.o opencl.o \
                                                  opencl/overlay.o framesync.o
  OBJS-$(CONFIG_OVERLAY_QSV_FILTER)            += vf_overlay_qsv.o framesync.o
+ OBJS-$(CONFIG_OVERLAY_VULKAN_FILTER)         += vf_overlay_vulkan.o vulkan.o
 +OBJS-$(CONFIG_OVERLAY_MLU_FILTER)            += vf_overlay_mlu.o framesync.o
  OBJS-$(CONFIG_OWDENOISE_FILTER)              += vf_owdenoise.o
  OBJS-$(CONFIG_PAD_FILTER)                    += vf_pad.o
- OBJS-$(CONFIG_PALETTEGEN_FILTER)             += vf_palettegen.o
-@@ -350,8 +356,11 @@ OBJS-$(CONFIG_ROTATE_FILTER)                 += vf_rotate.o
- OBJS-$(CONFIG_SAB_FILTER)                    += vf_sab.o
- OBJS-$(CONFIG_SCALE_FILTER)                  += vf_scale.o scale.o
- OBJS-$(CONFIG_SCALE_CUDA_FILTER)             += vf_scale_cuda.o vf_scale_cuda.ptx.o
+ OBJS-$(CONFIG_PAD_OPENCL_FILTER)             += vf_pad_opencl.o opencl.o opencl/pad.o
+@@ -399,6 +405,9 @@ OBJS-$(CONFIG_SCALE_QSV_FILTER)              += vf_scale_qsv.o
+ OBJS-$(CONFIG_SCALE_VAAPI_FILTER)            += vf_scale_vaapi.o scale_eval.o vaapi_vpp.o
+ OBJS-$(CONFIG_SCALE_VULKAN_FILTER)           += vf_scale_vulkan.o vulkan.o
+ OBJS-$(CONFIG_SCALE2REF_FILTER)              += vf_scale.o scale_eval.o
 +OBJS-$(CONFIG_SCALE_CVT_YUV2RGBX_MLU_FILTER) += vf_scale_cvt_yuv2rgbx_mlu.o
- OBJS-$(CONFIG_SCALE_NPP_FILTER)              += vf_scale_npp.o scale.o
- OBJS-$(CONFIG_SCALE_QSV_FILTER)              += vf_scale_qsv.o
 +OBJS-$(CONFIG_SCALE_YUV2YUV_MLU_FILTER)      += vf_scale_yuv2yuv_mlu.o
 +OBJS-$(CONFIG_SCALE_RGBX2RGBX_MLU_FILTER)    += vf_scale_rgbx2rgbx_mlu.o
- OBJS-$(CONFIG_SCALE_VAAPI_FILTER)            += vf_scale_vaapi.o scale.o vaapi_vpp.o
- OBJS-$(CONFIG_SCALE2REF_FILTER)              += vf_scale.o scale.o
+ OBJS-$(CONFIG_SCDET_FILTER)                  += vf_scdet.o
+ OBJS-$(CONFIG_SCROLL_FILTER)                 += vf_scroll.o
  OBJS-$(CONFIG_SELECT_FILTER)                 += f_select.o
 diff --git a/libavfilter/allfilters.c b/libavfilter/allfilters.c
-index 04a3df7d56..f97a3e2e02 100644
+index 0872c6e0f2..960153648a 100644
 --- a/libavfilter/allfilters.c
 +++ b/libavfilter/allfilters.c
-@@ -183,6 +183,9 @@ extern AVFilter ff_vf_crop;
+@@ -207,6 +207,9 @@ extern AVFilter ff_vf_crop;
  extern AVFilter ff_vf_cropdetect;
  extern AVFilter ff_vf_cue;
  extern AVFilter ff_vf_curves;
@@ -5994,47 +6014,38 @@ index 04a3df7d56..f97a3e2e02 100644
 +extern AVFilter ff_vf_cvt_yuv2rgbx_mlu;
 +extern AVFilter ff_vf_cvt_rgbx2yuv_mlu;
  extern AVFilter ff_vf_datascope;
+ extern AVFilter ff_vf_dblur;
  extern AVFilter ff_vf_dctdnoiz;
- extern AVFilter ff_vf_deband;
-@@ -248,8 +251,10 @@ extern AVFilter ff_vf_hqx;
+@@ -279,9 +282,11 @@ extern AVFilter ff_vf_hqx;
  extern AVFilter ff_vf_hstack;
  extern AVFilter ff_vf_hue;
  extern AVFilter ff_vf_hwdownload;
 +extern AVFilter ff_vf_hwdownload_mlu;
  extern AVFilter ff_vf_hwmap;
  extern AVFilter ff_vf_hwupload;
-+extern AVFilter ff_vf_hwupload_mlu;
  extern AVFilter ff_vf_hwupload_cuda;
++extern AVFilter ff_vf_hwupload_mlu;
  extern AVFilter ff_vf_hysteresis;
+ extern AVFilter ff_vf_identity;
  extern AVFilter ff_vf_idet;
-@@ -296,6 +301,7 @@ extern AVFilter ff_vf_oscilloscope;
- extern AVFilter ff_vf_overlay;
- extern AVFilter ff_vf_overlay_opencl;
+@@ -337,6 +342,7 @@ extern AVFilter ff_vf_overlay_opencl;
  extern AVFilter ff_vf_overlay_qsv;
+ extern AVFilter ff_vf_overlay_vulkan;
+ extern AVFilter ff_vf_overlay_cuda;
 +extern AVFilter ff_vf_overlay_mlu;
  extern AVFilter ff_vf_owdenoise;
  extern AVFilter ff_vf_pad;
- extern AVFilter ff_vf_palettegen;
-@@ -332,8 +338,11 @@ extern AVFilter ff_vf_rotate;
- extern AVFilter ff_vf_sab;
- extern AVFilter ff_vf_scale;
- extern AVFilter ff_vf_scale_cuda;
+ extern AVFilter ff_vf_pad_opencl;
+@@ -380,6 +386,9 @@ extern AVFilter ff_vf_scale_qsv;
+ extern AVFilter ff_vf_scale_vaapi;
+ extern AVFilter ff_vf_scale_vulkan;
+ extern AVFilter ff_vf_scale2ref;
 +extern AVFilter ff_vf_scale_cvt_yuv2rgbx_mlu;
- extern AVFilter ff_vf_scale_npp;
- extern AVFilter ff_vf_scale_qsv;
 +extern AVFilter ff_vf_scale_yuv2yuv_mlu;
 +extern AVFilter ff_vf_scale_rgbx2rgbx_mlu;
- extern AVFilter ff_vf_scale_vaapi;
- extern AVFilter ff_vf_scale2ref;
+ extern AVFilter ff_vf_scdet;
+ extern AVFilter ff_vf_scroll;
  extern AVFilter ff_vf_select;
-@@ -361,6 +370,7 @@ extern AVFilter ff_vf_sobel_opencl;
- extern AVFilter ff_vf_split;
- extern AVFilter ff_vf_spp;
- extern AVFilter ff_vf_sr;
-+// extern AVFilter ff_vf_sr_mlu;
- extern AVFilter ff_vf_ssim;
- extern AVFilter ff_vf_stereo3d;
- extern AVFilter ff_vf_streamselect;
 diff --git a/libavfilter/mlu_filter_common.h b/libavfilter/mlu_filter_common.h
 new file mode 100644
 index 0000000000..9258790778
@@ -6173,10 +6184,10 @@ index 0000000000..9258790778
 +#endif
 diff --git a/libavfilter/vf_cvt_rgbx2rgbx_mlu.c b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..5509d31bcf
+index 0000000000..9a2b9aa969
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
-@@ -0,0 +1,410 @@
+@@ -0,0 +1,409 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6209,7 +6220,6 @@ index 0000000000..5509d31bcf
 +#include "libavutil/internal.h"
 +#include "libavutil/opt.h"
 +#include "libavutil/pixfmt.h"
-+#include "scale.h"
 +#include "video.h"
 +#include "mlu_filter_common.h"
 +
@@ -6280,7 +6290,7 @@ index 0000000000..5509d31bcf
 +    if (out_pixfmt == AV_PIX_FMT_NONE)
 +        return ff_set_common_formats(ctx, pixel_formats);
 +
-+    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->out_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->outcfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -6291,7 +6301,7 @@ index 0000000000..5509d31bcf
 +    ret = ff_add_format(&pixel_formats, out_pixfmt);
 +    if (ret < 0)
 +        return ret;
-+    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->in_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->incfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -6589,10 +6599,10 @@ index 0000000000..5509d31bcf
 +};
 diff --git a/libavfilter/vf_cvt_rgbx2yuv_mlu.c b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 new file mode 100644
-index 0000000000..ec26a639d9
+index 0000000000..b98ffc0f66
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
-@@ -0,0 +1,426 @@
+@@ -0,0 +1,425 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6625,7 +6635,6 @@ index 0000000000..ec26a639d9
 +#include "avfilter.h"
 +#include "formats.h"
 +#include "internal.h"
-+#include "scale.h"
 +#include "video.h"
 +#include "mlu_filter_common.h"
 +
@@ -6702,7 +6711,7 @@ index 0000000000..ec26a639d9
 +    if (out_pixfmt == AV_PIX_FMT_NONE)
 +        return ff_set_common_formats(ctx, pixel_formats);
 +
-+    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->out_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->outcfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -6713,7 +6722,7 @@ index 0000000000..ec26a639d9
 +    ret = ff_add_format(&pixel_formats, out_pixfmt);
 +    if (ret < 0)
 +        return ret;
-+    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->in_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->incfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -7021,10 +7030,10 @@ index 0000000000..ec26a639d9
 +};
 diff --git a/libavfilter/vf_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..4ffaf1d927
+index 0000000000..5565b27358
 --- /dev/null
 +++ b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
-@@ -0,0 +1,428 @@
+@@ -0,0 +1,427 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -7057,7 +7066,6 @@ index 0000000000..4ffaf1d927
 +#include "avfilter.h"
 +#include "formats.h"
 +#include "internal.h"
-+#include "scale.h"
 +#include "video.h"
 +#include "mlu_filter_common.h"
 +
@@ -7136,7 +7144,7 @@ index 0000000000..4ffaf1d927
 +    if (out_pixfmt == AV_PIX_FMT_NONE)
 +        return ff_set_common_formats(ctx, pixel_formats);
 +
-+    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->out_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->outcfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -7147,7 +7155,7 @@ index 0000000000..4ffaf1d927
 +    ret = ff_add_format(&pixel_formats, out_pixfmt);
 +    if (ret < 0)
 +        return ret;
-+    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->in_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->incfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -7455,7 +7463,7 @@ index 0000000000..4ffaf1d927
 +};
 diff --git a/libavfilter/vf_hwdownload_mlu.c b/libavfilter/vf_hwdownload_mlu.c
 new file mode 100644
-index 0000000000..6b3622d721
+index 0000000000..6440ee28e9
 --- /dev/null
 +++ b/libavfilter/vf_hwdownload_mlu.c
 @@ -0,0 +1,213 @@
@@ -7520,12 +7528,12 @@ index 0000000000..6b3622d721
 +    };
 +
 +    in_fmts  = ff_make_format_list(input_pix_fmts);
-+    ret = ff_formats_ref(in_fmts, &avctx->inputs[0]->out_formats);
++    ret = ff_formats_ref(in_fmts, &avctx->inputs[0]->outcfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
 +    out_fmts = ff_make_format_list(output_pix_fmts);
-+    ret = ff_formats_ref(out_fmts, &avctx->outputs[0]->in_formats);
++    ret = ff_formats_ref(out_fmts, &avctx->outputs[0]->incfg.formats);
 +    if (ret < 0)
 +        return ret;
 +    return 0;
@@ -7578,7 +7586,7 @@ index 0000000000..6b3622d721
 +    return 0;
 +}
 +
-+static int hwdownload_filter_frame(AVFilterLink *link, AVFrame *input) // input on mlu
++static int hwdownload_filter_frame(AVFilterLink *link, AVFrame *input)
 +{
 +    AVFilterContext *avctx  = link->dst;
 +    AVFilterLink  *outlink  = avctx->outputs[0];
@@ -7674,10 +7682,10 @@ index 0000000000..6b3622d721
 +};
 diff --git a/libavfilter/vf_hwupload_mlu.c b/libavfilter/vf_hwupload_mlu.c
 new file mode 100644
-index 0000000000..60620aaece
+index 0000000000..4e1c73fd01
 --- /dev/null
 +++ b/libavfilter/vf_hwupload_mlu.c
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,196 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -7721,10 +7729,8 @@ index 0000000000..60620aaece
 +{
 +    MluUploadContext *s = ctx->priv;
 +    char buf[64] = { 0 };
-+
 +    snprintf(buf, sizeof(buf), "%d", s->device_idx);
 +
-+    // here depend on hwcontext
 +    return av_hwdevice_ctx_create(&s->hwdevice, AV_HWDEVICE_TYPE_MLU, buf, NULL, 0);
 +}
 +
@@ -7753,12 +7759,12 @@ index 0000000000..60620aaece
 +    };
 +
 +    in_fmts  = ff_make_format_list(input_pix_fmts);
-+    ret = ff_formats_ref(in_fmts, &ctx->inputs[0]->out_formats);
++    ret = ff_formats_ref(in_fmts, &ctx->inputs[0]->outcfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
 +    out_fmts = ff_make_format_list(output_pix_fmts);
-+    ret = ff_formats_ref(out_fmts, &ctx->outputs[0]->in_formats);
++    ret = ff_formats_ref(out_fmts, &ctx->outputs[0]->incfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -7800,13 +7806,10 @@ index 0000000000..60620aaece
 +{
 +    AVFilterContext   *ctx = link->dst;
 +    AVFilterLink  *outlink = ctx->outputs[0];
-+    MluUploadContext *s = ctx->priv;
-+    AVHWFramesContext *hwframe_ctx;
 +
 +    AVFrame *out = NULL;
 +    int ret;
 +
-+    hwframe_ctx = (AVHWFramesContext*)s->hwframe->data;
 +    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
 +    if (!out) {
 +        ret = AVERROR(EINVAL);
@@ -7816,13 +7819,13 @@ index 0000000000..60620aaece
 +        out->linesize[i] = in->linesize[i];
 +    }
 +
-+    ret = av_hwframe_transfer_data(out, in, 0); // H2D
++    ret = av_hwframe_transfer_data(out, in, 0);
 +    if (ret < 0) {
 +        av_log(ctx, AV_LOG_ERROR, "Error transferring data to the MLU\n");
 +        goto fail;
 +    }
 +
-+    ret = av_frame_copy_props(out, in); // props copy
++    ret = av_frame_copy_props(out, in);
 +    if (ret < 0)
 +        goto fail;
 +
@@ -7881,10 +7884,10 @@ index 0000000000..60620aaece
 +};
 diff --git a/libavfilter/vf_overlay_mlu.c b/libavfilter/vf_overlay_mlu.c
 new file mode 100644
-index 0000000000..fd28a97496
+index 0000000000..802b5a659c
 --- /dev/null
 +++ b/libavfilter/vf_overlay_mlu.c
-@@ -0,0 +1,696 @@
+@@ -0,0 +1,695 @@
 +/*
 + * Copyright (c) 2024, CAMBRICON CORPORATION. All rights reserved.
 + *
@@ -8022,7 +8025,7 @@ index 0000000000..fd28a97496
 +        ret = AVERROR(ENOMEM);
 +        goto fail;
 +    }
-+    ret = ff_formats_ref(main_formats, &ctx->inputs[0]->out_formats);
++    ret = ff_formats_ref(main_formats, &ctx->inputs[0]->outcfg.formats);
 +    if (ret < 0) {
 +        return ret;
 +    }
@@ -8030,7 +8033,7 @@ index 0000000000..fd28a97496
 +        ret = AVERROR(ENOMEM);
 +        goto fail;
 +    }
-+    ret = ff_formats_ref(overlay_formats, &ctx->inputs[1]->out_formats);
++    ret = ff_formats_ref(overlay_formats, &ctx->inputs[1]->outcfg.formats);
 +    if (ret < 0) {
 +        return ret;
 +    }
@@ -8038,7 +8041,7 @@ index 0000000000..fd28a97496
 +        ret = AVERROR(ENOMEM);
 +        goto fail;
 +    }
-+    ret = ff_formats_ref(output_formats, &ctx->outputs[0]->in_formats);
++    ret = ff_formats_ref(output_formats, &ctx->outputs[0]->incfg.formats);
 +    if (ret < 0) {
 +        return ret;
 +    }
@@ -8329,7 +8332,6 @@ index 0000000000..fd28a97496
 +    return ret;
 +}
 +
-+#define OVERLAY_MLU_RTSP 1
 +static int overlay_mlu_blend(FFFrameSync *fs)
 +{
 +    AVFilterContext *avctx = fs->parent;
@@ -8583,7 +8585,7 @@ index 0000000000..fd28a97496
 +};
 diff --git a/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..ce52a3c1da
+index 0000000000..abbba13dc0
 --- /dev/null
 +++ b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
 @@ -0,0 +1,430 @@
@@ -8619,7 +8621,7 @@ index 0000000000..ce52a3c1da
 +#include "avfilter.h"
 +#include "formats.h"
 +#include "internal.h"
-+#include "scale.h"
++#include "scale_eval.h"
 +#include "video.h"
 +#include "mlu_filter_common.h"
 +
@@ -8691,7 +8693,7 @@ index 0000000000..ce52a3c1da
 +    if (out_pixfmt == AV_PIX_FMT_NONE)
 +        return ff_set_common_formats(ctx, pixel_formats);
 +
-+    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->out_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->inputs[0]->outcfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -8702,7 +8704,7 @@ index 0000000000..ce52a3c1da
 +    ret = ff_add_format(&pixel_formats, out_pixfmt);
 +    if (ret < 0)
 +        return ret;
-+    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->in_formats);
++    ret = ff_formats_ref(pixel_formats, &ctx->outputs[0]->incfg.formats);
 +    if (ret < 0)
 +        return ret;
 +
@@ -9019,7 +9021,7 @@ index 0000000000..ce52a3c1da
 +};
 diff --git a/libavfilter/vf_scale_rgbx2rgbx_mlu.c b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..8020cf4837
+index 0000000000..1fd4312dc2
 --- /dev/null
 +++ b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 @@ -0,0 +1,417 @@
@@ -9055,7 +9057,7 @@ index 0000000000..8020cf4837
 +#include "avfilter.h"
 +#include "formats.h"
 +#include "internal.h"
-+#include "scale.h"
++#include "scale_eval.h"
 +#include "video.h"
 +#include "mlu_filter_common.h"
 +
@@ -9119,10 +9121,10 @@ index 0000000000..8020cf4837
 +
 +    int ret;
 +    if ((ret = ff_formats_ref(ff_make_format_list(pix_fmts),
-+                              &ctx->inputs[0]->out_formats)) < 0)
++                              &ctx->inputs[0]->outcfg.formats)) < 0)
 +        return ret;
 +    if ((ret = ff_formats_ref(ff_make_format_list(pix_fmts),
-+                              &ctx->outputs[0]->in_formats)) < 0)
++                              &ctx->outputs[0]->incfg.formats)) < 0)
 +        return ret;
 +
 +    return 0;
@@ -9442,7 +9444,7 @@ index 0000000000..8020cf4837
 +};
 diff --git a/libavfilter/vf_scale_yuv2yuv_mlu.c b/libavfilter/vf_scale_yuv2yuv_mlu.c
 new file mode 100644
-index 0000000000..68bc980db8
+index 0000000000..87a39df60f
 --- /dev/null
 +++ b/libavfilter/vf_scale_yuv2yuv_mlu.c
 @@ -0,0 +1,436 @@
@@ -9478,7 +9480,7 @@ index 0000000000..68bc980db8
 +#include "avfilter.h"
 +#include "formats.h"
 +#include "internal.h"
-+#include "scale.h"
++#include "scale_eval.h"
 +#include "video.h"
 +#include "mlu_filter_common.h"
 +
@@ -9883,117 +9885,85 @@ index 0000000000..68bc980db8
 +    .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
 +};
 diff --git a/libavutil/Makefile b/libavutil/Makefile
-index 8a7a44e4b5..0d80df750c 100644
+index 27bafe9e12..90fd2d59f4 100644
 --- a/libavutil/Makefile
 +++ b/libavutil/Makefile
-@@ -35,6 +35,7 @@ HEADERS = adler32.h                                                     \
-           hmac.h                                                        \
-           hwcontext.h                                                   \
-           hwcontext_cuda.h                                              \
-+          hwcontext_mlu.h                                               \
-           hwcontext_d3d11va.h                                           \
-           hwcontext_drm.h                                               \
-           hwcontext_dxva2.h                                             \
-@@ -163,6 +164,7 @@ OBJS = adler32.o                                                        \
-        tx.o                                                             \
- 
- OBJS-$(CONFIG_CUDA)                     += hwcontext_cuda.o
+@@ -46,6 +46,7 @@ HEADERS = adler32.h                                                     \
+           hwcontext_videotoolbox.h                                      \
+           hwcontext_vdpau.h                                             \
+           hwcontext_vulkan.h                                            \
++		  hwcontext_mlu.h                                               \
+           imgutils.h                                                    \
+           intfloat.h                                                    \
+           intreadwrite.h                                                \
+@@ -186,6 +187,7 @@ OBJS-$(CONFIG_VAAPI)                    += hwcontext_vaapi.o
+ OBJS-$(CONFIG_VIDEOTOOLBOX)             += hwcontext_videotoolbox.o
+ OBJS-$(CONFIG_VDPAU)                    += hwcontext_vdpau.o
+ OBJS-$(CONFIG_VULKAN)                   += hwcontext_vulkan.o
 +OBJS-$(CONFIG_MLU)                      += hwcontext_mlu.o
- OBJS-$(CONFIG_D3D11VA)                  += hwcontext_d3d11va.o
- OBJS-$(CONFIG_DXVA2)                    += hwcontext_dxva2.o
- OBJS-$(CONFIG_LIBDRM)                   += hwcontext_drm.o
-@@ -182,6 +184,7 @@ SLIBOBJS-$(HAVE_GNU_WINDRES)            += avutilres.o
- SKIPHEADERS-$(HAVE_CUDA_H)             += hwcontext_cuda.h
- SKIPHEADERS-$(CONFIG_CUDA)             += hwcontext_cuda_internal.h     \
-                                           cuda_check.h
+ 
+ OBJS += $(COMPAT_OBJS:%=../compat/%)
+ 
+@@ -203,6 +205,7 @@ SKIPHEADERS-$(CONFIG_VAAPI)            += hwcontext_vaapi.h
+ SKIPHEADERS-$(CONFIG_VIDEOTOOLBOX)     += hwcontext_videotoolbox.h
+ SKIPHEADERS-$(CONFIG_VDPAU)            += hwcontext_vdpau.h
+ SKIPHEADERS-$(CONFIG_VULKAN)           += hwcontext_vulkan.h
 +SKIPHEADERS-$(CONFIG_MLU)              += hwcontext_mlu.h
- SKIPHEADERS-$(CONFIG_D3D11VA)          += hwcontext_d3d11va.h
- SKIPHEADERS-$(CONFIG_DXVA2)            += hwcontext_dxva2.h
- SKIPHEADERS-$(CONFIG_QSV)              += hwcontext_qsv.h
-diff --git a/libavutil/frame.c b/libavutil/frame.c
-index dcf1fc3d17..4513153735 100644
---- a/libavutil/frame.c
-+++ b/libavutil/frame.c
-@@ -25,6 +25,7 @@
- #include "imgutils.h"
- #include "mem.h"
- #include "samplefmt.h"
-+#include "hwcontext.h"
  
- #if FF_API_FRAME_GET_SET
- MAKE_ACCESSORS(AVFrame, frame, int64_t, best_effort_timestamp)
-@@ -626,7 +627,10 @@ int av_frame_make_writable(AVFrame *frame)
-     tmp.channels       = frame->channels;
-     tmp.channel_layout = frame->channel_layout;
-     tmp.nb_samples     = frame->nb_samples;
--    ret = av_frame_get_buffer(&tmp, 32);
-+    if (frame->hw_frames_ctx)
-+        ret = av_hwframe_get_buffer(frame->hw_frames_ctx, &tmp, 0);
-+    else
-+        ret = av_frame_get_buffer(&tmp, 32);
-     if (ret < 0)
-         return ret;
- 
+ TESTPROGS = adler32                                                     \
+             aes                                                         \
 diff --git a/libavutil/hwcontext.c b/libavutil/hwcontext.c
-index f1e404ab20..353d6eb8db 100644
+index d13d0f7c9b..92ae8f46a2 100644
 --- a/libavutil/hwcontext.c
 +++ b/libavutil/hwcontext.c
-@@ -32,6 +32,9 @@ static const HWContextType * const hw_table[] = {
- #if CONFIG_CUDA
-     &ff_hwcontext_type_cuda,
+@@ -62,6 +62,10 @@ static const HWContextType * const hw_table[] = {
+ #if CONFIG_VULKAN
+     &ff_hwcontext_type_vulkan,
  #endif
 +#if CONFIG_MLU
 +    &ff_hwcontext_type_mlu,
 +#endif
- #if CONFIG_D3D11VA
-     &ff_hwcontext_type_d3d11va,
- #endif
-@@ -64,6 +67,7 @@ static const HWContextType * const hw_table[] = {
- 
- static const char *const hw_type_names[] = {
-     [AV_HWDEVICE_TYPE_CUDA]   = "cuda",
-+    [AV_HWDEVICE_TYPE_MLU]   = "mlu",
-     [AV_HWDEVICE_TYPE_DRM]    = "drm",
-     [AV_HWDEVICE_TYPE_DXVA2]  = "dxva2",
-     [AV_HWDEVICE_TYPE_D3D11VA] = "d3d11va",
-@@ -354,6 +358,7 @@ int av_hwframe_ctx_init(AVBufferRef *ref)
-     if (ret < 0)
-         return ret;
- 
 +
-     /* format-specific init */
-     if (ctx->internal->hw_type->frames_init) {
-         ret = ctx->internal->hw_type->frames_init(ctx);
+     NULL,
+ };
+ 
+@@ -77,6 +81,7 @@ static const char *const hw_type_names[] = {
+     [AV_HWDEVICE_TYPE_VIDEOTOOLBOX] = "videotoolbox",
+     [AV_HWDEVICE_TYPE_MEDIACODEC] = "mediacodec",
+     [AV_HWDEVICE_TYPE_VULKAN] = "vulkan",
++    [AV_HWDEVICE_TYPE_MLU]   = "mlu",
+ };
+ 
+ enum AVHWDeviceType av_hwdevice_find_type_by_name(const char *name)
 diff --git a/libavutil/hwcontext.h b/libavutil/hwcontext.h
-index f5a4b62387..95ac2780c9 100644
+index 04d19d89c2..a6c5057e4f 100644
 --- a/libavutil/hwcontext.h
 +++ b/libavutil/hwcontext.h
-@@ -36,6 +36,7 @@ enum AVHWDeviceType {
-     AV_HWDEVICE_TYPE_DRM,
+@@ -37,6 +37,7 @@ enum AVHWDeviceType {
      AV_HWDEVICE_TYPE_OPENCL,
      AV_HWDEVICE_TYPE_MEDIACODEC,
+     AV_HWDEVICE_TYPE_VULKAN,
 +    AV_HWDEVICE_TYPE_MLU,
  };
  
  typedef struct AVHWDeviceInternal AVHWDeviceInternal;
 diff --git a/libavutil/hwcontext_internal.h b/libavutil/hwcontext_internal.h
-index 77dc47ddd6..0f7bb9957f 100644
+index e6266494ac..de6bf2a769 100644
 --- a/libavutil/hwcontext_internal.h
 +++ b/libavutil/hwcontext_internal.h
-@@ -163,6 +163,7 @@ int ff_hwframe_map_create(AVBufferRef *hwframe_ref,
- int ff_hwframe_map_replace(AVFrame *dst, const AVFrame *src);
- 
- extern const HWContextType ff_hwcontext_type_cuda;
+@@ -174,5 +174,6 @@ extern const HWContextType ff_hwcontext_type_vdpau;
+ extern const HWContextType ff_hwcontext_type_videotoolbox;
+ extern const HWContextType ff_hwcontext_type_mediacodec;
+ extern const HWContextType ff_hwcontext_type_vulkan;
 +extern const HWContextType ff_hwcontext_type_mlu;
- extern const HWContextType ff_hwcontext_type_d3d11va;
- extern const HWContextType ff_hwcontext_type_drm;
- extern const HWContextType ff_hwcontext_type_dxva2;
+ 
+ #endif /* AVUTIL_HWCONTEXT_INTERNAL_H */
 diff --git a/libavutil/hwcontext_mlu.c b/libavutil/hwcontext_mlu.c
 new file mode 100644
-index 0000000000..74c93d0333
+index 0000000000..645599c3b9
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.c
-@@ -0,0 +1,458 @@
+@@ -0,0 +1,456 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -10174,7 +10144,7 @@ index 0000000000..74c93d0333
 +    return 0;
 +}
 +
-+static int mlu_transfer_data_from(AVHWFramesContext *ctx, AVFrame *dst,
++static int mlu_transfer_data(AVHWFramesContext *ctx, AVFrame *dst,
 +                                   const AVFrame *src)
 +{
 +    // MLUFramesContext        *priv = ctx->internal->priv;
@@ -10188,37 +10158,35 @@ index 0000000000..74c93d0333
 +    for (i = 0; i < FF_ARRAY_ELEMS(src->data) && src->data[i]; i++) {
 +        // nBytes = src->linesize[i] * src->height * (i ? 1.0 / 2 : 1);
 +        nBytes = FFMIN(src->linesize[i], dst->linesize[i]) * src->height * (i ? 1.0 / 2 : 1);
-+        cnrt_ret = mlu_ctx->mluMemcpyD2H(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_DEV2HOST);
-+        if (cnrt_ret != cnrtSuccess) {
-+            av_log(ctx, AV_LOG_ERROR, "d2h: dev %p -> host %p size %lu \n", src->data[i], dst->data[i], nBytes);
-+            av_log(ctx, AV_LOG_ERROR, " mluMemcpyD2H error occur, fuc: %s, line:%d\n", __func__, __LINE__);
-+            return -1;
-+        }
-+    }
-+
-+    return 0;
-+}
-+
-+static int mlu_transfer_data_to(AVHWFramesContext *ctx, AVFrame *dst,
-+                                 const AVFrame *src)
-+{
-+    // MLUFramesContext        *priv = ctx->internal->priv;
-+    AVHWDeviceContext *device_ctx = ctx->device_ctx;
-+    AVMLUDeviceContext     *hwctx = device_ctx->hwctx;
-+    MluContext           *mlu_ctx = hwctx->mlu_ctx;
-+
-+    int i;
-+    size_t nBytes;
-+    cnrtRet_t cnrt_ret;
-+
-+    for (i = 0; i < FF_ARRAY_ELEMS(src->data) && src->data[i]; i++) {
-+        // nBytes = src->linesize[i] * src->height * (i ? 1.0 / 2 : 1);
-+        nBytes = FFMIN(src->linesize[i], dst->linesize[i]) * src->height * (i ? 1.0 / 2 : 1);
-+        cnrt_ret = mlu_ctx->mluMemcpyH2D(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_HOST2DEV);
-+        if (cnrt_ret != CNRT_RET_SUCCESS) {
-+            av_log(ctx, AV_LOG_ERROR, "h2d: host %p -> dev %p, size %lu \n", src->data[i], dst->data[i], nBytes);
-+            av_log(ctx, AV_LOG_ERROR, "mluMemcpyH2D error occur, func: %s, line: %d\n", __func__, __LINE__);
-+            return -1;
++        if (src->hw_frames_ctx && dst->hw_frames_ctx) {
++            cnrt_ret = mlu_ctx->mluMemcpyD2D(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_DEV2DEV);
++            if (cnrt_ret != CNRT_RET_SUCCESS) {
++                av_log(ctx, AV_LOG_ERROR, "d2d: dev %p -> dev %p, size %lu \n", src->data[i], dst->data[i], nBytes);
++                av_log(ctx, AV_LOG_ERROR, "mluMemcpyD2D error occur, func: %s, line: %d\n", __func__, __LINE__);
++                return -1;
++            }
++        } else if (src->hw_frames_ctx) {
++            cnrt_ret = mlu_ctx->mluMemcpyD2H(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_DEV2HOST);
++            if (cnrt_ret != cnrtSuccess) {
++                av_log(ctx, AV_LOG_ERROR, "d2h: dev %p -> host %p size %lu \n", src->data[i], dst->data[i], nBytes);
++                av_log(ctx, AV_LOG_ERROR, " mluMemcpyD2H error occur, fuc: %s, line:%d\n", __func__, __LINE__);
++                return -1;
++            }
++        } else if (dst->hw_frames_ctx) {
++            cnrt_ret = mlu_ctx->mluMemcpyH2D(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_HOST2DEV);
++            if (cnrt_ret != CNRT_RET_SUCCESS) {
++                av_log(ctx, AV_LOG_ERROR, "h2d: host %p -> dev %p, size %lu \n", src->data[i], dst->data[i], nBytes);
++                av_log(ctx, AV_LOG_ERROR, "mluMemcpyH2D error occur, func: %s, line: %d\n", __func__, __LINE__);
++                return -1;
++            }
++        } else {
++            // H2H
++            cnrt_ret = mlu_ctx->mluMemcpyH2D(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_HOST2HOST);
++            if (cnrt_ret != CNRT_RET_SUCCESS) {
++                av_log(ctx, AV_LOG_ERROR, "h2h: host %p -> host %p, size %lu \n", src->data[i], dst->data[i], nBytes);
++                av_log(ctx, AV_LOG_ERROR, "mluMemcpyH2H error occur, func: %s, line: %d\n", __func__, __LINE__);
++                return -1;
++            }
 +        }
 +    }
 +
@@ -10447,8 +10415,8 @@ index 0000000000..74c93d0333
 +    .frames_init          = mlu_frames_init,
 +    .frames_get_buffer    = mlu_get_buffer,
 +    .transfer_get_formats = mlu_transfer_get_formats,
-+    .transfer_data_to     = mlu_transfer_data_to,
-+    .transfer_data_from   = mlu_transfer_data_from,
++    .transfer_data_to     = mlu_transfer_data,
++    .transfer_data_from   = mlu_transfer_data,
 +
 +    .pix_fmts             = (const enum AVPixelFormat[]){ AV_PIX_FMT_MLU, AV_PIX_FMT_NONE },
 +};
@@ -10839,28 +10807,30 @@ index 0000000000..248af0bf6e
 +
 +#endif
 diff --git a/libavutil/pixdesc.c b/libavutil/pixdesc.c
-index b97b0665b0..db47325536 100644
+index 18c7a0efc8..d41a34ec27 100644
 --- a/libavutil/pixdesc.c
 +++ b/libavutil/pixdesc.c
-@@ -2050,6 +2050,10 @@ static const AVPixFmtDescriptor av_pix_fmt_descriptors[AV_PIX_FMT_NB] = {
-         .name = "cuda",
+@@ -2395,6 +2395,11 @@ static const AVPixFmtDescriptor av_pix_fmt_descriptors[AV_PIX_FMT_NB] = {
+         .name = "vulkan",
          .flags = AV_PIX_FMT_FLAG_HWACCEL,
      },
 +    [AV_PIX_FMT_MLU] = {
 +        .name = "mlu",
 +        .flags = AV_PIX_FMT_FLAG_HWACCEL,
 +    },
-     [AV_PIX_FMT_AYUV64LE] = {
-         .name = "ayuv64le",
-         .nb_components = 4,
++
+ };
+ #if FF_API_PLUS1_MINUS1
+ FF_ENABLE_DEPRECATION_WARNINGS
 diff --git a/libavutil/pixfmt.h b/libavutil/pixfmt.h
-index 8b54c9415b..f79e4388a8 100644
+index 46ef211add..a99ff80568 100644
 --- a/libavutil/pixfmt.h
 +++ b/libavutil/pixfmt.h
-@@ -348,6 +348,12 @@ enum AVPixelFormat {
-     AV_PIX_FMT_NV24,      ///< planar YUV 4:4:4, 24bpp, 1 plane for Y and 1 plane for the UV components, which are interleaved (first byte U and the following byte V)
-     AV_PIX_FMT_NV42,      ///< as above, but U and V bytes are swapped
+@@ -360,6 +360,13 @@ enum AVPixelFormat {
  
+     AV_PIX_FMT_X2RGB10LE, ///< packed RGB 10:10:10, 30bpp, (msb)2X 10R 10G 10B(lsb), little-endian, X=unused/undefined
+     AV_PIX_FMT_X2RGB10BE, ///< packed RGB 10:10:10, 30bpp, (msb)2X 10R 10G 10B(lsb), big-endian, X=unused/undefined
++
 +    /**
 +     * HW acceleration through MLU. data[i] contain mlu deviceptr pointers
 +     * exactly as for system memory frames.
