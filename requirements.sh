@@ -11,7 +11,7 @@ else
     echo "Unsupported operating system"
     exit 1
 fi
-if [[ "$OS" != "ubuntu" && "$OS" != "centos" && "$OS" != "kylin" ]]; then
+if [[ "$OS" != "ubuntu" && "$OS" != "centos" && "$OS" != "kylin" && "$OS" != "debian" ]]; then
     echo "Unsupported operating system: $OS"
     exit 1
 fi
@@ -34,6 +34,10 @@ install_dependencies() {
         SUDO=""
     fi
     if [ "$OS" == "ubuntu" ]; then
+        $SUDO apt-get update
+        $SUDO apt-get install -y autoconf automake build-essential cmake git-core libtool pkg-config wget
+        $SUDO apt-get install -y libass-dev libfreetype6-dev libsdl2-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev texinfo zlib1g-dev yasm nasm libmp3lame-dev
+    elif [ "$OS" == "debian" ]; then
         $SUDO apt-get update
         $SUDO apt-get install -y autoconf automake build-essential cmake git-core libtool pkg-config wget
         $SUDO apt-get install -y libass-dev libfreetype6-dev libsdl2-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev texinfo zlib1g-dev yasm nasm libmp3lame-dev
