@@ -38,8 +38,11 @@ clean_ubuntu() {
   echo "Removing potential ffmpeg files..."
   rm -rf /usr/local/bin/ffmpeg /usr/local/bin/ffplay /usr/local/bin/ffprobe
   rm -rf /usr/local/lib/libav* /usr/local/lib/libsw* /usr/local/lib/libpostproc*
+  rm -rf /usr/bin/ffmpeg /usr/bin/ffplay /usr/bin/ffprobe
+  rm -rf /usr/lib/libav* /usr/lib/libsw* /usr/lib/libpostproc*
   rm -rf /usr/local/include/libav* /usr/local/include/libsw* /usr/local/include/libpostproc*
   rm -rf /usr/include/libav* /usr/include/libsw* /usr/include/libpostproc*
+  rm -rf /usr/lib/x86_64-linux-gnu/libav* /usr/lib/x86_64-linux-gnu/libsw* /usr/lib/x86_64-linux-gnu/libpostproc*
   rm -rf /usr/share/ffmpeg
 }
 
@@ -65,6 +68,8 @@ clean_centos() {
   rm -rf /usr/local/bin/ffmpeg /usr/local/bin/ffplay /usr/local/bin/ffprobe
   rm -rf /usr/local/lib/libav* /usr/local/lib/libsw* /usr/local/lib/libpostproc*
   rm -rf /usr/local/include/libav* /usr/local/include/libsw* /usr/local/include/libpostproc*
+  rm -rf /usr/bin/ffmpeg /usr/bin/ffplay /usr/bin/ffprobe
+  rm -rf /usr/lib/libav* /usr/lib/libsw* /usr/lib/libpostproc*
   rm -rf /usr/include/libav* /usr/include/libsw* /usr/include/libpostproc*
   rm -rf /usr/share/ffmpeg
 }
@@ -80,6 +85,9 @@ clean_common_files() {
 # Call the appropriate clean function based on detected OS
 case "$OS" in
   ubuntu)
+    clean_ubuntu
+    ;;
+  debian)
     clean_ubuntu
     ;;
   centos)

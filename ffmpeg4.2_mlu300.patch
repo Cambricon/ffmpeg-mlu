@@ -1,6 +1,6 @@
-From 317b6817e95c4bf92d0033dd268f241eaeec34d8 Mon Sep 17 00:00:00 2001
-From: solution-sdk <solution-sdk@cambricon.com>
-Date: Fri, 20 Sep 2024 13:26:15 +0800
+From 0cb724ad1abc878709e47e01390bbbbe31e385e1 Mon Sep 17 00:00:00 2001
+From: fanhairui <fanhairui@cambricon.com>
+Date: Wed, 25 Sep 2024 16:12:36 +0800
 Subject: [PATCH] release mlu300
 
 ---
@@ -19,7 +19,7 @@ Subject: [PATCH] release mlu300
  libavcodec/Makefile                     |   10 +
  libavcodec/allcodecs.c                  |   11 +
  libavcodec/mlumpp_codec.h               |  449 +++++++
- libavcodec/mlumpp_dec.c                 | 1593 +++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c                 | 1599 +++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c            |  221 ++++
  libavcodec/mlumpp_enc_hevc.c            |  231 ++++
  libavcodec/mlumpp_enc_jpeg.c            |  126 ++
@@ -27,7 +27,7 @@ Subject: [PATCH] release mlu300
  libavcodec/mlumpp_vid_enc.h             |  129 ++
  libavfilter/Makefile                    |   10 +
  libavfilter/allfilters.c                |   11 +
- libavfilter/mlu_filter_common.h         |  145 +++
+ libavfilter/mlu_filter_common.h         |  145 ++
  libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  414 ++++++
  libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  430 ++++++
  libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  426 ++++++
@@ -37,7 +37,7 @@ Subject: [PATCH] release mlu300
  libavfilter/vf_rotate_mlu.c             |  326 +++++
  libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  431 ++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  421 ++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c      |  436 +++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  436 ++++++
  libavutil/Makefile                      |    3 +
  libavutil/frame.c                       |    6 +-
  libavutil/hwcontext.c                   |    5 +
@@ -48,7 +48,7 @@ Subject: [PATCH] release mlu300
  libavutil/hwcontext_mlu_internal.h      |   86 ++
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 44 files changed, 10498 insertions(+), 1 deletion(-)
+ 44 files changed, 10504 insertions(+), 1 deletion(-)
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_change_mlu.c
  create mode 100644 doc/examples/encode_mlu.c
@@ -2046,7 +2046,7 @@ index d2f9a39ce5..476c82cdd7
  AVCodec * codec_list[] = {
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..37237cd6e4
+index 0000000000..4360395417
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
 @@ -0,0 +1,449 @@
@@ -2099,12 +2099,12 @@ index 0000000000..37237cd6e4
 +
 +#define FF_MLU_MAJOR_VERSION 4
 +#define FF_MLU_MINOR_VERSION 1
-+#define FF_MLU_PATCH_VERSION 0
++#define FF_MLU_PATCH_VERSION 1
 +#define FF_MLU_VERSION  (FF_MLU_MAJOR_VERSION * 1000 + FF_MLU_MINOR_VERSION * 100 + FF_MLU_PATCH_VERSION)
 +#define CNCODEC_VERSION (CNCODEC_MAJOR_VERSION* 1000 + CNCODEC_MINOR_VERSION* 100 + CNCODEC_PATCH_VERSION)
 +
 +#define cndec_version_info(void)                                              \
-+    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 09192024\n");                        \
++    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 09252024\n");                        \
 +    av_log(NULL, AV_LOG_DEBUG, "CNCODEC: %d.%d.%d \n",                        \
 +        CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION); \
 +    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",                      \
@@ -2501,10 +2501,10 @@ index 0000000000..37237cd6e4
 +#endif /* MLUMPP_CODEC_H */
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..40b26141c1
+index 0000000000..6d3ee4e0ba
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1593 @@
+@@ -0,0 +1,1599 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2557,7 +2557,7 @@ index 0000000000..40b26141c1
 +    int device_id;
 +    int instance_id;
 +    int num_input_buffers;
-+    int num_output_buffers;
++    int output_buf_num;
 +    char *crop1_str;
 +    char *crop2_str;
 +    char *crop_str;
@@ -3025,6 +3025,8 @@ index 0000000000..40b26141c1
 +        params.max_height = info->coded_height > ctx->max_height ? info->coded_height : ctx->max_height;
 +        ctx->first_max_width = params.max_width;
 +        ctx->first_max_height = params.max_height;
++        ctx->output_buf_num = ctx->output_buf_num > (info->min_output_buf_num + 2) ?
++                ctx->output_buf_num : (info->min_output_buf_num + 2);
 +        ctx->first_seq = 0;
 +    } else {
 +        if (info->coded_width > ctx->first_max_width || info->coded_height > ctx->first_max_height) {
@@ -3037,7 +3039,12 @@ index 0000000000..40b26141c1
 +            params.max_height = ctx->first_max_height;
 +        }
 +    }
-+    params.output_buf_num    = info->min_output_buf_num + ctx->num_output_buffers;
++    if (ctx->output_buf_num < info->min_output_buf_num + 2) {
++        av_log(avctx, AV_LOG_ERROR, "reconfigure output buf num(%d) exceeds the initial value(%d)!\n",
++                info->min_output_buf_num + 2, ctx->output_buf_num);
++        return CNCODEC_ERROR_INVALID_VALUE;
++    }
++    params.output_buf_num    = ctx->output_buf_num;
 +    params.pixel_format      = cncodec_get_cn_pixfmt_by_av_pixfmt(avctx->sw_pix_fmt);
 +    params.color_space       = ctx->color_space;
 +    params.stride_align      = ctx->stride_align;
@@ -3299,7 +3306,7 @@ index 0000000000..40b26141c1
 +
 +    if (avpkt && avpkt->size) {
 +        ret = cndec_send_pkt_to_decoder(avctx, avpkt);
-+        if (ret < 0) {
++        if (ret != 0) {
 +            av_packet_unref(&filtered_packet);
 +            return AVERROR(EINVAL);
 +        }
@@ -3834,7 +3841,7 @@ index 0000000000..40b26141c1
 +        goto error;
 +    }
 +
-+    ctx->async_queue_depth = ctx->num_output_buffers;
++    ctx->async_queue_depth = ctx->output_buf_num;
 +    ctx->frame_queue = av_fifo_alloc(ctx->async_queue_depth * sizeof(DecEventInfoMsg_t));
 +    if (!ctx->frame_queue) {
 +        av_log(avctx, AV_LOG_ERROR, "Failed to create jpeg frame queue \n");
@@ -3870,7 +3877,7 @@ index 0000000000..40b26141c1
 +        ctx->codec_params_.max_width      = FFALIGN(avctx->width,  JFRAME_STRIDE_ALIGN);
 +        ctx->codec_params_.max_height     = FFALIGN(avctx->height, JFRAME_HEIGHT_ALIGN);
 +        ctx->codec_params_.stride_align   = JFRAME_STRIDE_ALIGN; // ctx->stride_align;
-+        ctx->codec_params_.output_buf_num = ctx->num_output_buffers;
++        ctx->codec_params_.output_buf_num = ctx->output_buf_num;
 +        ctx->codec_params_.pixel_format   = cncodec_get_cn_pixfmt_by_av_pixfmt(avctx->sw_pix_fmt);
 +        ctx->codec_params_.color_space    = ctx->color_space;
 +        ctx->codec_params_.output_buf_source = CNCODEC_BUF_SOURCE_LIB;
@@ -3998,8 +4005,7 @@ index 0000000000..40b26141c1
 +#define MLU3XX_COMMON_OPTS \
 +    { "device_id",      "use to choose the accelerator card",     OFFSET(device_id),         AV_OPT_TYPE_INT, {.i64 = 0 }, 0, INT_MAX, VD }, \
 +    { "mlu",            "use to choose the accelerator card",     OFFSET(device_id),         AV_OPT_TYPE_INT, {.i64 = 0 }, 0, INT_MAX, VD }, \
-+    { "input_buf_num",  "number of input buffers for decoder",    OFFSET(num_input_buffers), AV_OPT_TYPE_INT, {.i64 = 4 }, 1, 18,  VD }, \
-+    { "output_buf_num", "number of output buffers for decoder",   OFFSET(num_output_buffers),AV_OPT_TYPE_INT, {.i64 = 2 }, 1, 18,  VD }, \
++    { "output_buf_num", "number of output buffers for decoder",   OFFSET(output_buf_num),    AV_OPT_TYPE_INT, {.i64 = 2 }, 1, 18,  VD }, \
 +    { "stride_align",   "stride align of output buf for decoder", OFFSET(stride_align),      AV_OPT_TYPE_INT, {.i64 = 1 }, 0, 128, VD }, \
 +    { "max_width",      "max width of decoder buffer",            OFFSET(max_width),         AV_OPT_TYPE_INT, {.i64 = 0 }, 0, 8192,VD }, \
 +    { "max_height",     "max height of decoder buffer",           OFFSET(max_height),        AV_OPT_TYPE_INT, {.i64 = 0 }, 0, 4320,VD }, \
