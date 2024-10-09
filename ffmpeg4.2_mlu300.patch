@@ -1,9 +1,10 @@
-From 0cb724ad1abc878709e47e01390bbbbe31e385e1 Mon Sep 17 00:00:00 2001
+From 23397bdf493fe19c3bb4294b4fdf0bd123003d03 Mon Sep 17 00:00:00 2001
 From: fanhairui <fanhairui@cambricon.com>
-Date: Wed, 25 Sep 2024 16:12:36 +0800
+Date: Wed, 9 Oct 2024 09:54:45 +0800
 Subject: [PATCH] release mlu300
 
 ---
+ VERSION                                 |    1 +
  configure                               |   51 +
  doc/examples/Makefile                   |    6 +
  doc/examples/decode_mlu.c               |  213 +++
@@ -12,6 +13,7 @@ Subject: [PATCH] release mlu300
  doc/examples/hw_decode_mlu.c            |  270 ++++
  doc/examples/hw_encode_change_mlu.c     |  286 ++++
  doc/examples/hw_encode_mlu.c            |  257 ++++
+ ffbuild/version.sh                      |   26 -
  fftools/Makefile                        |    1 +
  fftools/ffmpeg.h                        |    2 +
  fftools/ffmpeg_mlu.c                    |   74 ++
@@ -19,15 +21,15 @@ Subject: [PATCH] release mlu300
  libavcodec/Makefile                     |   10 +
  libavcodec/allcodecs.c                  |   11 +
  libavcodec/mlumpp_codec.h               |  449 +++++++
- libavcodec/mlumpp_dec.c                 | 1599 +++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c                 | 1595 +++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c            |  221 ++++
  libavcodec/mlumpp_enc_hevc.c            |  231 ++++
- libavcodec/mlumpp_enc_jpeg.c            |  126 ++
- libavcodec/mlumpp_vid_enc.c             | 1139 ++++++++++++++++
+ libavcodec/mlumpp_enc_jpeg.c            |  124 ++
+ libavcodec/mlumpp_vid_enc.c             | 1133 ++++++++++++++++
  libavcodec/mlumpp_vid_enc.h             |  129 ++
  libavfilter/Makefile                    |   10 +
  libavfilter/allfilters.c                |   11 +
- libavfilter/mlu_filter_common.h         |  145 ++
+ libavfilter/mlu_filter_common.h         |  145 +++
  libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  414 ++++++
  libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  430 ++++++
  libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  426 ++++++
@@ -37,7 +39,7 @@ Subject: [PATCH] release mlu300
  libavfilter/vf_rotate_mlu.c             |  326 +++++
  libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  431 ++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  421 ++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c      |  436 ++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  436 +++++++
  libavutil/Makefile                      |    3 +
  libavutil/frame.c                       |    6 +-
  libavutil/hwcontext.c                   |    5 +
@@ -48,7 +50,8 @@ Subject: [PATCH] release mlu300
  libavutil/hwcontext_mlu_internal.h      |   86 ++
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 44 files changed, 10504 insertions(+), 1 deletion(-)
+ 46 files changed, 10493 insertions(+), 27 deletions(-)
+ create mode 100644 VERSION
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_change_mlu.c
  create mode 100644 doc/examples/encode_mlu.c
@@ -80,6 +83,13 @@ Subject: [PATCH] release mlu300
  create mode 100644 libavutil/hwcontext_mlu.h
  create mode 100644 libavutil/hwcontext_mlu_internal.h
 
+diff --git a/VERSION b/VERSION
+new file mode 100644
+index 0000000000..c51a550e1e
+--- /dev/null
++++ b/VERSION
+@@ -0,0 +1 @@
++4.2.2_v4.1.1_80014202
 diff --git a/configure b/configure
 index 34c2adb4a4..948aa252e9 100755
 --- a/configure
@@ -1825,6 +1835,43 @@ index 0000000000..3593a7e859
 +    }
 +    return ret;
 +}
+diff --git a/ffbuild/version.sh b/ffbuild/version.sh
+index edc4dd33c5..2b5876814a 100755
+--- a/ffbuild/version.sh
++++ b/ffbuild/version.sh
+@@ -2,32 +2,6 @@
+ 
+ # Usage: version.sh <ffmpeg-root-dir> <output-version.h> <extra-version>
+ 
+-# check for git short hash
+-if ! test "$revision"; then
+-    if (cd "$1" && grep git RELEASE 2> /dev/null >/dev/null) ; then
+-        revision=$(cd "$1" && git describe --tags --match N 2> /dev/null)
+-    else
+-        revision=$(cd "$1" && git describe --tags --always 2> /dev/null)
+-    fi
+-fi
+-
+-# Shallow Git clones (--depth) do not have the N tag:
+-# use 'git-YYYY-MM-DD-hhhhhhh'.
+-test "$revision" || revision=$(cd "$1" &&
+-  git log -1 --pretty=format:"git-%cd-%h" --date=short 2> /dev/null)
+-
+-# Snapshots from gitweb are in a directory called ffmpeg-hhhhhhh or
+-# ffmpeg-HEAD-hhhhhhh.
+-if [ -z "$revision" ]; then
+-  srcdir=$(cd "$1" && pwd)
+-  case "$srcdir" in
+-    */ffmpeg-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f])
+-      git_hash="${srcdir##*-}";;
+-    */ffmpeg-HEAD-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f])
+-      git_hash="${srcdir##*-}";;
+-  esac
+-fi
+-
+ # no revision number found
+ test "$revision" || revision=$(cd "$1" && cat RELEASE 2> /dev/null)
+ 
 diff --git a/fftools/Makefile b/fftools/Makefile
 index 6cec666dd9..ea35e26a4c 100644
 --- a/fftools/Makefile
@@ -2046,7 +2093,7 @@ index d2f9a39ce5..476c82cdd7
  AVCodec * codec_list[] = {
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..4360395417
+index 0000000000..cb14d42342
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
 @@ -0,0 +1,449 @@
@@ -2104,10 +2151,10 @@ index 0000000000..4360395417
 +#define CNCODEC_VERSION (CNCODEC_MAJOR_VERSION* 1000 + CNCODEC_MINOR_VERSION* 100 + CNCODEC_PATCH_VERSION)
 +
 +#define cndec_version_info(void)                                              \
-+    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 09252024\n");                        \
++    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 80014202\n");                        \
 +    av_log(NULL, AV_LOG_DEBUG, "CNCODEC: %d.%d.%d \n",                        \
 +        CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION); \
-+    av_log(NULL, AV_LOG_INFO, "FFMPEG_MLU: %d.%d.%d \n",                      \
++    av_log(NULL, AV_LOG_DEBUG, "FFMPEG_MLU: %d.%d.%d \n",                     \
 +        FF_MLU_MAJOR_VERSION, FF_MLU_MINOR_VERSION, FF_MLU_PATCH_VERSION);
 +
 +#define MLUMPP_CHECK(avctx, ret, err_msg) {                               \
@@ -2501,10 +2548,10 @@ index 0000000000..4360395417
 +#endif /* MLUMPP_CODEC_H */
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..6d3ee4e0ba
+index 0000000000..87621927c5
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1599 @@
+@@ -0,0 +1,1595 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4020,15 +4067,11 @@ index 0000000000..6d3ee4e0ba
 +    { "resize", "Resize (width)x(height)",            OFFSET(resize_str), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, VD },
 +    { "trace",  "Whether open trace switch or not",   OFFSET(trace_flag), AV_OPT_TYPE_INT,    { .i64 = 0    }, 0, 3, VD },
 +    { "compress_scale", "Set the scale value of the stream_buf_size based on the image size", OFFSET(compress_scale), AV_OPT_TYPE_FLOAT, { .dbl = 1.5f }, 0.f, 4.f, VD },
-+#if FF_MLU_VERSION >= 3300
 +    { "backend",        "hardware backend for image decoder",    OFFSET(image_dec_backend), AV_OPT_TYPE_INT,  { .i64 = CNCODEC_BACKEND_DEFAULT_HW },
 +                                                            CNCODEC_BACKEND_DEFAULT_HW, CNCODEC_BACKEND_VPU_HW, VD,  "backend" },
 +    { "default",            "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_BACKEND_DEFAULT_HW },     0,  0,  VD,  "backend" },
 +    { "jpu",                "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_BACKEND_JPU_HW },         0,  0,  VD,  "backend" },
 +    { "vpu",                "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_BACKEND_VPU_HW },         0,  0,  VD,  "backend" },
-+#else
-+    { "backend",        "hardware backend for image decoder",    OFFSET(image_dec_backend), AV_OPT_TYPE_INT, {.i64 = 0 }, 0, 2,   VD },
-+#endif
 +    { "dec_colorspace", "decode color space", OFFSET(color_space), AV_OPT_TYPE_INT, { .i64 = CNCODEC_COLOR_SPACE_BT_709 }, CNCODEC_COLOR_SPACE_BT_601, CNCODEC_COLOR_SPACE_BT_2020_ER, VD, "dec_colorspace"},
 +    { "bt601",              "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_COLOR_SPACE_BT_601 },    0,  0,  VD,  "dec_colorspace" },
 +    { "bt709",              "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_COLOR_SPACE_BT_709 },    0,  0,  VD,  "dec_colorspace" },
@@ -4570,10 +4613,10 @@ index 0000000000..b29e454218
 +};
 diff --git a/libavcodec/mlumpp_enc_jpeg.c b/libavcodec/mlumpp_enc_jpeg.c
 new file mode 100644
-index 0000000000..cfff4d4fb4
+index 0000000000..3fa9dbee29
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_jpeg.c
-@@ -0,0 +1,126 @@
+@@ -0,0 +1,124 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4647,13 +4690,11 @@ index 0000000000..cfff4d4fb4
 +    { "mem_async",       "use async memory copy mode",  OFFSET(cnenc.mem_async),       AV_OPT_TYPE_BOOL, {.i64 = 0 }, 0, 1,  VE },
 +    { "max_width",       "max input frame width",       OFFSET(cnenc.max_width),       AV_OPT_TYPE_INT, { .i64 = 0 }, 0, 8192, VE },
 +    { "max_height",      "max input frame height",      OFFSET(cnenc.max_height),      AV_OPT_TYPE_INT, { .i64 = 0 }, 0, 8192, VE },
-+#if FF_MLU_VERSION >= 3300
 +    { "backend",         "encode preset mode",          OFFSET(cnenc.image_enc_backend), AV_OPT_TYPE_INT,  { .i64 = CNCODEC_BACKEND_DEFAULT_HW },
 +                                                            CNCODEC_BACKEND_DEFAULT_HW, CNCODEC_BACKEND_VPU_HW, VE,  "backend" },
 +    { "default",            "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_BACKEND_DEFAULT_HW },     0,  0,  VE,  "backend" },
 +    { "jpu",                "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_BACKEND_JPU_HW },         0,  0,  VE,  "backend" },
 +    { "vpu",                "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_BACKEND_VPU_HW },         0,  0,  VE,  "backend" },
-+#endif
 +    { NULL },
 +};
 +
@@ -4702,10 +4743,10 @@ index 0000000000..cfff4d4fb4
 +};
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100644
-index 0000000000..76544b5f64
+index 0000000000..4c4395411c
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1139 @@
+@@ -0,0 +1,1133 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -5704,11 +5745,9 @@ index 0000000000..76544b5f64
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.tier = cnctx->tier;
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.idr_period = cnctx->idr_period;
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.enable_sao = cnctx->enable_sao;
-+#if CNCODEC_VERSION >= 1500
 +        if (CN_370 < cncoedc_get_mlu_type(get_mlu_device_name(cnctx->mlu_ctx))) {
 +            cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.pixel_depth_minus8 = pixel_depth;
 +        }
-+#endif
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.enable_repeat_sps_pps =
 +            (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) ? 0 : 1;
 +        break;
@@ -5717,11 +5756,9 @@ index 0000000000..76544b5f64
 +        cnctx->enc_attr.coding_attr.profile          = cnctx->profile;
 +        cnctx->enc_attr.coding_attr.level            = cnctx->level;
 +        cnctx->enc_attr.coding_attr.codec_attr.h264_attr.idr_period = cnctx->idr_period;
-+#if CNCODEC_VERSION >= 1500
 +        if (CN_370 < cncoedc_get_mlu_type(get_mlu_device_name(cnctx->mlu_ctx))) {
 +            cnctx->enc_attr.coding_attr.codec_attr.h264_attr.pixel_depth_minus8 = pixel_depth;
 +        }
-+#endif
 +        cnctx->enc_attr.coding_attr.codec_attr.h264_attr.enable_repeat_sps_pps =
 +            (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) ? 0 : 1;
 +        break;
@@ -5737,9 +5774,7 @@ index 0000000000..76544b5f64
 +        }
 +        // FIX-ME:v3 Jpeg encoder not supported set input_buf_num 0 at present.
 +        cnctx->enc_attr.input_buf_num = cnctx->input_buf_num;
-+#if FF_MLU_VERSION >= 3300
 +        cnctx->enc_attr.coding_attr.backend = cnctx->image_enc_backend;
-+#endif
 +        break;
 +    default:
 +        av_log(avctx, AV_LOG_ERROR, "Unknown codec type, ret(%d)\n", avctx->codec_id);
