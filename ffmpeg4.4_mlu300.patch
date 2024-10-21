@@ -1,6 +1,6 @@
-From c9c476002087c49557b56d9b7e3f786c8b29b21e Mon Sep 17 00:00:00 2001
+From ad2011db1d5d82382e338aa90065303d4631f40a Mon Sep 17 00:00:00 2001
 From: fanhairui <fanhairui@cambricon.com>
-Date: Wed, 9 Oct 2024 09:54:23 +0800
+Date: Fri, 18 Oct 2024 16:16:47 +0800
 Subject: [PATCH] release mlu300
 
 ---
@@ -83,11 +83,11 @@ Subject: [PATCH] release mlu300
 
 diff --git a/VERSION b/VERSION
 new file mode 100644
-index 0000000000..80b6a6ded5
+index 0000000000..fb0b348114
 --- /dev/null
 +++ b/VERSION
 @@ -0,0 +1 @@
-+4.4.4_v4.1.1_80014202
++4.4.4_v4.1.2_81014202
 diff --git a/configure b/configure
 index fb55e04ee7..791e63dd95 100755
 --- a/configure
@@ -2090,7 +2090,7 @@ index f421dc909f..9bc7e46a29 100644
      &(const AVCodecHWConfigInternal) { \
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..b6979bb3a9
+index 0000000000..0104d28397
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
 @@ -0,0 +1,449 @@
@@ -2143,12 +2143,12 @@ index 0000000000..b6979bb3a9
 +
 +#define FF_MLU_MAJOR_VERSION 4
 +#define FF_MLU_MINOR_VERSION 1
-+#define FF_MLU_PATCH_VERSION 1
++#define FF_MLU_PATCH_VERSION 2
 +#define FF_MLU_VERSION  (FF_MLU_MAJOR_VERSION * 1000 + FF_MLU_MINOR_VERSION * 100 + FF_MLU_PATCH_VERSION)
 +#define CNCODEC_VERSION (CNCODEC_MAJOR_VERSION* 1000 + CNCODEC_MINOR_VERSION* 100 + CNCODEC_PATCH_VERSION)
 +
 +#define cndec_version_info(void)                                              \
-+    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 80014202\n");                        \
++    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 81014202\n");                        \
 +    av_log(NULL, AV_LOG_DEBUG, "CNCODEC: %d.%d.%d \n",                        \
 +        CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION); \
 +    av_log(NULL, AV_LOG_DEBUG, "FFMPEG_MLU: %d.%d.%d \n",                     \
@@ -2483,11 +2483,11 @@ index 0000000000..b6979bb3a9
 +#endif
 +#endif
 +static inline int mlu_device_affinity(AVMLUDeviceContext *dev_ctx) {
-+#if CONFIG_MLUAFFINITY
 +    MluContext *mlu_ctx = dev_ctx->mlu_ctx;
-+    int dev_hdl;
 +    MLUMPP_CHECK_OPT(NULL, mlu_ctx->mluSetDevice(mlu_ctx->mlu_id),
 +        "mluSetDevice failed", AVERROR(EINVAL));
++#if CONFIG_MLUAFFINITY
++    int dev_hdl;
 +    mluDevCheckErrors(mlu_ctx, mlu_ctx->mluDevGetDeviceHandleByIndex(mlu_ctx->mlu_id, &dev_hdl));
 +    mluDevCheckErrors(mlu_ctx, mlu_ctx->mluDevClearCurrentThreadAffinity(mlu_ctx->dev_version, dev_hdl));
 +    mluDevCheckErrors(mlu_ctx, mlu_ctx->mluDevSetCurrentThreadAffinity(mlu_ctx->dev_version, dev_hdl));
@@ -6144,7 +6144,7 @@ index 0872c6e0f2..105d8318dc 100644
  extern AVFilter ff_vf_select;
 diff --git a/libavfilter/mlu_filter_common.h b/libavfilter/mlu_filter_common.h
 new file mode 100644
-index 0000000000..47fb051a5f
+index 0000000000..618fa0f6ec
 --- /dev/null
 +++ b/libavfilter/mlu_filter_common.h
 @@ -0,0 +1,146 @@
@@ -6280,11 +6280,11 @@ index 0000000000..47fb051a5f
 +#endif
 +
 +static inline int mlu_device_affinity(AVMLUDeviceContext *dev_ctx) {
-+#if CONFIG_MLUAFFINITY
 +    MluContext *mlu_ctx = dev_ctx->mlu_ctx;
-+    int dev_hdl;
 +    MLUFILTER_CHECK_OPT(NULL, mlu_ctx->mluSetDevice(mlu_ctx->mlu_id),
 +        "mluSetDevice failed", AVERROR(EINVAL));
++#if CONFIG_MLUAFFINITY
++    int dev_hdl;
 +    mluDevCheckErrors(mlu_ctx, mlu_ctx->mluDevGetDeviceHandleByIndex(mlu_ctx->mlu_id, &dev_hdl));
 +    mluDevCheckErrors(mlu_ctx, mlu_ctx->mluDevClearCurrentThreadAffinity(mlu_ctx->dev_version, dev_hdl));
 +    mluDevCheckErrors(mlu_ctx, mlu_ctx->mluDevSetCurrentThreadAffinity(mlu_ctx->dev_version, dev_hdl));
