@@ -1,6 +1,6 @@
-From 816c9a35c671d8cd0d4ffd00822cca044ba61bcc Mon Sep 17 00:00:00 2001
+From 4bc542d854f9e15cf0a40b8e3d86d5afeb0f5eb8 Mon Sep 17 00:00:00 2001
 From: fanhairui <fanhairui@cambricon.com>
-Date: Fri, 13 Dec 2024 17:16:06 +0800
+Date: Fri, 7 Feb 2025 12:29:55 +0800
 Subject: [PATCH] release mlu300
 
 ---
@@ -21,36 +21,36 @@ Subject: [PATCH] release mlu300
  libavcodec/Makefile                     |   10 +
  libavcodec/allcodecs.c                  |   10 +
  libavcodec/hwconfig.h                   |    2 +
- libavcodec/mlumpp_codec.h               |  449 +++++++
- libavcodec/mlumpp_dec.c                 | 1595 +++++++++++++++++++++++
- libavcodec/mlumpp_enc_h264.c            |  219 ++++
- libavcodec/mlumpp_enc_hevc.c            |  230 ++++
+ libavcodec/mlumpp_codec.h               |  385 ++++++
+ libavcodec/mlumpp_dec.c                 | 1597 +++++++++++++++++++++++
+ libavcodec/mlumpp_enc_h264.c            |  217 +++
+ libavcodec/mlumpp_enc_hevc.c            |  228 ++++
  libavcodec/mlumpp_enc_jpeg.c            |  123 ++
- libavcodec/mlumpp_vid_enc.c             | 1160 +++++++++++++++++
- libavcodec/mlumpp_vid_enc.h             |  130 ++
+ libavcodec/mlumpp_vid_enc.c             | 1136 ++++++++++++++++
+ libavcodec/mlumpp_vid_enc.h             |  126 ++
  libavfilter/Makefile                    |   10 +
  libavfilter/allfilters.c                |   10 +
- libavfilter/mlu_filter_common.h         |  146 +++
- libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  413 ++++++
- libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  429 ++++++
- libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  425 ++++++
+ libavfilter/mlu_filter_common.h         |  120 ++
+ libavfilter/vf_cvt_rgbx2rgbx_mlu.c      |  412 ++++++
+ libavfilter/vf_cvt_rgbx2yuv_mlu.c       |  461 +++++++
+ libavfilter/vf_cvt_yuv2rgbx_mlu.c       |  459 +++++++
  libavfilter/vf_hwdownload_mlu.c         |  215 +++
  libavfilter/vf_hwupload_mlu.c           |  198 +++
  libavfilter/vf_overlay_mlu.c            |  702 ++++++++++
  libavfilter/vf_rotate_mlu.c             |  326 +++++
- libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  431 ++++++
+ libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  432 ++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  421 ++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c      |  436 +++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  435 ++++++
  libavutil/Makefile                      |    3 +
  libavutil/hwcontext.c                   |    5 +
  libavutil/hwcontext.h                   |    1 +
  libavutil/hwcontext_internal.h          |    1 +
- libavutil/hwcontext_mlu.c               |  436 +++++++
- libavutil/hwcontext_mlu.h               |  170 +++
+ libavutil/hwcontext_mlu.c               |  444 +++++++
+ libavutil/hwcontext_mlu.h               |  174 +++
  libavutil/hwcontext_mlu_internal.h      |   86 ++
  libavutil/pixdesc.c                     |    5 +
  libavutil/pixfmt.h                      |    7 +
- 46 files changed, 10503 insertions(+), 26 deletions(-)
+ 46 files changed, 10460 insertions(+), 26 deletions(-)
  create mode 100644 VERSION
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_change_mlu.c
@@ -83,11 +83,11 @@ Subject: [PATCH] release mlu300
 
 diff --git a/VERSION b/VERSION
 new file mode 100644
-index 0000000000..e2e7267064
+index 0000000000..3a851148d4
 --- /dev/null
 +++ b/VERSION
 @@ -0,0 +1 @@
-+4.4.4_v4.2.0_21214202
++4.4.4_v4.3.0_70205202
 diff --git a/configure b/configure
 index fb55e04ee7..791e63dd95 100755
 --- a/configure
@@ -2090,10 +2090,10 @@ index f421dc909f..9bc7e46a29 100644
      &(const AVCodecHWConfigInternal) { \
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..83da6b5658
+index 0000000000..64a6e30b30
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
-@@ -0,0 +1,449 @@
+@@ -0,0 +1,385 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2135,6 +2135,7 @@ index 0000000000..83da6b5658
 +#include "hwconfig.h"
 +#include "internal.h"
 +#include "libavutil/avutil.h"
++#include <strings.h>
 +
 +#include "cnrt.h"
 +#include "cncodec_v3_common.h"
@@ -2142,13 +2143,13 @@ index 0000000000..83da6b5658
 +#include "cncodec_v3_enc.h"
 +
 +#define FF_MLU_MAJOR_VERSION 4
-+#define FF_MLU_MINOR_VERSION 2
++#define FF_MLU_MINOR_VERSION 3
 +#define FF_MLU_PATCH_VERSION 0
 +#define FF_MLU_VERSION  (FF_MLU_MAJOR_VERSION * 1000 + FF_MLU_MINOR_VERSION * 100 + FF_MLU_PATCH_VERSION)
 +#define CNCODEC_VERSION (CNCODEC_MAJOR_VERSION* 1000 + CNCODEC_MINOR_VERSION* 100 + CNCODEC_PATCH_VERSION)
 +
 +#define cndec_version_info(void)                                              \
-+    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 21214202\n");                        \
++    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 70205202\n");                        \
 +    av_log(NULL, AV_LOG_DEBUG, "CNCODEC: %d.%d.%d \n",                        \
 +        CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION); \
 +    av_log(NULL, AV_LOG_DEBUG, "FFMPEG_MLU: %d.%d.%d \n",                     \
@@ -2170,7 +2171,7 @@ index 0000000000..83da6b5658
 +        return new_ret;                                                   \
 +    }                                                                     \
 +}
-+#define cncodec_get_plane_num(pix_fmt) cncodec_get_plane_num(pix_fmt)
++
 +#define cncodec_get_plane_depth(pix_fmt, p_index, w_depth, h_depth) \
 +            cncodec_get_plane_depth(pix_fmt, p_index, w_depth, h_depth)
 +
@@ -2198,12 +2199,6 @@ index 0000000000..83da6b5658
 +
 +#define CN_CHECK_ODD(n)   (n & 1)
 +#define CN_CHECK_EVEN(n) !(n & 1)
-+
-+enum mluType {
-+    CN_365 = 0,
-+    CN_370 = 1,
-+    CN_NUM
-+};
 +
 +static struct {
 +    cncodecRetCode_t codecerr;
@@ -2258,44 +2253,36 @@ index 0000000000..83da6b5658
 +
 +static inline cncodecPixelFormat_t cncodec_get_pixfmt_by_name(char *pixfmt)
 +{
-+    if (!strcmp("nv12", pixfmt) || !strcmp("NV12", pixfmt)) {
++    if (!strcasecmp("nv12", pixfmt)) {
 +        return CNCODEC_PIX_FMT_NV12;
-+    } else if (!strcmp("nv21", pixfmt) || !strcmp("NV21", pixfmt)) {
++    } else if (!strcasecmp("nv21", pixfmt)) {
 +        return CNCODEC_PIX_FMT_NV21;
-+    } else if (!strcmp("yuv420p", pixfmt) || !strcmp("YUV420P", pixfmt)) {
++    } else if (!strcasecmp("yuv420p", pixfmt)) {
 +        return CNCODEC_PIX_FMT_I420;
-+    } else if (!strcmp("p010", pixfmt)   || !strcmp("P010", pixfmt) ||
-+               !strcmp("p010le", pixfmt) || !strcmp("P010LE", pixfmt) ||
-+               !strcmp("p010be", pixfmt) || !strcmp("P010BE", pixfmt)) {
++    } else if (!strcasecmp("p010", pixfmt) || !strcasecmp("p010le", pixfmt) ||
++            !strcasecmp("p010be", pixfmt)) {
 +        return CNCODEC_PIX_FMT_P010;
-+    } else if (!strcmp("bgr24", pixfmt) || !strcmp("BGR24", pixfmt)) {
++    } else if (!strcasecmp("bgr24", pixfmt)) {
 +        return CNCODEC_PIX_FMT_BGR888;
-+    } else if (!strcmp("rgb24", pixfmt) || !strcmp("RGB24", pixfmt)) {
++    } else if (!strcasecmp("rgb24", pixfmt)) {
 +        return CNCODEC_PIX_FMT_RGB888;
-+    } else if (!strcmp("argb", pixfmt) || !strcmp("ARGB", pixfmt) ||
-+        !strcmp("0rgb", pixfmt) || !strcmp("0RGB", pixfmt)) {
++    } else if (!strcasecmp("argb", pixfmt) || !strcasecmp("0rgb", pixfmt)) {
 +        return CNCODEC_PIX_FMT_ARGB;
-+    } else if (!strcmp("abgr", pixfmt) || !strcmp("ABGR", pixfmt) ||
-+        !strcmp("0bgr", pixfmt) || !strcmp("0BGR", pixfmt)) {
++    } else if (!strcasecmp("abgr", pixfmt) || !strcasecmp("0bgr", pixfmt)) {
 +        return CNCODEC_PIX_FMT_ABGR;
-+    } else if (!strcmp("bgra", pixfmt) || !strcmp("BGRA", pixfmt) ||
-+        !strcmp("bgr0", pixfmt) || !strcmp("BGR0", pixfmt)) {
++    } else if (!strcasecmp("bgra", pixfmt) || !strcasecmp("bgr0", pixfmt)) {
 +        return CNCODEC_PIX_FMT_BGRA;
-+    } else if (!strcmp("rgba", pixfmt) || !strcmp("RGBA", pixfmt) ||
-+        !strcmp("rgb0", pixfmt) || !strcmp("RGB0", pixfmt)) {
++    } else if (!strcasecmp("rgba", pixfmt) || !strcasecmp("rgb0", pixfmt)) {
 +        return CNCODEC_PIX_FMT_RGBA;
-+    } else if (!strcmp("gray", pixfmt) || !strcmp("GRAY", pixfmt)) {
++    } else if (!strcasecmp("gray", pixfmt)) {
 +        return CNCODEC_PIX_FMT_MONOCHROME;
 +    } else {
-+        av_log(NULL, AV_LOG_ERROR,
-+            "Unsupport pixfmt:%s, support nv12/nv21/yuv420p/p010/rgbx/gray at present\n",
-+            pixfmt);
++        av_log(NULL, AV_LOG_ERROR, "not supported pixfmt:%s\n", pixfmt);
 +        return -1;
 +    }
 +}
 +
-+static inline cncodecPixelFormat_t cncodec_get_cn_pixfmt_by_av_pixfmt(
-+    enum AVPixelFormat pixfmt)
++static inline cncodecPixelFormat_t cncodec_get_cn_pixfmt_by_av_pixfmt(enum AVPixelFormat pixfmt)
 +{
 +    switch (pixfmt) {
 +    case AV_PIX_FMT_NV12:       return CNCODEC_PIX_FMT_NV12;
@@ -2319,8 +2306,7 @@ index 0000000000..83da6b5658
 +    }
 +}
 +
-+static inline enum AVPixelFormat cncodec_get_av_pixfmt_by_cn_pixfmt(
-+    cncodecPixelFormat_t pixfmt)
++static inline enum AVPixelFormat cncodec_get_av_pixfmt_by_cn_pixfmt(cncodecPixelFormat_t pixfmt)
 +{
 +    switch (pixfmt) {
 +    case CNCODEC_PIX_FMT_NV12:  return AV_PIX_FMT_NV12;
@@ -2339,8 +2325,7 @@ index 0000000000..83da6b5658
 +    }
 +}
 +
-+static inline cncodecType_t cncodec_get_cn_name_by_av_name(
-+    enum AVCodecID avcodec_id)
++static inline cncodecType_t cncodec_get_cn_name_by_av_name(enum AVCodecID avcodec_id)
 +{
 +    switch (avcodec_id) {
 +    case AV_CODEC_ID_MJPEG: return CNCODEC_JPEG;
@@ -2358,40 +2343,27 @@ index 0000000000..83da6b5658
 +    }
 +}
 +
-+static inline cncodecDecOutputOrder_t
-+    cndec_get_output_order_by_name(char* output_order) {
-+    if (!strcmp("display", output_order) || !strcmp("DISPLAY", output_order)) {
-+        return CNCODEC_DEC_OUTPUT_ORDER_DISPLAY;
-+    } else if (!strcmp("decode", output_order) || !strcmp("DECODE", output_order)) {
-+        return CNCODEC_DEC_OUTPUT_ORDER_DECODE;
-+    } else {
-+        return CNCODEC_DEC_OUTPUT_ORDER_DISPLAY;
-+    }
-+}
-+
-+static inline int cndec_check_output_pixfmt(uint32_t out_fmt_mask,
-+    cncodecPixelFormat_t cn_pixfmt) {
-+    if (out_fmt_mask == 0) {
++static inline int cndec_check_output_pixfmt(uint32_t fmt_mask, cncodecPixelFormat_t cn_pixfmt) {
++    if (fmt_mask == 0) {
 +        av_log(NULL, AV_LOG_ERROR,
 +            "Cndec params invalid, got output pixfmt mask is 0\n");
 +        return -1;
 +    }
-+    if (out_fmt_mask & (1 << cn_pixfmt)) {
-+        av_log(NULL, AV_LOG_DEBUG, "Cndec output pixfmt idx is:%d\n", cn_pixfmt);
++    if (fmt_mask & (1 << cn_pixfmt)) {
++        av_log(NULL, AV_LOG_DEBUG, "Cndec output pixfmt: %d\n", cn_pixfmt);
 +        return 0;
 +    }
 +    return -1;
 +}
 +
-+static inline int cnenc_check_input_pixfmt(uint32_t fmt_mask,
-+    cncodecPixelFormat_t cn_pixfmt) {
++static inline int cnenc_check_input_pixfmt(uint32_t fmt_mask, cncodecPixelFormat_t cn_pixfmt) {
 +    if (fmt_mask == 0) {
 +        av_log(NULL, AV_LOG_ERROR,
 +            "Cnenc params invalid, got input pixfmt mask is 0\n");
 +        return -1;
 +    }
 +    if (fmt_mask & (1 << cn_pixfmt)) {
-+        av_log(NULL, AV_LOG_DEBUG, "Cnenc input pixfmt idx is:%d\n", cn_pixfmt);
++        av_log(NULL, AV_LOG_DEBUG, "Cnenc input pixfmt: %d\n", cn_pixfmt);
 +        return 0;
 +    }
 +    return -1;
@@ -2424,16 +2396,6 @@ index 0000000000..83da6b5658
 +    { CNCODEC_PIX_FMT_MONOCHROME,1,0,1.0f,1.0f},
 +};
 +
-+static inline int cncodec_get_plane_num(const cncodecPixelFormat_t pix_fmt) {
-+    int i;
-+    for (i = 0; i < FF_ARRAY_ELEMS(fmt_num_depth_map); ++i) {
-+        if (fmt_num_depth_map[i].pixel_format == pix_fmt) {
-+            return fmt_num_depth_map[i].sum_plane;
-+        }
-+    }
-+    return -1;
-+}
-+
 +static inline int cncodec_get_plane_depth(const cncodecPixelFormat_t pix_fmt,
 +    const int p_index, float* w_depth, float* h_depth) {
 +    int i;
@@ -2454,18 +2416,9 @@ index 0000000000..83da6b5658
 +    case CNCODEC_PIC_TYPE_B:       return AV_PICTURE_TYPE_B;
 +    case CNCODEC_PIC_TYPE_I:       return AV_PICTURE_TYPE_I;
 +    case CNCODEC_PIC_TYPE_IDR:     return AV_PICTURE_TYPE_I;
-+#if CNCODEC_MAJOR_VERSION >= 1
 +    case CNCODEC_PIC_TYPE_UNKNOWN: return AV_PICTURE_TYPE_NONE;
-+#endif
 +    default:                       return AV_PICTURE_TYPE_NONE;
 +    }
-+}
-+
-+static inline int cncodec_get_keyframe_flag(const cncodecPicType_t pic_type) {
-+    if (pic_type == CNCODEC_PIC_TYPE_I || pic_type == CNCODEC_PIC_TYPE_IDR) {
-+        return 1;
-+    }
-+    return 0;
 +}
 +
 +#if CONFIG_MLUAFFINITY
@@ -2494,14 +2447,6 @@ index 0000000000..83da6b5658
 +#endif
 +
 +    return 0;
-+}
-+
-+static inline char *get_mlu_device_name(MluContext *mlu_ctx) {
-+#if CNRT_MAJOR_VERSION < 5
-+    return av_strdup(mlu_ctx->dev_info.device_name);
-+#else
-+    return av_strdup(mlu_ctx->dev_prop.name);
-+#endif
 +}
 +
 +static inline uint64_t cn_get_current_time(void) {
@@ -2533,22 +2478,13 @@ index 0000000000..83da6b5658
 +    }
 +}
 +
-+static inline int cncoedc_get_mlu_type(char* mlu_type) {
-+    if (!strcmp("MLU365", mlu_type)) {
-+        return CN_365;
-+    } else if (!strcmp("MLU370", mlu_type)) {
-+        return CN_370;
-+    }
-+    return CN_NUM;
-+}
-+
 +#endif /* MLUMPP_CODEC_H */
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..87621927c5
+index 0000000000..40563a55a9
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1595 @@
+@@ -0,0 +1,1597 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -3093,7 +3029,8 @@ index 0000000000..87621927c5
 +    params.color_space       = ctx->color_space;
 +    params.stride_align      = ctx->stride_align;
 +    params.dec_mode          = CNCODEC_DEC_MODE_IPB;
-+    params.output_order      = cndec_get_output_order_by_name(ctx->output_order);
++    params.output_order      = !strcasecmp(ctx->output_order, "decode")?
++                                CNCODEC_DEC_OUTPUT_ORDER_DECODE : CNCODEC_DEC_OUTPUT_ORDER_DISPLAY;
 +    params.output_buf_source = CNCODEC_BUF_SOURCE_LIB;
 +
 +    params.pp_attr.crop.enable = 1;
@@ -3474,7 +3411,8 @@ index 0000000000..87621927c5
 +    frame->width  = avctx->width;
 +    frame->height = avctx->height;
 +    frame->pict_type = cncodec_get_frame_type(pic_type);
-+    frame->key_frame = cncodec_get_keyframe_flag(pic_type);
++    frame->key_frame = (pic_type == CNCODEC_PIC_TYPE_I ||
++                        pic_type == CNCODEC_PIC_TYPE_IDR)? 1 : 0;
 +
 +    return ret;
 +}
@@ -4146,10 +4084,10 @@ index 0000000000..87621927c5
 +#endif
 diff --git a/libavcodec/mlumpp_enc_h264.c b/libavcodec/mlumpp_enc_h264.c
 new file mode 100644
-index 0000000000..92fee93a31
+index 0000000000..50bea073ef
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_h264.c
-@@ -0,0 +1,219 @@
+@@ -0,0 +1,217 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4262,7 +4200,6 @@ index 0000000000..92fee93a31
 +    { "crf",                "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_RATE_CTRL_CRF },           0,  0,  VE,  "rc" },
 +    { "fixedqp",            "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_RATE_CTRL_FIXEDQP },       0,  0,  VE,  "rc" },
 +    { "mode_max",           "",     0,   AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_RATE_CTRL_MODE_MAX },      0,  0,  VE,  "rc" },
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +    { "block_size",         "encode block size.", OFFSET(cnenc.block_size), AV_OPT_TYPE_INT, { .i64 = CNCODEC_ENC_BLOCK_UNIT_64x64 }, CNCODEC_ENC_BLOCK_UNIT_64x64, CNCODEC_ENC_BLOCK_UNIT_MAX, VE, "block_size"},
 +    { "64",                 "",     0,     AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_BLOCK_UNIT_64x64 },       0,  0, VE,   "block_size" },
 +    { "32",                 "",     0,     AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_BLOCK_UNIT_32x32 },       0,  0, VE,   "block_size" },
@@ -4281,7 +4218,6 @@ index 0000000000..92fee93a31
 +    { "ctb_row",            "ctb row qp step", OFFSET(cnenc.ctb_row_qp_step), AV_OPT_TYPE_INT,  { .i64 = 0 }, 0, 64, VE, "ctb_row_qp_step"},
 +    { "rc_qp_delta_range",  "specified the max delta qp value", OFFSET(cnenc.rc_qp_delta_range), AV_OPT_TYPE_INT,  { .i64 = 0 }, 0, 15, VE, "rc_qp_delta_range"},
 +    { "base_ctb",           "specifies the rc base ctb complexity in ctb rc", OFFSET(cnenc.rc_base_ctb_comp), AV_OPT_TYPE_INT,  { .i64 = 0 }, 0, 30, VE, "ctb_row_qp_step"},
-+#endif
 +    { "rc_bufsize",         "vbv bufsize.", OFFSET(cnenc.rc_bufsize), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, INT_MAX, VE, "bufsize"},
 +
 +    { "init_qpI",           "the QP for I frame while rc mode is fixedQP",  OFFSET(cnenc.const_qp_i), AV_OPT_TYPE_INT,      { .i64 = 30 },    0,  51, VE },
@@ -4371,10 +4307,10 @@ index 0000000000..92fee93a31
 +};
 diff --git a/libavcodec/mlumpp_enc_hevc.c b/libavcodec/mlumpp_enc_hevc.c
 new file mode 100644
-index 0000000000..6676a84205
+index 0000000000..33701faf30
 --- /dev/null
 +++ b/libavcodec/mlumpp_enc_hevc.c
-@@ -0,0 +1,230 @@
+@@ -0,0 +1,228 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4493,7 +4429,6 @@ index 0000000000..6676a84205
 +    { "crf",                "",     0,     AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_RATE_CTRL_CRF },          0,  0, VE,  "rc" },
 +    { "fixedqp",            "",     0,     AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_RATE_CTRL_FIXEDQP },      0,  0, VE,  "rc" },
 +    { "mode_max",           "",     0,     AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_RATE_CTRL_MODE_MAX },     0,  0, VE,  "rc" },
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +    { "block_size",         "encode block size.", OFFSET(cnenc.block_size), AV_OPT_TYPE_INT, { .i64 = CNCODEC_ENC_BLOCK_UNIT_64x64 }, CNCODEC_ENC_BLOCK_UNIT_64x64, CNCODEC_ENC_BLOCK_UNIT_MAX, VE, "block_size"},
 +    { "64",                 "",     0,     AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_BLOCK_UNIT_64x64 },       0,  0, VE,   "block_size" },
 +    { "32",                 "",     0,     AV_OPT_TYPE_CONST,  { .i64 = CNCODEC_ENC_BLOCK_UNIT_32x32 },       0,  0, VE,   "block_size" },
@@ -4513,7 +4448,6 @@ index 0000000000..6676a84205
 +    { "ctb_row",            "ctb row qp step, only works in obj and both ctb rc mode", OFFSET(cnenc.ctb_row_qp_step), AV_OPT_TYPE_INT,  { .i64 = 0 }, 0, 64, VE, "ctb_row_qp_step"},
 +    { "rc_qp_delta_range",  "specified the max delta qp value", OFFSET(cnenc.rc_qp_delta_range), AV_OPT_TYPE_INT,  { .i64 = 0 }, 0, 15, VE, "rc_qp_delta_range"},
 +    { "base_ctb",           "specifies the rc base ctb complexity in ctb rc, only works in sub and obj ctb rc mode", OFFSET(cnenc.rc_base_ctb_comp), AV_OPT_TYPE_INT,  { .i64 = 0 }, 0, 30, VE, "ctb_row_qp_step"},
-+#endif
 +    { "rc_bufsize",         "vbv bufsize.", OFFSET(cnenc.rc_bufsize), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, INT_MAX, VE, "bufsize"},
 +
 +    { "init_qpI",           "set the QP for I frame while rc mode is fixedQP",  OFFSET(cnenc.const_qp_i),     AV_OPT_TYPE_INT, { .i64 = 30 },  0, 51, VE },
@@ -4737,10 +4671,10 @@ index 0000000000..6a8112b82c
 \ No newline at end of file
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100644
-index 0000000000..8d9dbb34c9
+index 0000000000..ebdc48a882
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1160 @@
+@@ -0,0 +1,1136 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4791,6 +4725,7 @@ index 0000000000..8d9dbb34c9
 +            avctx->codec->name, ret);
 +        return -1;
 +    }
++    ctx->enc_caps = enc_caps;
 +    if (!enc_caps.supported) {
 +        av_log(avctx, AV_LOG_ERROR, "MLU unsupport encode type: %s\n",
 +            avctx->codec->name);
@@ -4901,13 +4836,13 @@ index 0000000000..8d9dbb34c9
 +    if (cnctx->mem_async) {
 +        ret = mlu_ctx->mluMemcpyD2HAsync(avctx->extradata,
 +                (void*)(stream->mem_addr + stream->data_offset), stream->data_len,
-+                cnctx->mlu_queue, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                cnctx->mlu_queue, cnrtMemcpyDevToHost);
 +        mlu_ctx->mluQueueSync(cnctx->mlu_queue);
 +    } else {
 +        ret = mlu_ctx->mluMemcpyD2H(avctx->extradata, (void*)(stream->mem_addr + stream->data_offset),
-+                stream->data_len, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                stream->data_len, cnrtMemcpyDevToHost);
 +    }
-+    if (CNRT_RET_SUCCESS != ret) {
++    if (cnrtSuccess != ret) {
 +        av_log(avctx, AV_LOG_ERROR,
 +            "Cnenc get extradata error, func:%s, line:%d\n", __func__, __LINE__);
 +        return AVERROR(EINVAL);
@@ -4949,12 +4884,12 @@ index 0000000000..8d9dbb34c9
 +    if (cnctx->mem_async) {
 +        cnrt_ret = mlu_ctx->mluMemcpyD2HAsync((void*)(msg.buf + extra_offset),
 +                (void*)(stream->mem_addr + stream->data_offset), stream->data_len,
-+                cnctx->mlu_queue, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                cnctx->mlu_queue, cnrtMemcpyDevToHost);
 +        mlu_ctx->mluQueueSync(cnctx->mlu_queue);
 +    } else {
 +        cnrt_ret = mlu_ctx->mluMemcpyD2H((void*)(msg.buf + extra_offset),
 +                (void*)(stream->mem_addr + stream->data_offset), stream->data_len,
-+                CNRT_MEM_TRANS_DIR_DEV2HOST);
++                cnrtMemcpyDevToHost);
 +    }
 +    if (0 != cnrt_ret) {
 +        av_log(cnctx->avctx, AV_LOG_ERROR, "enc d2h failed, ret(%u), func:%s, line:%d\n",
@@ -5045,19 +4980,19 @@ index 0000000000..8d9dbb34c9
 +    if (cnctx->avctx->pix_fmt == AV_PIX_FMT_MLU) {
 +        if (cnctx->mem_async) {
 +            cnrt_ret = mlu_ctx->mluMemcpyD2DAsync(dst, src, data_size, cnctx->mlu_queue,
-+                    CNRT_MEM_TRANS_DIR_DEV2DEV);
-+            MLUMPP_CHECK(cnctx->avctx, cnrt_ret, "input buf memcpy D2DA");
++                    cnrtMemcpyDevToDev);
++            MLUMPP_CHECK(cnctx->avctx, cnrt_ret, "input buf memcpy D2D");
 +        } else {
-+            cnrt_ret = mlu_ctx->mluMemcpyD2D(dst, src, data_size, CNRT_MEM_TRANS_DIR_DEV2DEV);
++            cnrt_ret = mlu_ctx->mluMemcpyD2D(dst, src, data_size, cnrtMemcpyDevToDev);
 +            MLUMPP_CHECK(cnctx->avctx, cnrt_ret, "input buf memcpy D2D");
 +        }
 +    } else {
 +        if (cnctx->mem_async) {
 +            cnrt_ret = mlu_ctx->mluMemcpyH2DAsync(dst, src, data_size, cnctx->mlu_queue,
-+                    CNRT_MEM_TRANS_DIR_HOST2DEV);
++                    cnrtMemcpyHostToDev);
 +            MLUMPP_CHECK(cnctx->avctx, cnrt_ret, "input buf memcpy H2DA");
 +        } else {
-+            cnrt_ret = mlu_ctx->mluMemcpyH2D(dst, src, data_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++            cnrt_ret = mlu_ctx->mluMemcpyH2D(dst, src, data_size, cnrtMemcpyHostToDev);
 +            MLUMPP_CHECK(cnctx->avctx, cnrt_ret, "input buf memcpy H2D");
 +        }
 +    }
@@ -5089,10 +5024,10 @@ index 0000000000..8d9dbb34c9
 +            src_ptr = (uint8_t*)(src) + avlinesize * line_index;
 +            if (cnctx->mem_async) {
 +                cnrt_ret = mlu_ctx->mluMemcpyD2DAsync((void*)dst_ptr, (void*)src_ptr,
-+                        width, cnctx->mlu_queue, CNRT_MEM_TRANS_DIR_DEV2DEV);
++                        width, cnctx->mlu_queue, cnrtMemcpyDevToDev);
 +            } else {
 +                cnrt_ret = mlu_ctx->mluMemcpyD2D((void*)dst_ptr, (void*)src_ptr,
-+                        width, CNRT_MEM_TRANS_DIR_DEV2DEV);
++                        width, cnrtMemcpyDevToDev);
 +            }
 +            if (0 != cnrt_ret) {
 +                free(line_space);
@@ -5106,10 +5041,10 @@ index 0000000000..8d9dbb34c9
 +        }
 +        if (cnctx->mem_async) {
 +            cnrt_ret = mlu_ctx->mluMemcpyH2DAsync(dst, (void*)line_space, cnframe_stride * linecount,
-+                    cnctx->mlu_queue, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                    cnctx->mlu_queue, cnrtMemcpyHostToDev);
 +        } else {
 +            cnrt_ret = mlu_ctx->mluMemcpyH2D(dst, (void*)line_space, cnframe_stride * linecount,
-+                    CNRT_MEM_TRANS_DIR_HOST2DEV);
++                    cnrtMemcpyHostToDev);
 +        }
 +        if (0 != cnrt_ret) {
 +            free(line_space);
@@ -5126,17 +5061,11 @@ index 0000000000..8d9dbb34c9
 +static int cnenc_build_input_buffer(MLUMPPEncContext_t *cnctx,
 +    cncodecFrame_t *tempInput, const AVFrame *frame)
 +{
-+    int ret = -1;
-+    cncodecPixelFormat_t pix_fmt;
-+    int plane_sum;
-+    int plane_i;
-+    int cnframe_stride;
-+    int avlinesize;
-+    float w_depth;
-+    float h_depth;
++    int ret, plane_sum, plane_i;
++    int cnframe_stride, avlinesize;
++    float w_depth, h_depth;
 +
-+    pix_fmt = cnctx->enc_attr.pixel_format;
-+    plane_sum = cncodec_get_plane_num(pix_fmt);
++    plane_sum = av_pix_fmt_count_planes(cnctx->in_sw_pixfmt);
 +    ret = cncodecEncWaitAvailInputBuf(cnctx->handle, tempInput, CN_TIMEOUT_VALUE);
 +    MLUMPP_CHECK(cnctx->avctx, ret, "wait avail input buf");
 +    for (plane_i = 0; plane_i < plane_sum; ++plane_i) {
@@ -5152,7 +5081,7 @@ index 0000000000..8d9dbb34c9
 +    for (plane_i = 0; plane_i < plane_sum; ++plane_i) {
 +        cnframe_stride = tempInput->plane[plane_i].stride;
 +        avlinesize = frame->linesize[plane_i];
-+        if (cncodec_get_plane_depth(pix_fmt, plane_i, &w_depth, &h_depth)) {
++        if (cncodec_get_plane_depth(cnctx->enc_attr.pixel_format, plane_i, &w_depth, &h_depth)) {
 +            av_log(cnctx->avctx, AV_LOG_ERROR, "Unsupported pix format!\n");
 +        }
 +        if (cnframe_stride == avlinesize) {
@@ -5525,7 +5454,6 @@ index 0000000000..8d9dbb34c9
 +    int ret = -1;
 +    int min_input_buf_num   = 0;
 +    int probe_input_buf_num = 0;
-+    int pixel_depth         = 0;
 +    char mlu[sizeof(int)];
 +
 +    if (NULL == avctx || NULL == cnctx || cnctx->encoder_init_flag) {
@@ -5660,13 +5588,7 @@ index 0000000000..8d9dbb34c9
 +    cnctx->enc_attr.device_id       = cnctx->mlu_ctx->mlu_id;
 +    cnctx->enc_attr.stream_buf_size = 0;
 +    cnctx->enc_attr.pixel_format    = cncodec_get_cn_pixfmt_by_av_pixfmt(cnctx->in_sw_pixfmt);
-+    pixel_depth = cnctx->enc_attr.pixel_format
-+                  == CNCODEC_PIX_FMT_P010 ? PIXEL_DEPTH_10 : PIXEL_DEPTH_8;
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +    cnctx->enc_attr.coding_attr.rdo_level     = cnctx->rdo_level;
-+#elif CNCODEC_MINOR_VERSION >= 7 || CNCODEC_MAJOR_VERSION >=1
-+    cnctx->enc_attr.rdo_level       = cnctx->rdo_level;
-+#endif
 +
 +    if (CNENC_MIN_FPS > avctx->framerate.num / avctx->framerate.den ||
 +        CNENC_MAX_FPS < avctx->framerate.num / avctx->framerate.den) {
@@ -5683,21 +5605,18 @@ index 0000000000..8d9dbb34c9
 +    cnctx->enc_attr.coding_attr.frame_interval_p   = cnctx->frame_interval_p;
 +    cnctx->enc_attr.coding_attr.rc_attr.rc_mode    = cnctx->rc_mode;
 +    cnctx->enc_attr.coding_attr.rc_attr.initial_qp = cnctx->init_qp;
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +    if (cnctx->block_size >= 3 && cnctx->ctb_rc_mode != 0) {
 +        av_log(avctx, AV_LOG_ERROR, "ctb rc mode do not support block size value 3!\n");
 +        return AVERROR(EINVAL);
 +    }
 +    cnctx->enc_attr.coding_attr.rc_attr.ctb_rc_mode = cnctx->ctb_rc_mode;
 +    cnctx->lookahead_depth = cnctx->lookahead_depth < 4 ? 0 : cnctx->lookahead_depth;
-+    cnctx->enc_attr.coding_attr.rc_attr.block_size     = cnctx->block_size;
++    cnctx->enc_attr.coding_attr.rc_attr.block_size = cnctx->block_size;
 +    cnctx->enc_attr.coding_attr.rc_attr.ctb_row_qp_step = cnctx->ctb_row_qp_step;
 +    cnctx->enc_attr.coding_attr.rc_attr.rc_qp_delta_range = cnctx->rc_qp_delta_range;
 +    cnctx->enc_attr.coding_attr.rc_attr.rc_base_ctb_complexity = cnctx->rc_base_ctb_comp;
-+#endif
 +
 +    switch (cnctx->rc_mode) {
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +    case CNCODEC_ENC_RATE_CTRL_CRF:
 +        cnctx->enc_attr.coding_attr.rc_attr.target_quality  = cnctx->target_quality;
 +        cnctx->enc_attr.coding_attr.rc_attr.lookahead_depth = cnctx->lookahead_depth;
@@ -5707,7 +5626,6 @@ index 0000000000..8d9dbb34c9
 +            return AVERROR(EINVAL);
 +        }
 +        break;
-+#endif
 +    case CNCODEC_ENC_RATE_CTRL_CBR:
 +        if (cnctx->rc_bufsize > 0) {
 +            avctx->rc_buffer_size = cnctx->rc_bufsize;
@@ -5716,37 +5634,29 @@ index 0000000000..8d9dbb34c9
 +            avctx->rc_buffer_size = avctx->bit_rate * 2;
 +            cnctx->enc_attr.coding_attr.rc_attr.vbv_buffer_size = avctx->bit_rate * 2;
 +        }
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +        cnctx->enc_attr.coding_attr.rc_attr.lookahead_depth = cnctx->lookahead_depth;
-+#endif
 +        cnctx->enc_attr.coding_attr.rc_attr.target_bitrate  = avctx->bit_rate;
 +        cnctx->enc_attr.coding_attr.rc_attr.rc_windows      = cnctx->rc_windows;
 +        break;
 +    case CNCODEC_ENC_RATE_CTRL_VBR:
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +        cnctx->enc_attr.coding_attr.rc_attr.lookahead_depth = cnctx->lookahead_depth;
-+#endif
 +        cnctx->enc_attr.coding_attr.rc_attr.target_bitrate  = avctx->bit_rate;
 +        cnctx->enc_attr.coding_attr.rc_attr.rc_windows      = cnctx->rc_windows;
 +        break;
 +    case CNCODEC_ENC_RATE_CTRL_CVBR:
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +        cnctx->enc_attr.coding_attr.rc_attr.lookahead_depth = cnctx->lookahead_depth;
-+#endif
 +        cnctx->enc_attr.coding_attr.rc_attr.target_bitrate  = avctx->bit_rate;
 +        cnctx->enc_attr.coding_attr.rc_attr.rc_windows      = cnctx->rc_windows;
 +        cnctx->enc_attr.coding_attr.rc_attr.min_qp     = avctx->qmin;
 +        cnctx->enc_attr.coding_attr.rc_attr.max_qp     = avctx->qmax;
 +        break;
 +    case CNCODEC_ENC_RATE_CTRL_FIXEDQP:
-+#if CNCODEC_MINOR_VERSION >= 8 || CNCODEC_MAJOR_VERSION >=1
 +        if (cnctx->lookahead_depth != 0) {
 +            av_log(avctx, AV_LOG_WARNING,
 +                "fixed qp mode only support lookahead depth value 0!\n");
 +            return AVERROR(EINVAL);
 +        }
 +        cnctx->enc_attr.coding_attr.rc_attr.lookahead_depth = cnctx->lookahead_depth;
-+#endif
 +        cnctx->enc_attr.coding_attr.rc_attr.const_qp_i = cnctx->const_qp_i;
 +        cnctx->enc_attr.coding_attr.rc_attr.const_qp_b = cnctx->const_qp_b;
 +        cnctx->enc_attr.coding_attr.rc_attr.const_qp_p = cnctx->const_qp_p;
@@ -5764,9 +5674,9 @@ index 0000000000..8d9dbb34c9
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.tier = cnctx->tier;
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.idr_period = cnctx->idr_period;
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.enable_sao = cnctx->enable_sao;
-+        if (CN_370 < cncoedc_get_mlu_type(get_mlu_device_name(cnctx->mlu_ctx))) {
-+            cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.pixel_depth_minus8 = pixel_depth;
-+        }
++        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.pixel_depth_minus8 =
++                (cnctx->enc_caps.video_10bit_supported &&
++                 cnctx->enc_attr.pixel_format == CNCODEC_PIX_FMT_P010)? 2 : 0;
 +        cnctx->enc_attr.coding_attr.codec_attr.hevc_attr.enable_repeat_sps_pps =
 +            (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) ? 0 : 1;
 +        break;
@@ -5775,9 +5685,9 @@ index 0000000000..8d9dbb34c9
 +        cnctx->enc_attr.coding_attr.profile          = cnctx->profile;
 +        cnctx->enc_attr.coding_attr.level            = cnctx->level;
 +        cnctx->enc_attr.coding_attr.codec_attr.h264_attr.idr_period = cnctx->idr_period;
-+        if (CN_370 < cncoedc_get_mlu_type(get_mlu_device_name(cnctx->mlu_ctx))) {
-+            cnctx->enc_attr.coding_attr.codec_attr.h264_attr.pixel_depth_minus8 = pixel_depth;
-+        }
++        cnctx->enc_attr.coding_attr.codec_attr.h264_attr.pixel_depth_minus8 =
++                (cnctx->enc_caps.video_10bit_supported &&
++                 cnctx->enc_attr.pixel_format == CNCODEC_PIX_FMT_P010)? 2 : 0;
 +        cnctx->enc_attr.coding_attr.codec_attr.h264_attr.enable_repeat_sps_pps =
 +            (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) ? 0 : 1;
 +        break;
@@ -5903,10 +5813,10 @@ index 0000000000..8d9dbb34c9
 +}
 diff --git a/libavcodec/mlumpp_vid_enc.h b/libavcodec/mlumpp_vid_enc.h
 new file mode 100644
-index 0000000000..c3fb2248f8
+index 0000000000..6f86f37e4f
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.h
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,126 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -5950,11 +5860,6 @@ index 0000000000..c3fb2248f8
 +    uint32_t           buf_size;
 +    uint64_t           priv;
 +} EventInfo_t;
-+
-+enum cnencPixelDepth {
-+    PIXEL_DEPTH_8  = 0,
-+    PIXEL_DEPTH_10 = 2,
-+};
 +
 +typedef struct MLUMPPEncContext {
 +    cncodecHandle_t                 handle;
@@ -6027,6 +5932,7 @@ index 0000000000..c3fb2248f8
 +    AVHWFramesContext               *hw_frame_ctx;
 +    enum AVPixelFormat              in_sw_pixfmt;
 +    cncodecJpegBackend_t            image_enc_backend;
++    cncodecEncCaps_t                enc_caps;
 +
 +} MLUMPPEncContext_t;
 +
@@ -6144,10 +6050,10 @@ index 0872c6e0f2..105d8318dc 100644
  extern AVFilter ff_vf_select;
 diff --git a/libavfilter/mlu_filter_common.h b/libavfilter/mlu_filter_common.h
 new file mode 100644
-index 0000000000..618fa0f6ec
+index 0000000000..29fe689d4f
 --- /dev/null
 +++ b/libavfilter/mlu_filter_common.h
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,120 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6178,8 +6084,8 @@ index 0000000000..618fa0f6ec
 +#include "libavutil/log.h"
 +#include "libavutil/pixdesc.h"
 +
-+#define MLUFILTER_CHECK(avctx, ret)                                         \
-+    if (ret != 0) {                                                         \
++#define MLUFILTER_CHECK(avctx, t_ret)                                       \
++    if (t_ret != 0) {                                                       \
 +        av_log(avctx, AV_LOG_ERROR, "mlufilter failed, func:%s, line:%d\n", \
 +            __func__, __LINE__);                                            \
 +        ret = AVERROR(EINVAL);                                              \
@@ -6198,32 +6104,6 @@ index 0000000000..618fa0f6ec
 +                         (!strcmp(rgbx, "0rgb") ? "argb" :                 \
 +                         (!strcmp(rgbx, "bgr0") ? "bgra" :                 \
 +                         (!strcmp(rgbx, "0bgr") ? "abgr" : rgbx))))
-+
-+static int get_stride_scale_by_pixfmt(enum AVPixelFormat pixfmt) {
-+    int scale = 1;
-+    switch (pixfmt) {
-+    case AV_PIX_FMT_NV12:
-+    case AV_PIX_FMT_NV21:
-+        scale = 1; break;
-+    case AV_PIX_FMT_BGR24:
-+    case AV_PIX_FMT_RGB24:
-+        scale = 3; break;
-+    case AV_PIX_FMT_ABGR:
-+    case AV_PIX_FMT_ARGB:
-+    case AV_PIX_FMT_BGRA:
-+    case AV_PIX_FMT_RGBA:
-+    case AV_PIX_FMT_0BGR:
-+    case AV_PIX_FMT_0RGB:
-+    case AV_PIX_FMT_BGR0:
-+    case AV_PIX_FMT_RGB0:
-+        scale = 4; break;
-+    default:
-+        av_log(NULL, AV_LOG_WARNING,
-+            "unsupported pixfmt %s\n, set stride scale as 1", av_get_pix_fmt_name(pixfmt));
-+        break;
-+    }
-+    return scale;
-+}
 +
 +static int get_pixfmt_plane_size(size_t sizes[4], enum AVPixelFormat pix_fmt, int width, int height)
 +{
@@ -6296,10 +6176,10 @@ index 0000000000..618fa0f6ec
 +#endif
 diff --git a/libavfilter/vf_cvt_rgbx2rgbx_mlu.c b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..0dcb0e7aa5
+index 0000000000..0813194cbd
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2rgbx_mlu.c
-@@ -0,0 +1,413 @@
+@@ -0,0 +1,412 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6543,8 +6423,8 @@ index 0000000000..0dcb0e7aa5
 +        s->hw_dev_ctx = ((AVHWDeviceContext*)s->hw_device_ref->data)->hwctx;
 +    }
 +
-+    s->output_mlu_rgbx_size = outlink->w * outlink->h * get_stride_scale_by_pixfmt(s->out_fmt);
-+    s->input_mlu_rgbx_size  = inlink->w * inlink->h * get_stride_scale_by_pixfmt(s->in_fmt);
++    s->output_mlu_rgbx_size = av_image_get_buffer_size(s->out_fmt, outlink->w, outlink->h, 1);
++    s->input_mlu_rgbx_size  = av_image_get_buffer_size(s->in_fmt,  inlink->w,  inlink->h,  1);
 +
 +    if (!format_is_supported(s->in_fmt)) {
 +        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n",
@@ -6628,8 +6508,7 @@ index 0000000000..0dcb0e7aa5
 +    av_frame_copy_props(out, in);
 +    out->width  = outlink->w;
 +    out->height = outlink->h;
-+    out->linesize[0] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
-+    out->linesize[1] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
++    av_image_fill_linesizes(out->linesize, s->out_fmt, out->width);
 +
 +    if (s->op_handle) {
 +        if (link->format == AV_PIX_FMT_MLU) {
@@ -6637,7 +6516,7 @@ index 0000000000..0dcb0e7aa5
 +            s->output_mlu_rgbx = out->data[0];
 +        } else {
 +            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_rgbx, (void *)in->data[0],
-+                                        s->input_mlu_rgbx_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                                        s->input_mlu_rgbx_size, cnrtMemcpyHostToDev);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +        ret = mlu_ctx->mluCvtRgbx2RgbxExec(s->op_handle, s->input_mlu_rgbx,
@@ -6648,7 +6527,7 @@ index 0000000000..0dcb0e7aa5
 +        }
 +        if (link->format != AV_PIX_FMT_MLU) {
 +            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_rgbx,
-+                                        s->output_mlu_rgbx_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                                        s->output_mlu_rgbx_size, cnrtMemcpyDevToHost);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +    }
@@ -6715,10 +6594,10 @@ index 0000000000..0dcb0e7aa5
 +};
 diff --git a/libavfilter/vf_cvt_rgbx2yuv_mlu.c b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
 new file mode 100644
-index 0000000000..109594fb1e
+index 0000000000..2fe1b8b77f
 --- /dev/null
 +++ b/libavfilter/vf_cvt_rgbx2yuv_mlu.c
-@@ -0,0 +1,429 @@
+@@ -0,0 +1,461 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -6761,7 +6640,7 @@ index 0000000000..109594fb1e
 +    AV_PIX_FMT_ABGR, AV_PIX_FMT_BGRA,
 +    AV_PIX_FMT_0RGB, AV_PIX_FMT_0BGR,
 +    AV_PIX_FMT_BGR0, AV_PIX_FMT_RGB0,
-+    AV_PIX_FMT_MLU,
++    AV_PIX_FMT_YUV420P, AV_PIX_FMT_MLU,
 +};
 +
 +typedef struct MluCVTRGBX2YUVContext {
@@ -6794,11 +6673,9 @@ index 0000000000..109594fb1e
 +    const char *pic_pixfmt;
 +
 +    void *input_mlu_rgbx;
-+    void *output_mlu_y;
-+    void *output_mlu_uv;
++    void *output_mlu_yuv[3];
 +
-+    int output_mlu_y_size;
-+    int output_mlu_uv_size;
++    int output_mlu_yuv_size[3];
 +    int input_mlu_rgbx_size;
 +    bool affinity_set;
 +
@@ -6862,8 +6739,9 @@ index 0000000000..109594fb1e
 +{
 +    MluCVTRGBX2YUVContext *s = ctx->priv;
 +    s->input_mlu_rgbx = NULL;
-+    s->output_mlu_y = NULL;
-+    s->output_mlu_uv = NULL;
++    s->output_mlu_yuv[0] = NULL;
++    s->output_mlu_yuv[1] = NULL;
++    s->output_mlu_yuv[2] = NULL;
 +    s->op_handle = NULL;
 +    s->affinity_set = false;
 +
@@ -6880,12 +6758,18 @@ index 0000000000..109594fb1e
 +        mlu_ctx->mluCvtRgbx2YuvDestroy(s->op_handle);
 +    }
 +    if (s->inlink_pixfmt != AV_PIX_FMT_MLU) {
-+        if (s->input_mlu_rgbx)
++        if (s->input_mlu_rgbx) {
 +            mlu_ctx->mluMemFree(s->input_mlu_rgbx);
-+        if (s->output_mlu_y)
-+            mlu_ctx->mluMemFree(s->output_mlu_y);
-+        if (s->output_mlu_uv)
-+            mlu_ctx->mluMemFree(s->output_mlu_uv);
++        }
++        if (s->output_mlu_yuv[0]) {
++            mlu_ctx->mluMemFree(s->output_mlu_yuv[0]);
++        }
++        if (s->output_mlu_yuv[1]) {
++            mlu_ctx->mluMemFree(s->output_mlu_yuv[1]);
++        }
++        if (s->output_mlu_yuv[2]) {
++            mlu_ctx->mluMemFree(s->output_mlu_yuv[2]);
++        }
 +    }
 +    if (s->in_hw_frame_ref) {
 +        av_buffer_unref(&s->in_hw_frame_ref);
@@ -6976,9 +6860,15 @@ index 0000000000..109594fb1e
 +    if (mlu_device_affinity(s->hw_dev_ctx) < 0) {
 +        return AVERROR(ENODEV);
 +    }
-+    s->output_mlu_y_size   = outlink->w * outlink->h;
-+    s->output_mlu_uv_size  = outlink->w * outlink->h / 2;
-+    s->input_mlu_rgbx_size = inlink->w * inlink->h * get_stride_scale_by_pixfmt(s->in_fmt);
++    if (s->out_fmt == AV_PIX_FMT_NV12 || s->out_fmt == AV_PIX_FMT_NV21) {
++        s->output_mlu_yuv_size[0] = outlink->w * outlink->h;
++        s->output_mlu_yuv_size[1] = outlink->w * outlink->h / 2;
++    } else if (s->out_fmt == AV_PIX_FMT_YUV420P) {
++        s->output_mlu_yuv_size[0] = outlink->w * outlink->h;
++        s->output_mlu_yuv_size[1] = outlink->w * outlink->h / 4;
++        s->output_mlu_yuv_size[2] = outlink->w * outlink->h / 4;
++    }
++    s->input_mlu_rgbx_size = av_image_get_buffer_size(s->in_fmt, inlink->w, inlink->h, 1);
 +
 +    if (!format_is_supported(s->in_fmt)) {
 +        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n",
@@ -6998,20 +6888,28 @@ index 0000000000..109594fb1e
 +        mlu_ctx->mluCvtRgbx2YuvInit(&s->op_handle, inlink->w, inlink->h,
 +                                    CHECK_RGBX(s->pic_pixfmt), s->enter_out_fmt, s->depth);
 +        if (inlink->format != AV_PIX_FMT_MLU) {
-+            ret = mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_rgbx), sizeof(char) * s->input_mlu_rgbx_size);
-+            MLUFILTER_CHECK(ctx, ret);
-+            ret = mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_y), sizeof(char) * s->output_mlu_y_size);
-+            MLUFILTER_CHECK(ctx, ret);
-+            ret = mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_uv), sizeof(char) * s->output_mlu_uv_size);
-+            MLUFILTER_CHECK(ctx, ret);
++            MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_rgbx),
++                    sizeof(char) * s->input_mlu_rgbx_size));
++            if (s->out_fmt == AV_PIX_FMT_NV12 || s->out_fmt == AV_PIX_FMT_NV21) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_yuv[0]),
++                        sizeof(char) * s->output_mlu_yuv_size[0]));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_yuv[1]),
++                        sizeof(char) * s->output_mlu_yuv_size[1]));
++            } else if (s->out_fmt == AV_PIX_FMT_YUV420P) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_yuv[0]),
++                        sizeof(char) * s->output_mlu_yuv_size[0]));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_yuv[1]),
++                        sizeof(char) * s->output_mlu_yuv_size[1]));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_yuv[2]),
++                        sizeof(char) * s->output_mlu_yuv_size[2]));
++            }
 +        }
 +    }
 +
 +    outlink->time_base = inlink->time_base;
 +    if (inlink->sample_aspect_ratio.num) {
-+        outlink->sample_aspect_ratio = av_mul_q((AVRational){outlink->h*inlink->w,
-+                                                             outlink->w*inlink->h},
-+                                                inlink->sample_aspect_ratio);
++        outlink->sample_aspect_ratio = av_mul_q(
++            (AVRational){outlink->h*inlink->w, outlink->w*inlink->h}, inlink->sample_aspect_ratio);
 +    } else {
 +        outlink->sample_aspect_ratio = inlink->sample_aspect_ratio;
 +    }
@@ -7059,32 +6957,45 @@ index 0000000000..109594fb1e
 +    av_frame_copy_props(out, in);
 +    out->width  = outlink->w;
 +    out->height = outlink->h;
-+    out->linesize[0] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
-+    out->linesize[1] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
++    av_image_fill_linesizes(out->linesize, s->out_fmt, out->width);
 +
 +    if (s->op_handle) {
 +        if (link->format == AV_PIX_FMT_MLU) {
 +            s->input_mlu_rgbx = in->data[0];
-+            s->output_mlu_y = out->data[0];
-+            s->output_mlu_uv = out->data[1];
++            if (s->out_fmt == AV_PIX_FMT_NV12 || s->out_fmt == AV_PIX_FMT_NV21) {
++                s->output_mlu_yuv[0] = out->data[0];
++                s->output_mlu_yuv[1] = out->data[1];
++            } else if (s->out_fmt == AV_PIX_FMT_YUV420P) {
++                s->output_mlu_yuv[0] = out->data[0];
++                s->output_mlu_yuv[1] = out->data[1];
++                s->output_mlu_yuv[2] = out->data[2];
++            }
 +        } else {
-+            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_rgbx, (void *)in->data[0],
-+                             s->input_mlu_rgbx_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
-+            MLUFILTER_CHECK(ctx, ret);
++            MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_rgbx,
++                    (void *)in->data[0], s->input_mlu_rgbx_size, cnrtMemcpyHostToDev));
 +        }
-+        ret = mlu_ctx->mluCvtRgbx2YuvExec(s->op_handle, s->input_mlu_rgbx,
-+                                           s->output_mlu_y, s->output_mlu_uv);
++        ret = mlu_ctx->mluOpGetVersion() <= 2008000 ?
++            mlu_ctx->mluCvtRgbx2YuvExec(s->op_handle,
++                s->input_mlu_rgbx, s->output_mlu_yuv[0], s->output_mlu_yuv[1]) :
++            mlu_ctx->mluCvtRgbx2YuvExec2(s->op_handle, s->input_mlu_rgbx, s->output_mlu_yuv);
 +        if (ret < 0) {
 +            av_log(ctx, AV_LOG_ERROR, "Failed to rgbx2yuv with mlu\n");
 +            goto fail;
 +        }
 +        if (link->format != AV_PIX_FMT_MLU) {
-+            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_y,
-+                            s->output_mlu_y_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
-+            MLUFILTER_CHECK(ctx, ret);
-+            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[1], (void *)s->output_mlu_uv,
-+                            s->output_mlu_uv_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
-+            MLUFILTER_CHECK(ctx, ret);
++            if (s->out_fmt == AV_PIX_FMT_NV12 || s->out_fmt == AV_PIX_FMT_NV21) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyD2H((void *)out->data[0],
++                    s->output_mlu_yuv[0], s->output_mlu_yuv_size[0], cnrtMemcpyDevToHost));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyD2H((void *)out->data[1],
++                    s->output_mlu_yuv[1], s->output_mlu_yuv_size[1], cnrtMemcpyDevToHost));
++            } else if (s->out_fmt == AV_PIX_FMT_YUV420P) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyD2H((void *)out->data[0],
++                    s->output_mlu_yuv[0], s->output_mlu_yuv_size[0], cnrtMemcpyDevToHost));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyD2H((void *)out->data[1],
++                    s->output_mlu_yuv[1], s->output_mlu_yuv_size[1], cnrtMemcpyDevToHost));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyD2H((void *)out->data[2],
++                    s->output_mlu_yuv[2], s->output_mlu_yuv_size[2], cnrtMemcpyDevToHost));
++            }
 +        }
 +    }
 +    av_reduce(&out->sample_aspect_ratio.num, &out->sample_aspect_ratio.den,
@@ -7104,7 +7015,7 @@ index 0000000000..109594fb1e
 +#define FLAGS (AV_OPT_FLAG_FILTERING_PARAM|AV_OPT_FLAG_VIDEO_PARAM)
 +static const AVOption options[] = {
 +    { "o_fmt", "output pixfmt", OFFSET(enter_out_fmt), AV_OPT_TYPE_STRING, { .str = "of" }, .flags = FLAGS },
-+    { "n",     "device index",  OFFSET(mlu),        AV_OPT_TYPE_STRING, { .str = "0" },  .flags = FLAGS },
++    { "n",     "device index",  OFFSET(mlu),           AV_OPT_TYPE_STRING, { .str = "0" },  .flags = FLAGS },
 +    { NULL },
 +};
 +
@@ -7135,7 +7046,7 @@ index 0000000000..109594fb1e
 +
 +AVFilter ff_vf_cvt_rgbx2yuv_mlu = {
 +    .name      = "cvt_rgbx2yuv_mlu",
-+    .description = NULL_IF_CONFIG_SMALL("MLU accelerated convert yuv to rgbx"),
++    .description = NULL_IF_CONFIG_SMALL("MLU accelerated convert rgbx to yuv"),
 +
 +    .init          = mlurgbx2yuv_init,
 +    .uninit        = mlurgbx2yuv_uninit,
@@ -7150,10 +7061,10 @@ index 0000000000..109594fb1e
 +};
 diff --git a/libavfilter/vf_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..ef80e1dea5
+index 0000000000..61f8f21281
 --- /dev/null
 +++ b/libavfilter/vf_cvt_yuv2rgbx_mlu.c
-@@ -0,0 +1,425 @@
+@@ -0,0 +1,459 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -7196,7 +7107,7 @@ index 0000000000..ef80e1dea5
 +    AV_PIX_FMT_ABGR, AV_PIX_FMT_BGRA,
 +    AV_PIX_FMT_0RGB, AV_PIX_FMT_0BGR,
 +    AV_PIX_FMT_BGR0, AV_PIX_FMT_RGB0,
-+    AV_PIX_FMT_MLU,
++    AV_PIX_FMT_YUV420P, AV_PIX_FMT_MLU,
 +};
 +
 +typedef struct MluCVTYUV2RGBXContext {
@@ -7229,11 +7140,9 @@ index 0000000000..ef80e1dea5
 +    char *enter_out_fmt;
 +    const char *pic_pixfmt;
 +
-+    int  in_y_size;
-+    int  in_uv_size;
-+    int  out_mlu_size;
-+    void *input_mlu_y;
-+    void *input_mlu_uv;
++    int in_yuv_size[3];
++    int out_mlu_size;
++    void *input_mlu_yuv[3];
 +    void *output_mlu_rgbx;
 +    bool affinity_set;
 +
@@ -7246,9 +7155,9 @@ index 0000000000..ef80e1dea5
 +    enum AVPixelFormat out_pixfmt;
 +    AVFilterFormats *pixel_formats;
 +
-+   int ret;
++    int ret;
 +    static const enum AVPixelFormat in_pix_fmts[] = {
-+        AV_PIX_FMT_NV12, AV_PIX_FMT_NV21,
++        AV_PIX_FMT_NV12, AV_PIX_FMT_NV21, AV_PIX_FMT_YUV420P,
 +        AV_PIX_FMT_MLU,  AV_PIX_FMT_NONE,
 +    };
 +    static const enum AVPixelFormat out_pix_fmts[] = {
@@ -7292,8 +7201,9 @@ index 0000000000..ef80e1dea5
 +static av_cold int mluyuv2rgbx_init(AVFilterContext *ctx)
 +{
 +    MluCVTYUV2RGBXContext *s = ctx->priv;
-+    s->input_mlu_y = NULL;
-+    s->input_mlu_uv = NULL;
++    s->input_mlu_yuv[0] = NULL;
++    s->input_mlu_yuv[1] = NULL;
++    s->input_mlu_yuv[2] = NULL;
 +    s->output_mlu_rgbx = NULL;
 +    s->op_handle = NULL;
 +    s->affinity_set = false;
@@ -7311,12 +7221,18 @@ index 0000000000..ef80e1dea5
 +        mlu_ctx->mluCvtYuv2RgbxDestroy(s->op_handle);
 +    }
 +    if (s->inlink_pixfmt != AV_PIX_FMT_MLU) {
-+        if (s->input_mlu_y)
-+            mlu_ctx->mluMemFree(s->input_mlu_y);
-+        if (s->input_mlu_uv)
-+            mlu_ctx->mluMemFree(s->input_mlu_uv);
-+        if (s->output_mlu_rgbx)
++        if (s->input_mlu_yuv[0]) {
++            mlu_ctx->mluMemFree(s->input_mlu_yuv[0]);
++        }
++        if (s->input_mlu_yuv[1]) {
++            mlu_ctx->mluMemFree(s->input_mlu_yuv[1]);
++        }
++        if (s->input_mlu_yuv[2]) {
++            mlu_ctx->mluMemFree(s->input_mlu_yuv[2]);
++        }
++        if (s->output_mlu_rgbx) {
 +            mlu_ctx->mluMemFree(s->output_mlu_rgbx);
++        }
 +    }
 +    if (s->in_hw_frame_ref) {
 +        av_buffer_unref(&s->in_hw_frame_ref);
@@ -7342,14 +7258,9 @@ index 0000000000..ef80e1dea5
 +
 +    int ret;
 +    char mlu[sizeof(int)];
-+
 +    outlink->w = inlink->w;
 +    outlink->h = inlink->h;
 +    s->inlink_pixfmt = inlink->format;
-+    s->in_y_size    = inlink->w * inlink->h;
-+    s->in_uv_size   = inlink->w * inlink->h / 2;
-+    s->out_mlu_size = outlink->w * outlink->h *
-+                    get_stride_scale_by_pixfmt(av_get_pix_fmt(s->enter_out_fmt));
 +    sprintf(mlu, "%d", atoi(s->mlu));
 +    if (inlink->format == AV_PIX_FMT_MLU && inlink->hw_frames_ctx) {
 +        in_hw_frames_ctx = (AVHWFramesContext*)inlink->hw_frames_ctx->data;
@@ -7411,6 +7322,17 @@ index 0000000000..ef80e1dea5
 +    if (mlu_device_affinity(s->hw_dev_ctx) < 0) {
 +        return AVERROR(ENODEV);
 +    }
++
++    if (s->in_fmt == AV_PIX_FMT_NV12 || s->in_fmt == AV_PIX_FMT_NV21) {
++        s->in_yuv_size[0] = inlink->w * inlink->h;
++        s->in_yuv_size[1] = inlink->w * inlink->h / 2;
++    } else if (s->in_fmt == AV_PIX_FMT_YUV420P) {
++        s->in_yuv_size[0] = inlink->w * inlink->h;
++        s->in_yuv_size[1] = inlink->w * inlink->h / 4;
++        s->in_yuv_size[2] = inlink->w * inlink->h / 4;
++    }
++    s->out_mlu_size = av_image_get_buffer_size(s->out_fmt, outlink->w, outlink->h, 1);
++
 +    if (!format_is_supported(s->in_fmt)) {
 +        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n",
 +               av_get_pix_fmt_name(s->in_fmt));
@@ -7425,17 +7347,25 @@ index 0000000000..ef80e1dea5
 +    if (!s->op_handle) {
 +        char depth_[3] = "8U";
 +        s->depth = depth_;
-+
 +        s->pic_pixfmt = av_get_pix_fmt_name(s->in_fmt);
 +        mlu_ctx->mluCvtYuv2RgbxInit(&s->op_handle, inlink->w, inlink->h, s->pic_pixfmt,
 +                                    CHECK_RGBX(s->enter_out_fmt), s->depth);
 +        if (inlink->format != AV_PIX_FMT_MLU) {
-+            ret = mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_y), sizeof(char) * s->in_y_size);
-+            MLUFILTER_CHECK(ctx, ret);
-+            ret = mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_uv), sizeof(char) * s->in_uv_size);
-+            MLUFILTER_CHECK(ctx, ret);
-+            ret = mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_rgbx), sizeof(char) * s->out_mlu_size);
-+            MLUFILTER_CHECK(ctx, ret);
++            if (s->in_fmt == AV_PIX_FMT_NV12 || s->in_fmt == AV_PIX_FMT_NV21) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_yuv[0]),
++                        sizeof(char) * s->in_yuv_size[0]));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_yuv[1]),
++                        sizeof(char) * s->in_yuv_size[1]));
++            } else if (s->in_fmt == AV_PIX_FMT_YUV420P) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_yuv[0]),
++                        sizeof(char) * s->in_yuv_size[0]));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_yuv[1]),
++                        sizeof(char) * s->in_yuv_size[1]));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->input_mlu_yuv[2]),
++                        sizeof(char) * s->in_yuv_size[2]));
++            }
++            MLUFILTER_CHECK(ctx, mlu_ctx->mluMemAlloc((void **)(&s->output_mlu_rgbx),
++                    sizeof(char) * s->out_mlu_size));
 +        }
 +    }
 +
@@ -7491,30 +7421,45 @@ index 0000000000..ef80e1dea5
 +    av_frame_copy_props(out, in);
 +    out->width  = outlink->w;
 +    out->height = outlink->h;
-+    out->linesize[0] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
++    out->linesize[0] = av_image_get_linesize(s->out_fmt, out->width, 0);
 +
 +    if (s->op_handle) {
 +        if (link->format == AV_PIX_FMT_MLU) {
-+            s->input_mlu_y = in->data[0];
-+            s->input_mlu_uv = in->data[1];
++            if (s->in_fmt == AV_PIX_FMT_NV12 || s->in_fmt == AV_PIX_FMT_NV21) {
++                s->input_mlu_yuv[0] = in->data[0];
++                s->input_mlu_yuv[1] = in->data[1];
++            } else if (s->in_fmt == AV_PIX_FMT_YUV420P) {
++                s->input_mlu_yuv[0] = in->data[0];
++                s->input_mlu_yuv[1] = in->data[1];
++                s->input_mlu_yuv[2] = in->data[2];
++            }
 +            s->output_mlu_rgbx = out->data[0];
 +        } else {
-+            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_y, (void *)in->data[0],
-+                                  s->in_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
-+            MLUFILTER_CHECK(ctx, ret);
-+            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_uv, (void *)in->data[1],
-+                                  s->in_uv_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
-+            MLUFILTER_CHECK(ctx, ret);
++            if (s->in_fmt == AV_PIX_FMT_NV12 || s->in_fmt == AV_PIX_FMT_NV21) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyH2D(s->input_mlu_yuv[0],
++                        (void *)in->data[0], s->in_yuv_size[0], cnrtMemcpyHostToDev));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyH2D(s->input_mlu_yuv[1],
++                        (void *)in->data[1], s->in_yuv_size[1], cnrtMemcpyHostToDev));
++            } else if (s->in_fmt == AV_PIX_FMT_YUV420P) {
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyH2D(s->input_mlu_yuv[0],
++                        (void *)in->data[0], s->in_yuv_size[0], cnrtMemcpyHostToDev));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyH2D(s->input_mlu_yuv[1],
++                        (void *)in->data[1], s->in_yuv_size[1], cnrtMemcpyHostToDev));
++                MLUFILTER_CHECK(ctx, mlu_ctx->mluMemcpyH2D(s->input_mlu_yuv[2],
++                        (void *)in->data[2], s->in_yuv_size[2], cnrtMemcpyHostToDev));
++            }
 +        }
-+        ret = mlu_ctx->mluCvtYuv2RgbxExec(s->op_handle, s->input_mlu_y,
-+                                        s->input_mlu_uv, s->output_mlu_rgbx);
++        ret = mlu_ctx->mluOpGetVersion() <= 2008000 ?
++            mlu_ctx->mluCvtYuv2RgbxExec(s->op_handle, s->input_mlu_yuv[0],
++                    s->input_mlu_yuv[1], s->output_mlu_rgbx) :
++            mlu_ctx->mluCvtYuv2RgbxExec2(s->op_handle, s->input_mlu_yuv, s->output_mlu_rgbx);
 +        if (ret < 0) {
 +            av_log(ctx, AV_LOG_ERROR, "Failed to yuv2rgbx filter with mluop\n");
 +            goto fail;
 +        }
 +        if (link->format != AV_PIX_FMT_MLU) {
 +            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_rgbx,
-+                            s->out_mlu_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                            s->out_mlu_size, cnrtMemcpyDevToHost);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +    }
@@ -7535,7 +7480,7 @@ index 0000000000..ef80e1dea5
 +#define FLAGS (AV_OPT_FLAG_FILTERING_PARAM|AV_OPT_FLAG_VIDEO_PARAM)
 +static const AVOption options[] = {
 +    { "o_fmt", "output pixel format", OFFSET(enter_out_fmt), AV_OPT_TYPE_STRING, { .str = "of" },.flags = FLAGS },
-+    { "n",     "device index",        OFFSET(mlu),        AV_OPT_TYPE_STRING, { .str = "0" }, .flags = FLAGS },
++    { "n",     "device index",        OFFSET(mlu),           AV_OPT_TYPE_STRING, { .str = "0" }, .flags = FLAGS },
 +    { NULL },
 +};
 +
@@ -8006,7 +7951,7 @@ index 0000000000..978606a934
 +};
 diff --git a/libavfilter/vf_overlay_mlu.c b/libavfilter/vf_overlay_mlu.c
 new file mode 100644
-index 0000000000..4fb357423c
+index 0000000000..eb36a3e484
 --- /dev/null
 +++ b/libavfilter/vf_overlay_mlu.c
 @@ -0,0 +1,702 @@
@@ -8530,7 +8475,7 @@ index 0000000000..4fb357423c
 +                    if (0 != ctx->overlay_plane_size[i]) {
 +                        ret = mlu_ctx->mluMemcpyH2D((void*)ctx->overlay_mlu_ptr[i],
 +                                (void*)input_overlay->data[i], ctx->overlay_plane_size[i],
-+                                CNRT_MEM_TRANS_DIR_HOST2DEV);
++                                cnrtMemcpyHostToDev);
 +                        MLUFILTER_CHECK(avctx, ret);
 +                    }
 +                }
@@ -8540,7 +8485,7 @@ index 0000000000..4fb357423c
 +                if (0 != ctx->main_plane_size[i]) {
 +                    ret = mlu_ctx->mluMemcpyH2D((void *)ctx->main_mlu_ptr[i],
 +                            (void *)input_main->data[i], ctx->main_plane_size[i],
-+                    CNRT_MEM_TRANS_DIR_HOST2DEV);
++                    cnrtMemcpyHostToDev);
 +                }
 +            }
 +            if (inlink_overlay->format == AV_PIX_FMT_MLU) {
@@ -8554,7 +8499,7 @@ index 0000000000..4fb357423c
 +                    if (0 != ctx->overlay_plane_size[i]) {
 +                        ret = mlu_ctx->mluMemcpyH2D((void *)ctx->overlay_mlu_ptr[i],
 +                                (void *)input_overlay->data[i], ctx->overlay_plane_size[i],
-+                        CNRT_MEM_TRANS_DIR_HOST2DEV);
++                        cnrtMemcpyHostToDev);
 +                    }
 +                }
 +            }
@@ -8574,7 +8519,7 @@ index 0000000000..4fb357423c
 +                if (0 != ctx->main_plane_size[i]) {
 +                    ret = mlu_ctx->mluMemcpyD2H((void *)output->data[i],
 +                            (void *)ctx->output_mlu_ptr[i], ctx->main_plane_size[i],
-+                            CNRT_MEM_TRANS_DIR_DEV2HOST);
++                            cnrtMemcpyDevToHost);
 +                    MLUFILTER_CHECK(avctx, ret);
 +                }
 +            }
@@ -8714,7 +8659,7 @@ index 0000000000..4fb357423c
 +};
 diff --git a/libavfilter/vf_rotate_mlu.c b/libavfilter/vf_rotate_mlu.c
 new file mode 100644
-index 0000000000..3f8a574f96
+index 0000000000..cb36edab27
 --- /dev/null
 +++ b/libavfilter/vf_rotate_mlu.c
 @@ -0,0 +1,326 @@
@@ -8966,7 +8911,7 @@ index 0000000000..3f8a574f96
 +            rot->output_mlu = out->data[0];
 +        } else {
 +            ret = rot->mlu_ctx->mluMemcpyH2D((void *)rot->input_mlu, (void *)in->data[0],
-+                    rot->input_mlu_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                    rot->input_mlu_size, cnrtMemcpyHostToDev);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +        ret = rot->mlu_ctx->mluRotateExec(rot->op_handle, rot->input_mlu, rot->output_mlu);
@@ -8976,7 +8921,7 @@ index 0000000000..3f8a574f96
 +        }
 +        if (inlink->format != AV_PIX_FMT_MLU) {
 +            ret = rot->mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)rot->output_mlu,
-+                    rot->output_mlu_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                    rot->output_mlu_size, cnrtMemcpyDevToHost);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +    }
@@ -9046,10 +8991,10 @@ index 0000000000..3f8a574f96
 +};
 diff --git a/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
 new file mode 100644
-index 0000000000..bcda02fb17
+index 0000000000..d7b44ae639
 --- /dev/null
 +++ b/libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c
-@@ -0,0 +1,431 @@
+@@ -0,0 +1,432 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -9246,10 +9191,6 @@ index 0000000000..bcda02fb17
 +    outlink->w = w;
 +    outlink->h = h;
 +    s->inlink_pixfmt = inlink->format;
-+    s->in_y_size    = inlink->w * inlink->h;
-+    s->in_uv_size   = inlink->w * inlink->h / 2;
-+    s->out_mlu_size = outlink->w * outlink->h *
-+                    get_stride_scale_by_pixfmt(av_get_pix_fmt(s->enter_out_fmt));
 +    sprintf(mlu, "%d", atoi(s->mlu));
 +    if (inlink->format == AV_PIX_FMT_MLU && inlink->hw_frames_ctx) {
 +        in_hw_frames_ctx = (AVHWFramesContext*)inlink->hw_frames_ctx->data;
@@ -9305,6 +9246,11 @@ index 0000000000..bcda02fb17
 +        }
 +        s->hw_dev_ctx = ((AVHWDeviceContext*)s->hw_device_ref->data)->hwctx;
 +    }
++
++    s->in_y_size    = inlink->w * inlink->h;
++    s->in_uv_size   = inlink->w * inlink->h / 2;
++    s->out_mlu_size = av_image_get_buffer_size(s->out_fmt, outlink->w, outlink->h, 1);
++
 +    if (!format_is_supported(s->in_fmt)) {
 +        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n",
 +               av_get_pix_fmt_name(s->in_fmt));
@@ -9391,7 +9337,7 @@ index 0000000000..bcda02fb17
 +    av_frame_copy_props(out, in);
 +    out->width  = outlink->w;
 +    out->height = outlink->h;
-+    out->linesize[0] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
++    av_image_fill_linesizes(out->linesize, s->out_fmt, out->width);
 +
 +    if (s->op_handle) {
 +        if (link->format == AV_PIX_FMT_MLU) {
@@ -9400,10 +9346,10 @@ index 0000000000..bcda02fb17
 +            s->output_mlu_rgbx = out->data[0];
 +        } else {
 +            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_y, (void *)in->data[0],
-+                                  s->in_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                                  s->in_y_size, cnrtMemcpyHostToDev);
 +            MLUFILTER_CHECK(ctx, ret);
 +            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_uv, (void *)in->data[1],
-+                                  s->in_uv_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                                  s->in_uv_size, cnrtMemcpyHostToDev);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +        ret = mlu_ctx->mluScaleCvtYuv2RgbxExec(s->op_handle, s->input_mlu_y,
@@ -9414,7 +9360,7 @@ index 0000000000..bcda02fb17
 +        }
 +        if (link->format != AV_PIX_FMT_MLU) {
 +            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_rgbx,
-+                            s->out_mlu_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                            s->out_mlu_size, cnrtMemcpyDevToHost);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +    }
@@ -9483,7 +9429,7 @@ index 0000000000..bcda02fb17
 +};
 diff --git a/libavfilter/vf_scale_rgbx2rgbx_mlu.c b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 new file mode 100644
-index 0000000000..68baa80ba1
+index 0000000000..3bf3af008b
 --- /dev/null
 +++ b/libavfilter/vf_scale_rgbx2rgbx_mlu.c
 @@ -0,0 +1,421 @@
@@ -9731,8 +9677,8 @@ index 0000000000..68baa80ba1
 +        s->hw_dev_ctx = ((AVHWDeviceContext*)s->hw_device_ref->data)->hwctx;
 +    }
 +
-+    s->input_mlu_size  = inlink->w * inlink->h * get_stride_scale_by_pixfmt(s->in_fmt);
-+    s->output_mlu_size = outlink->w * outlink->h * get_stride_scale_by_pixfmt(s->out_fmt);
++    s->input_mlu_size  = av_image_get_buffer_size(s->in_fmt,  inlink->w,  inlink->h, 1);;
++    s->output_mlu_size = av_image_get_buffer_size(s->out_fmt, outlink->w, outlink->h, 1);
 +
 +    if (!format_is_supported(s->in_fmt)) {
 +        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n",
@@ -9823,7 +9769,7 @@ index 0000000000..68baa80ba1
 +            s->output_mlu_rgbx = out->data[0];
 +        } else {
 +            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_rgbx, (void *)in->data[0],
-+                              s->input_mlu_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                              s->input_mlu_size, cnrtMemcpyHostToDev);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +        if (!s->is_crop) {
@@ -9840,7 +9786,7 @@ index 0000000000..68baa80ba1
 +        }
 +        if (link->format != AV_PIX_FMT_MLU) {
 +            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_rgbx,
-+                            s->output_mlu_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                            s->output_mlu_size, cnrtMemcpyDevToHost);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +    }
@@ -9910,10 +9856,10 @@ index 0000000000..68baa80ba1
 +};
 diff --git a/libavfilter/vf_scale_yuv2yuv_mlu.c b/libavfilter/vf_scale_yuv2yuv_mlu.c
 new file mode 100644
-index 0000000000..50a7b89e5a
+index 0000000000..b2ab7e6d0f
 --- /dev/null
 +++ b/libavfilter/vf_scale_yuv2yuv_mlu.c
-@@ -0,0 +1,436 @@
+@@ -0,0 +1,435 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -10246,8 +10192,7 @@ index 0000000000..50a7b89e5a
 +    av_frame_copy_props(out, in);
 +    out->width  = outlink->w;
 +    out->height = outlink->h;
-+    out->linesize[0] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
-+    out->linesize[1] = out->width * get_stride_scale_by_pixfmt(s->out_fmt);
++    av_image_fill_linesizes(out->linesize, s->out_fmt, out->width);
 +
 +    if (s->op_handle) {
 +        if (link->format == AV_PIX_FMT_MLU) {
@@ -10257,10 +10202,10 @@ index 0000000000..50a7b89e5a
 +            s->output_mlu_uv = out->data[1];
 +        } else {
 +            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_y, (void *)in->data[0],
-+                            s->in_y_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                            s->in_y_size, cnrtMemcpyHostToDev);
 +            MLUFILTER_CHECK(ctx, ret);
 +            ret = mlu_ctx->mluMemcpyH2D((void *)s->input_mlu_uv, (void *)in->data[1],
-+                            s->in_uv_size, CNRT_MEM_TRANS_DIR_HOST2DEV);
++                            s->in_uv_size, cnrtMemcpyHostToDev);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +        if (!s->is_crop) {
@@ -10279,10 +10224,10 @@ index 0000000000..50a7b89e5a
 +        }
 +        if (link->format != AV_PIX_FMT_MLU) {
 +            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[0], (void *)s->output_mlu_y,
-+                            s->out_y_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                            s->out_y_size, cnrtMemcpyDevToHost);
 +            MLUFILTER_CHECK(ctx, ret);
 +            ret = mlu_ctx->mluMemcpyD2H((void *)out->data[1], (void *)s->output_mlu_uv,
-+                            s->out_uv_size, CNRT_MEM_TRANS_DIR_DEV2HOST);
++                            s->out_uv_size, cnrtMemcpyDevToHost);
 +            MLUFILTER_CHECK(ctx, ret);
 +        }
 +    }
@@ -10426,10 +10371,10 @@ index e6266494ac..de6bf2a769 100644
  #endif /* AVUTIL_HWCONTEXT_INTERNAL_H */
 diff --git a/libavutil/hwcontext_mlu.c b/libavutil/hwcontext_mlu.c
 new file mode 100644
-index 0000000000..3644a390ca
+index 0000000000..68fffc3546
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.c
-@@ -0,0 +1,436 @@
+@@ -0,0 +1,444 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -10646,29 +10591,29 @@ index 0000000000..3644a390ca
 +        // nBytes = src->linesize[i] * src->height * (i ? 1.0 / 2 : 1);
 +        nBytes = FFMIN(src->linesize[i], dst->linesize[i]) * src->height * (i ? 1.0 / 2 : 1);
 +        if (src->hw_frames_ctx && dst->hw_frames_ctx) {
-+            cnrt_ret = mlu_ctx->mluMemcpyD2D(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_DEV2DEV);
-+            if (cnrt_ret != CNRT_RET_SUCCESS) {
++            cnrt_ret = mlu_ctx->mluMemcpyD2D(dst->data[i], src->data[i], nBytes, cnrtMemcpyDevToDev);
++            if (cnrt_ret != cnrtSuccess) {
 +                av_log(ctx, AV_LOG_ERROR, "d2d: dev %p -> dev %p, size %lu \n", src->data[i], dst->data[i], nBytes);
 +                av_log(ctx, AV_LOG_ERROR, "mluMemcpyD2D error occur, func: %s, line: %d\n", __func__, __LINE__);
 +                return -1;
 +            }
 +        } else if (src->hw_frames_ctx) {
-+            cnrt_ret = mlu_ctx->mluMemcpyD2H(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_DEV2HOST);
++            cnrt_ret = mlu_ctx->mluMemcpyD2H(dst->data[i], src->data[i], nBytes, cnrtMemcpyDevToHost);
 +            if (cnrt_ret != cnrtSuccess) {
 +                av_log(ctx, AV_LOG_ERROR, "d2h: dev %p -> host %p size %lu \n", src->data[i], dst->data[i], nBytes);
 +                av_log(ctx, AV_LOG_ERROR, " mluMemcpyD2H error occur, fuc: %s, line:%d\n", __func__, __LINE__);
 +                return -1;
 +            }
 +        } else if (dst->hw_frames_ctx) {
-+            cnrt_ret = mlu_ctx->mluMemcpyH2D(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_HOST2DEV);
-+            if (cnrt_ret != CNRT_RET_SUCCESS) {
++            cnrt_ret = mlu_ctx->mluMemcpyH2D(dst->data[i], src->data[i], nBytes, cnrtMemcpyHostToDev);
++            if (cnrt_ret != cnrtSuccess) {
 +                av_log(ctx, AV_LOG_ERROR, "h2d: host %p -> dev %p, size %lu \n", src->data[i], dst->data[i], nBytes);
 +                av_log(ctx, AV_LOG_ERROR, "mluMemcpyH2D error occur, func: %s, line: %d\n", __func__, __LINE__);
 +                return -1;
 +            }
 +        } else {
-+            cnrt_ret = mlu_ctx->mluMemcpyH2H(dst->data[i], src->data[i], nBytes, CNRT_MEM_TRANS_DIR_HOST2HOST);
-+            if (cnrt_ret != CNRT_RET_SUCCESS) {
++            cnrt_ret = mlu_ctx->mluMemcpyH2H(dst->data[i], src->data[i], nBytes, cnrtMemcpyHostToHost);
++            if (cnrt_ret != cnrtSuccess) {
 +                av_log(ctx, AV_LOG_ERROR, "h2h: host %p -> host %p, size %lu \n", src->data[i], dst->data[i], nBytes);
 +                av_log(ctx, AV_LOG_ERROR, "mluMemcpyH2H error occur, func: %s, line: %d\n", __func__, __LINE__);
 +                return -1;
@@ -10749,10 +10694,18 @@ index 0000000000..3644a390ca
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtRgbx2RgbxExec, mluCvtRgbx2RgbxExec_t, "mluOpConvertRgbx2RgbxExec", hwctx->mluop_lib);
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtRgbx2RgbxDestroy, mluCvtRgbx2RgbxDestroy_t, "mluOpConvertRgbx2RgbxDestroy", hwctx->mluop_lib);
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtRgbx2YuvInit, mluCvtRgbx2YuvInit_t, "mluOpConvertRgbx2YuvInit", hwctx->mluop_lib);
-+    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtRgbx2YuvExec, mluCvtRgbx2YuvExec_t, "mluOpConvertRgbx2YuvExec", hwctx->mluop_lib);
++    if (mlu_ctx->mluOpGetVersion() <= 2008000) {
++        MLU_LOAD_SYMBOL(mlu_ctx->mluCvtRgbx2YuvExec, mluCvtRgbx2YuvExec_t, "mluOpConvertRgbx2YuvExec", hwctx->mluop_lib);
++    } else {
++        MLU_LOAD_SYMBOL(mlu_ctx->mluCvtRgbx2YuvExec2, mluCvtRgbx2YuvExec2_t, "mluOpConvertRgbx2YuvExec", hwctx->mluop_lib);
++    }
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtRgbx2YuvDestroy, mluCvtRgbx2YuvDestroy_t, "mluOpConvertRgbx2YuvDestroy", hwctx->mluop_lib);
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtYuv2RgbxInit, mluCvtYuv2RgbxInit_t, "mluOpConvertYuv2RgbxInit", hwctx->mluop_lib);
-+    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtYuv2RgbxExec, mluCvtYuv2RgbxExec_t, "mluOpConvertYuv2RgbxExec", hwctx->mluop_lib);
++    if (mlu_ctx->mluOpGetVersion() <= 2008000) {
++        MLU_LOAD_SYMBOL(mlu_ctx->mluCvtYuv2RgbxExec, mluCvtYuv2RgbxExec_t, "mluOpConvertYuv2RgbxExec", hwctx->mluop_lib);
++    } else {
++        MLU_LOAD_SYMBOL(mlu_ctx->mluCvtYuv2RgbxExec2, mluCvtYuv2RgbxExec2_t, "mluOpConvertYuv2RgbxExec", hwctx->mluop_lib);
++    }
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluCvtYuv2RgbxDestroy, mluCvtYuv2RgbxDestroy_t, "mluOpConvertYuv2RgbxDestroy", hwctx->mluop_lib);
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluScaleCvtYuv2RgbxInit, mluScaleCvtYuv2RgbxInit_t, "mluOpResizeCvtInit", hwctx->mluop_lib);
 +    MLU_LOAD_SYMBOL(mlu_ctx->mluScaleCvtYuv2RgbxExec, mluScaleCvtYuv2RgbxExec_t, "mluOpResizeCvtExec", hwctx->mluop_lib);
@@ -10868,10 +10821,10 @@ index 0000000000..3644a390ca
 +};
 diff --git a/libavutil/hwcontext_mlu.h b/libavutil/hwcontext_mlu.h
 new file mode 100644
-index 0000000000..8abb8b5e60
+index 0000000000..ed3769fccf
 --- /dev/null
 +++ b/libavutil/hwcontext_mlu.h
-@@ -0,0 +1,170 @@
+@@ -0,0 +1,174 @@
 +/*
 +* Copyright (c) 2020, CAMBRICON CORPORATION. All rights reserved.
 +*
@@ -10930,9 +10883,11 @@ index 0000000000..8abb8b5e60
 +typedef int MLUAPI mluCvtRgbx2RgbxDestroy_t(void*);
 +typedef int MLUAPI mluCvtRgbx2YuvInit_t(void**, int, int, const char*, const char*, const char*);
 +typedef int MLUAPI mluCvtRgbx2YuvExec_t(void*, void*, void*, void*);
++typedef int MLUAPI mluCvtRgbx2YuvExec2_t(void*, void*, void**);
 +typedef int MLUAPI mluCvtRgbx2YuvDestroy_t(void*);
 +typedef int MLUAPI mluCvtYuv2RgbxInit_t(void**, int, int, const char*, const char*, const char*);
 +typedef int MLUAPI mluCvtYuv2RgbxExec_t(void*, void*, void*, void*);
++typedef int MLUAPI mluCvtYuv2RgbxExec2_t(void*, void**, void*);
 +typedef int MLUAPI mluCvtYuv2RgbxDestroy_t(void*);
 +typedef int MLUAPI mluScaleCvtYuv2RgbxInit_t(void**, int, int, int, int, const char*, const char*, const char*);
 +typedef int MLUAPI mluScaleCvtYuv2RgbxExec_t(void*, void*, void*, void*);
@@ -10991,9 +10946,11 @@ index 0000000000..8abb8b5e60
 +    mluCvtRgbx2RgbxDestroy_t     *mluCvtRgbx2RgbxDestroy;
 +    mluCvtRgbx2YuvInit_t         *mluCvtRgbx2YuvInit;
 +    mluCvtRgbx2YuvExec_t         *mluCvtRgbx2YuvExec;
++    mluCvtRgbx2YuvExec2_t        *mluCvtRgbx2YuvExec2;
 +    mluCvtRgbx2YuvDestroy_t      *mluCvtRgbx2YuvDestroy;
 +    mluCvtYuv2RgbxInit_t         *mluCvtYuv2RgbxInit;
 +    mluCvtYuv2RgbxExec_t         *mluCvtYuv2RgbxExec;
++    mluCvtYuv2RgbxExec2_t        *mluCvtYuv2RgbxExec2;
 +    mluCvtYuv2RgbxDestroy_t      *mluCvtYuv2RgbxDestroy;
 +    mluScaleCvtYuv2RgbxInit_t    *mluScaleCvtYuv2RgbxInit;
 +    mluScaleCvtYuv2RgbxExec_t    *mluScaleCvtYuv2RgbxExec;
