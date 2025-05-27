@@ -6,4 +6,4 @@ if [ -z ${NEUWARE_HOME} ]; then
     exit
 fi
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${CUR_DIR}/install/lib:${NEUWARE_HOME}/lib64
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${NEUWARE_HOME}/lib64
