@@ -1,6 +1,6 @@
-From d5919eec0ed928a37655c3be3f9eb35da264f6ee Mon Sep 17 00:00:00 2001
+From 5ca8a44e4be3281032fc51f58cf3b4f8d6d2391d Mon Sep 17 00:00:00 2001
 From: fanhairui <fanhairui@cambricon.com>
-Date: Fri, 23 May 2025 11:09:32 +0800
+Date: Fri, 23 May 2025 16:11:16 +0800
 Subject: [PATCH] release mlu300
 
 ---
@@ -24,7 +24,7 @@ Subject: [PATCH] release mlu300
  libavcodec/mlumpp_enc_h264.c            |  219 +++
  libavcodec/mlumpp_enc_hevc.c            |  229 ++++
  libavcodec/mlumpp_enc_jpeg.c            |  122 ++
- libavcodec/mlumpp_vid_enc.c             | 1136 ++++++++++++++++
+ libavcodec/mlumpp_vid_enc.c             | 1147 ++++++++++++++++
  libavcodec/mlumpp_vid_enc.h             |  125 ++
  libavfilter/Makefile                    |   10 +
  libavfilter/allfilters.c                |   11 +
@@ -49,7 +49,7 @@ Subject: [PATCH] release mlu300
  libavutil/hwcontext_mlu_internal.h      |   86 ++
  libavutil/pixdesc.c                     |    4 +
  libavutil/pixfmt.h                      |    6 +
- 45 files changed, 10487 insertions(+), 27 deletions(-)
+ 45 files changed, 10498 insertions(+), 27 deletions(-)
  create mode 100644 VERSION
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_change_mlu.c
@@ -4675,10 +4675,10 @@ index 0000000000..a6937c54f4
 +};
 diff --git a/libavcodec/mlumpp_vid_enc.c b/libavcodec/mlumpp_vid_enc.c
 new file mode 100644
-index 0000000000..26a3e0c46f
+index 0000000000..3af9b6ae1c
 --- /dev/null
 +++ b/libavcodec/mlumpp_vid_enc.c
-@@ -0,0 +1,1136 @@
+@@ -0,0 +1,1147 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -4726,6 +4726,14 @@ index 0000000000..26a3e0c46f
 +        return -1;
 +    }
 +    in_pixfmt = avctx->sw_pix_fmt >= 0 ? avctx->sw_pix_fmt : avctx->pix_fmt;
++    if (AV_CODEC_ID_MJPEG == avctx->codec->id && ctx->image_enc_backend <= 1 &&
++        in_pixfmt != AV_PIX_FMT_NV21 && in_pixfmt != AV_PIX_FMT_NV12 &&
++        in_pixfmt != AV_PIX_FMT_YUYV422 && in_pixfmt != AV_PIX_FMT_UYVY422) {
++        av_log(avctx, AV_LOG_ERROR,
++            "Jpg enc(backend=%d) only support nv12/nv21/yuyv/uyvy pixfmt\n",
++            ctx->image_enc_backend);
++        return -1;
++    }
 +    ret = cnenc_check_input_pixfmt(enc_caps.input_pixel_format_mask,
 +          cncodec_get_cn_pixfmt_by_av_pixfmt(in_pixfmt));
 +    if (ret != 0) {
@@ -5771,8 +5779,11 @@ index 0000000000..26a3e0c46f
 +        return AVERROR(EINVAL);
 +    }
 +
-+    if (avctx->codec_id == AV_CODEC_ID_MJPEG) {
-+        MLUMPP_CHECK(cnctx->avctx, cncodecEncSetEos(cnctx->handle), "Jpeg send Eos");
++    if (avctx->codec_id == AV_CODEC_ID_MJPEG && cnctx->handle) {
++        ret = cncodecEncSetEos(cnctx->handle);
++        if (ret != 0) {
++            ret = print_cncodec_error(avctx, ret, "Jpeg send Eos");
++        }
 +    }
 +    if (!cnctx->eos_post_flag && !cnctx->codec_abort_flag && cnctx->handle) {
 +        av_log(avctx, AV_LOG_DEBUG, "Haven't got EOS, waiting\n");
