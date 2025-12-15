@@ -1,6 +1,6 @@
-From b3a1d778b19cf248d9f87b41c92222790e4377d8 Mon Sep 17 00:00:00 2001
+From 4f1f410e2818b0bd1a3af78d1a14f6aeef4d31cb Mon Sep 17 00:00:00 2001
 From: fanhairui <fanhairui@cambricon.com>
-Date: Thu, 20 Nov 2025 16:59:14 +0800
+Date: Fri, 12 Dec 2025 16:52:25 +0800
 Subject: [PATCH] release mlu300
 
 ---
@@ -21,7 +21,7 @@ Subject: [PATCH] release mlu300
  libavcodec/allcodecs.c                  |   10 +
  libavcodec/hwconfig.h                   |    2 +
  libavcodec/mlumpp_codec.h               |  342 +++++
- libavcodec/mlumpp_dec.c                 | 1595 +++++++++++++++++++++++
+ libavcodec/mlumpp_dec.c                 | 1602 +++++++++++++++++++++++
  libavcodec/mlumpp_enc_h264.c            |  217 +++
  libavcodec/mlumpp_enc_hevc.c            |  228 ++++
  libavcodec/mlumpp_enc_jpeg.c            |  122 ++
@@ -39,7 +39,7 @@ Subject: [PATCH] release mlu300
  libavfilter/vf_rotate_mlu.c             |  326 +++++
  libavfilter/vf_scale_cvt_yuv2rgbx_mlu.c |  432 ++++++
  libavfilter/vf_scale_rgbx2rgbx_mlu.c    |  421 ++++++
- libavfilter/vf_scale_yuv2yuv_mlu.c      |  435 +++++++
+ libavfilter/vf_scale_yuv2yuv_mlu.c      |  435 ++++++
  libavutil/Makefile                      |    3 +
  libavutil/hwcontext.c                   |    5 +
  libavutil/hwcontext.h                   |    1 +
@@ -49,7 +49,7 @@ Subject: [PATCH] release mlu300
  libavutil/hwcontext_mlu_internal.h      |   86 ++
  libavutil/pixdesc.c                     |    5 +
  libavutil/pixfmt.h                      |    7 +
- 45 files changed, 10411 insertions(+), 26 deletions(-)
+ 45 files changed, 10418 insertions(+), 26 deletions(-)
  create mode 100644 VERSION
  create mode 100644 doc/examples/decode_mlu.c
  create mode 100644 doc/examples/encode_change_mlu.c
@@ -82,11 +82,11 @@ Subject: [PATCH] release mlu300
 
 diff --git a/VERSION b/VERSION
 new file mode 100644
-index 0000000000..6045b84762
+index 0000000000..7dc61a1136
 --- /dev/null
 +++ b/VERSION
 @@ -0,0 +1 @@
-+4.4.4_v4.2.3_10115202
++4.4.4_v4.2.4_02115202
 diff --git a/configure b/configure
 index fb55e04ee7..791e63dd95 100755
 --- a/configure
@@ -2078,7 +2078,7 @@ index f421dc909f..9bc7e46a29 100644
      &(const AVCodecHWConfigInternal) { \
 diff --git a/libavcodec/mlumpp_codec.h b/libavcodec/mlumpp_codec.h
 new file mode 100644
-index 0000000000..66023ec1b7
+index 0000000000..d2f0e20d69
 --- /dev/null
 +++ b/libavcodec/mlumpp_codec.h
 @@ -0,0 +1,342 @@
@@ -2132,12 +2132,12 @@ index 0000000000..66023ec1b7
 +
 +#define FF_MLU_MAJOR_VERSION 4
 +#define FF_MLU_MINOR_VERSION 2
-+#define FF_MLU_PATCH_VERSION 3
++#define FF_MLU_PATCH_VERSION 4
 +#define FF_MLU_VERSION  (FF_MLU_MAJOR_VERSION * 1000 + FF_MLU_MINOR_VERSION * 100 + FF_MLU_PATCH_VERSION)
 +#define CNCODEC_VERSION (CNCODEC_MAJOR_VERSION* 1000 + CNCODEC_MINOR_VERSION* 100 + CNCODEC_PATCH_VERSION)
 +
 +#define cndec_version_info(void)                                              \
-+    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 31115202\n");                        \
++    av_log(NULL, AV_LOG_DEBUG, "RELFLAG: 02115202\n");                        \
 +    av_log(NULL, AV_LOG_DEBUG, "CNCODEC: %d.%d.%d \n",                        \
 +        CNCODEC_MAJOR_VERSION, CNCODEC_MINOR_VERSION, CNCODEC_PATCH_VERSION); \
 +    av_log(NULL, AV_LOG_DEBUG, "FFMPEG_MLU: %d.%d.%d \n",                     \
@@ -2426,10 +2426,10 @@ index 0000000000..66023ec1b7
 +#endif /* MLUMPP_CODEC_H */
 diff --git a/libavcodec/mlumpp_dec.c b/libavcodec/mlumpp_dec.c
 new file mode 100755
-index 0000000000..f6943d7636
+index 0000000000..541a511af2
 --- /dev/null
 +++ b/libavcodec/mlumpp_dec.c
-@@ -0,0 +1,1595 @@
+@@ -0,0 +1,1602 @@
 +/******************************************************************************
 + * Cambricon MLU Media Process Platform(MLU MPP) SDK
 + * Copyright (C) [2019] by Cambricon, Inc. All rights reserved
@@ -2494,6 +2494,7 @@ index 0000000000..f6943d7636
 +    char *output_order;
 +    bool mem_async;
 +    bool is_dec_caps_get;
++    bool affinity_set;
 +    struct {
 +        int x;
 +        int y;
@@ -3398,6 +3399,11 @@ index 0000000000..f6943d7636
 +            "Decode got abort or not init or no handle, return AVERROR_BUG \n");
 +        return AVERROR_BUG;
 +    }
++    if (!ctx->affinity_set && mlu_device_affinity(ctx->hwdevice_ctx) < 0) {
++        av_log(avctx, AV_LOG_ERROR, "MLU affinity set failed, func:%s, line:%d\n",
++            __func__, __LINE__);
++    }
++    ctx->affinity_set = true;
 +    if (ctx->eos_received) {
 +        return AVERROR_EOF;
 +    }
@@ -3895,6 +3901,7 @@ index 0000000000..f6943d7636
 +        goto decode_error;
 +    }
 +
++    ctx->affinity_set = false;
 +    ctx->decoder_init_flag = 1;
 +    avctx->pkt_timebase.num = 1;
 +    avctx->pkt_timebase.den = 90000;
